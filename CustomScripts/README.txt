@@ -1,0 +1,1 @@
+This folder contains custom scripts for initial processing of the input data.
