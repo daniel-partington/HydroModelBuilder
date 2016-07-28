@@ -1,8 +1,11 @@
-import flopy
-import numpy as np
-#import os
 import multiprocessing
+
+import numpy as np
 import matplotlib.pyplot as plt
+
+import flopy
+import flopy.utils.binaryfile as bf
+
 
 class ModflowModel(object):
 
@@ -14,7 +17,7 @@ class ModflowModel(object):
 
         self.model_data = model_data
         self.name = model_data.name
-        self.data_folder = r".\MODEL_" + self.name + r"\\"
+        self.data_folder = r"C:\Workspace\part0075\MDB modelling\testbox\MODEL_" + self.name + r"\\"
 
         self.executable = r".\MODFLOW-NWT_64.exe"
 
@@ -222,25 +225,23 @@ class ModflowModel(object):
             #y = self.model_data.observations.obs[obs_set]['locations']            
             #self.obs_loc_val_lay += [[obs, x, y, sim_map_dict[observation][0]]]
             
+    def importHeads(self):
+        self.headobj = bf.HeadFile(self.data_folder + self.name+'.hds')
+        return self.headobj
+
+    def importCbb(self):
+        self.cbbobj = bf.CellBudgetFile(self.data_folder + self.name+'.cbc')
+        return self.cbbobj
+      
     def viewHeads(self):
 
-        import flopy.utils.binaryfile as bf
-        import pandas as pd
-        import matplotlib.ticker as plticker
         # Create the headfile object
-        headobj = bf.HeadFile(self.data_folder + self.name+'.hds')
-        cbbobj = bf.CellBudgetFile(self.data_folder + self.name+'.cbc')
-
+        headobj = self.importHeads()
         times = headobj.get_times()        
         head = headobj.get_data(totim=times[0])
 
         #head_zoned = HeadsByZone(head)
 
-        x = np.linspace(self.model_data.model_boundary[0], self.model_data.model_boundary[1], self.ncol)
-        y = np.linspace(self.model_data.model_boundary[2], self.model_data.model_boundary[3], self.nrow)
-        levels = np.arange(-200,200,10)
-        #extent = (self.model_data.model_boundary[0] + self.delr/2., self.model_data.model_boundary[1] - self.delr/2., self.model_data.model_boundary[3] - self.delc/2., self.model_data.model_boundary[2] + self.delc/2.)
-        extent =  (self.model_data.model_boundary[0], self.model_data.model_boundary[1], self.model_data.model_boundary[3], self.model_data.model_boundary[2])    
         # First step is to set up the plot
         fig = plt.figure(figsize=(20, 10))
         ax = fig.add_subplot(2, 4, 1, aspect='equal')
@@ -384,7 +385,7 @@ class ModflowModel(object):
 
         import flopy.utils.binaryfile as bf
         import pandas as pd
-        import matplotlib.ticker as plticker
+        #import matplotlib.ticker as plticker
         # Create the headfile object
         headobj = bf.HeadFile(self.data_folder + self.name+'.hds')
         cbbobj = bf.CellBudgetFile(self.data_folder + self.name+'.cbc')
@@ -429,11 +430,11 @@ class ModflowModel(object):
         wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.]
         print wat_bal_df         
 
-        x = np.linspace(self.model_data.model_boundary[0], self.model_data.model_boundary[1], self.ncol)
-        y = np.linspace(self.model_data.model_boundary[2], self.model_data.model_boundary[3], self.nrow)
-        levels = np.arange(-200,200,10)
+        #x = np.linspace(self.model_data.model_boundary[0], self.model_data.model_boundary[1], self.ncol)
+        #y = np.linspace(self.model_data.model_boundary[2], self.model_data.model_boundary[3], self.nrow)
+        #levels = np.arange(-200,200,10)
         #extent = (self.model_data.model_boundary[0] + self.delr/2., self.model_data.model_boundary[1] - self.delr/2., self.model_data.model_boundary[3] - self.delc/2., self.model_data.model_boundary[2] + self.delc/2.)
-        extent =  (self.model_data.model_boundary[0], self.model_data.model_boundary[1], self.model_data.model_boundary[3], self.model_data.model_boundary[2])    
+        #extent =  (self.model_data.model_boundary[0], self.model_data.model_boundary[1], self.model_data.model_boundary[3], self.model_data.model_boundary[2])    
         # First step is to set up the plot
         fig = plt.figure(figsize=(20, 10))
         ax = fig.add_subplot(2, 4, 1, aspect='equal')
@@ -556,6 +557,21 @@ class ModflowModel(object):
         #plt.show()
 
     #End viewHeads2        
+
+    def getRiverAquiferFlux(self, from_cell, to_cell):
+        """
+        Function to retrieve the flux between "from_cell" and "to_cell", works
+        on the assumption that the stream cells are in order from top of stream
+        to the bottom of the stream and includes fluxes for the bounding cells.
+        """
+        exchange = 0.0
+        riv_flux = self.cbbobj.get_data(text = 'RIVER LEAKAGE', full3D=True)
+        
+        for cell in reach_cells:
+            exchange += 1
+        
+        return exchange
+
 
 #End Groundwater()
 

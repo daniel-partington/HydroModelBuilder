@@ -59,7 +59,7 @@ class GWModelBuilder(object):
                 print out_data_folder + ' is an invalid path'
                 try_again = True                
                 while try_again:                
-                    create_path = input('Would you like to create this path? [y/n]')
+                    create_path = raw_input('Would you like to create this path? [y/n]')
                     if create_path in ['y', 'Y']:
                         os.mkdir(out_data_folder)
                         try_again = False

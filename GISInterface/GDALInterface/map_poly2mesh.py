@@ -10,8 +10,6 @@ def poly_line2mesh(poly_line, poly_mesh):
     srs = mesh_layer.GetSpatialRef()
 
     poly_layer = poly_line.GetLayer()    
-    #print dir(poly_layer)
-    #print poly_layer.GetLayerDefn().GetGeomType()    
     
     # Set driver for creating shape files
     driver_inter = ogr.GetDriverByName('ESRI Shapefile')
@@ -35,39 +33,23 @@ def poly_line2mesh(poly_line, poly_mesh):
         grid_cell = feature.GetGeometryRef()
         
         # Setup shape file for each grid cell
-        #try:
-        #    os.remove('mesh_temp.shp')
-        #except OSError:
-        #    pass        
-        # Setup shape file for each grid cell
-        if os.path.exists('mesh_temp.shp'):
-            time.sleep(0.005)
-            try:
-                os.remove('mesh_temp.shp')
-            except:
-                print 'Could not delete ... trying again'                
-                time.sleep(0.1)
-                try: 
-                    os.remove('mesh_temp.shp')
-                except:
-                    print 'Still could not delete ... trying again'                
-                    time.sleep(180)
-                    os.remove('mesh_temp.shp')
+        filename = 'mesh_temp.shp'
 
+        while os.path.exists(filename):
+            os.remove(filename)
+
+        mesh_layer_ds = None
+                
         if os.path.exists('mesh_temp.shp'):
             print 'File still there!!!'
+        #end if
+        mesh_layer_ds = None
+        while mesh_layer_ds == None:
+            mesh_layer_ds = driver_inter.CreateDataSource('mesh_temp.shp')
 
-            #driver_inter.DeleteDataSource('mesh_temp.shp')
-        mesh_layer_ds = driver_inter.CreateDataSource('mesh_temp.shp')
-        if mesh_layer_ds == None:
-            print os.path.exists('mesh_temp.shp')
-            print 'Race condition problem'
-            if os.path.exists('mesh_temp.shp'):
-                print 'One last try!'                
-                os.remove('mesh_temp.shp')
-                mesh_layer_ds = driver_inter.CreateDataSource('mesh_temp.shp')
-
-        mesh_temp = mesh_layer_ds.CreateLayer('mylayer', srs, geom_type=ogr.wkbMultiPolygon)
+        mesh_temp = None
+        while mesh_temp == None:
+            mesh_temp = mesh_layer_ds.CreateLayer('mylayer', srs, geom_type=ogr.wkbMultiPolygon)
 
         featureDefn = mesh_temp.GetLayerDefn()        
 
@@ -93,32 +75,11 @@ def poly_line2mesh(poly_line, poly_mesh):
         #fname = 'temp'+str(feature.GetFID())+'.shp'
         fname = 'temp.shp'        
         if os.path.exists(fname):
-            time.sleep(0.005)
-            try:
-                os.remove(fname)
-            except:
-                print 'Could not delete ... trying again'                
-                time.sleep(0.1)
-                try: 
-                    os.remove(fname)
-                except:
-                    print 'Still could not delete ... trying again'                
-                    time.sleep(180)
-                    os.remove(fname)
+            os.remove(fname)
 
-
-        #if os.path.exists(fname):
-        #    os.remove(fname)            
-            #driver_inter.DeleteDataSource(fname)
-        dstshp = driver_inter.CreateDataSource(fname)
-        if dstshp == None:
-            print os.path.exists(fname)
-            print 'Race condition problem'
-            if os.path.exists(fname):
-                print 'One last try!'                
-                os.remove(fname)
-                dstshp = driver_inter.CreateDataSource(fname)
-
+        dstshp = None
+        while dstshp == None:
+            dstshp = driver_inter.CreateDataSource(fname)
 
         dstlayer = dstshp.CreateLayer('mylayer', srs, geom_type=ogr.wkbLineString)
 

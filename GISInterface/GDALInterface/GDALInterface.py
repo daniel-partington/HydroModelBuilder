@@ -200,7 +200,7 @@ class GDALInterface(GISInterface):
                 if ds is None:
                     print 'Could not open ' + path + raster
                     sys.exit(1)    
-    
+                
                 # Check raster GCS
                 prj = ds.GetProjection()
                 srs=osr.SpatialReference(wkt=prj)
@@ -228,6 +228,7 @@ class GDALInterface(GISInterface):
     
                     ds = gdal.Open(self.out_data_folder + raster + '_reproj.bil', gdalconst.GA_ReadOnly)                 
 
+            print 'Processing: ', raster
             rasters[raster] = [ds.ReadAsArray(), path + raster]    
             
             ds=None # close raster file

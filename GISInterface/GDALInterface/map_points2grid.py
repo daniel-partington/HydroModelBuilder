@@ -1,9 +1,8 @@
 import os
-import time
 import sys
+import time
 
 from osgeo import ogr
-
 
 def points2mesh(points, poly_mesh, feature_id=None):
 
@@ -32,32 +31,20 @@ def points2mesh(points, poly_mesh, feature_id=None):
         sys.stdout.flush()
         
         grid_cell = feature.GetGeometryRef()
-        
-        # Setup shape file for each grid cell
-        if os.path.exists('mesh_temp.shp'):
-            time.sleep(0.005)
-            try:
-                os.remove('mesh_temp.shp')
-            except:
-                print 'Could not delete ... trying again'                
-                time.sleep(0.1)
-                try: 
-                    os.remove('mesh_temp.shp')
-                except:
-                    print 'Still could not delete ... trying again'                
-                    time.sleep(180)
-                    os.remove('mesh_temp.shp')
 
-        if os.path.exists('mesh_temp.shp'):
-            print 'File still there!!!'
-        #end if
-        mesh_layer_ds = driver_inter.CreateDataSource('mesh_temp.shp')
-        if mesh_layer_ds == None:
-            if os.path.exists('mesh_temp.shp'):
-                os.remove('mesh_temp.shp')
-                mesh_layer_ds = driver_inter.CreateDataSource('mesh_temp.shp')
-            
-        mesh_temp = mesh_layer_ds.CreateLayer('mylayer', srs, geom_type=ogr.wkbMultiPolygon)
+        # Setup shape file for each grid cell
+        filename = 'mesh_temp.shp'
+
+        while os.path.exists(filename):
+            os.remove(filename)
+
+        mesh_layer_ds = None
+        while mesh_layer_ds == None:
+            mesh_layer_ds = driver_inter.CreateDataSource('mesh_temp.shp')
+
+        mesh_temp = None
+        while mesh_temp == None:
+            mesh_temp = mesh_layer_ds.CreateLayer('mylayer', srs, geom_type=ogr.wkbMultiPolygon)
 
         featureDefn = mesh_temp.GetLayerDefn()        
 
@@ -123,14 +110,14 @@ def points2mesh(points, poly_mesh, feature_id=None):
 if __name__ == "__main__":
     # Open a points object
     driver = ogr.GetDriverByName("ESRI Shapefile")        
-    ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\pumping wells_clipped.shp", 0)
+    ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\testbox\model_files\pumping wells_clipped.shp", 0)
     poly_obj = ds.GetLayer()    
     if poly_obj == None:
         print 'Could not open '
     srs = poly_obj.GetSpatialRef()
 
     # Open the mesh object
-    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_20000m\structured_model_grid_20000m.shp", 0)
+    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\testbox\model_files\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
 
 
     mapped_list = points2mesh(ds, ds2, feature_id = "OLD ID")
