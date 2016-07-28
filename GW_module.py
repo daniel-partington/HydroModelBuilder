@@ -38,36 +38,29 @@ class GWModelBuilder(object):
         """
 
         # Define the constants for the model data types to use for checking input
-        self.types = ModelBuilderType()    
+        self.types = ModelBuilderType()
 
         # -- tests to alert user to incorrect inputs ...
-        if model_type not in self.types.model_types:
-            print 'Model types must be of type: ', self.types.model_types
-            sys.exit(1)
-        if mesh_type not in self.types.mesh_types:
-            print 'Mesh types must be of type: ', self.types.mesh_types
-            sys.exit(1)
-        if data_format not in self.types.data_formats:
-            print 'Data format must be of type: ', self.types.data_formats
-            sys.exit(1)
+        assert model_type in self.types.model_types, "Model types must be of type: {}".format(self.types.model_types)
+        assert mesh_type in self.types.mesh_types, "'Mesh types must be of type: {}".format(self.types.mesh_types)
+        assert model_type in self.types.model_types, "Data format must be of type: {}".format(self.types.data_formats)
+
         if data_folder != None:
-            if not os.path.isdir(data_folder):
-                print data_folder + ' is an invalid path'
-                sys.exit(1)
-        if out_data_folder != None:
-            if not os.path.isdir(out_data_folder):
-                print out_data_folder + ' is an invalid path'
-                try_again = True                
-                while try_again:                
-                    create_path = raw_input('Would you like to create this path? [y/n]')
-                    if create_path in ['y', 'Y']:
-                        os.mkdir(out_data_folder)
-                        try_again = False
-                    elif create_path in ['n', 'N']:
-                        print 'Ok then, quitting model builder'                
-                        sys.exit(1)
-                    else:
-                        print '"y" or "n" requested, instead you input: ', create_path                
+            assert os.path.isdir(data_folder) == True, "{} is an invalid path".format(data_folder)
+
+        if not os.path.isdir(out_data_folder):
+            print out_data_folder + ' is an invalid path'
+            try_again = True                
+            while try_again:                
+                create_path = raw_input('Would you like to create this path? [y/n]')
+                if 'y' in create_path.lower():
+                    os.mkdir(out_data_folder)
+                    try_again = False
+                elif 'n' in create_path.lower():
+                    print 'Ok then, quitting model builder'
+                    sys.exit(1)
+                else:
+                    print '"y" or "n" requested, instead you input: ', create_path                
 
         self.name = name
         self.model_type = model_type  
