@@ -2,11 +2,7 @@ import Groundwater
 from ModelInterface.flopyInterface import flopyInterface
 # MM is short for model manager
 
-testMM = Groundwater.GWModelManager()
-
-testMM.load_GW_model(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\Campaspe_packaged.pkl")
-
-def run_GW_model(river_stages, rainfall):
+def run_GW_model(testMM, river_stages, rainfall):
     print "************************************************************************"
     print " Updating recharge boundary "
     
@@ -52,5 +48,7 @@ def run_GW_model(river_stages, rainfall):
 
 if __name__ == "__main__":
     # To do: add irrigation inputs to modify recharge boundary condition
-    run_GW_model(river_stages, rainfall)    
+    testMM = Groundwater.GWModelManager()
+    testMM.load_GW_model(r"C:\Workspace\part0075\MDB modelling\HydroModelBuilder\Campaspe_packaged.pkl")
+    run_GW_model(testMM, river_stages, rainfall)    
     
