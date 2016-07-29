@@ -159,7 +159,7 @@ class ModflowModel(object):
     def runMODFLOW(self):
 
         self.name += str(multiprocessing.current_process().name) # so each process has own files
-        self.mf = flopy.modflow.Modflow(self.name, exe_name=self.executable, model_ws=self.data_folder)
+        self.mf = flopy.modflow.Modflow(self.name, exe_name=self.executable, model_ws=self.data_folder, version='mfnwt')
 
         self.createDiscretisation()
         self.setupBASPackage(self.nlay, self.nrow, self.ncol)
