@@ -1,4 +1,5 @@
 import multiprocessing
+import os
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,7 +10,7 @@ import flopy.utils.binaryfile as bf
 
 class ModflowModel(object):
 
-    def __init__(self, model_data, **kwargs):
+    def __init__(self, model_data, data_folder=None, **kwargs):
 
         """
         :param name: model_data: Object containing all the data for the model
@@ -17,8 +18,12 @@ class ModflowModel(object):
 
         self.model_data = model_data
         self.name = model_data.name
-        self.data_folder = r"C:\Workspace\part0075\MDB modelling\testbox\MODEL_" + self.name + r"\\"
-
+        if data_folder == None:
+            self.data_folder = os.getcwd() + os.path.sep + 'model_' + self.name + os.path.sep
+        else:
+            self.data_folder = data_folder + os.path.sep + 'model_' + self.name + os.path.sep
+        #end if
+            
         self.executable = r".\MODFLOW-NWT_64.exe"
 
         self.nlay = self.model_data.model_mesh3D[0].shape[0]-1
