@@ -44,7 +44,7 @@ class GWModelBuilder(object):
             # -- tests to alert user to incorrect inputs ...
             assert model_type in self.types.model_types, "Model types must be of type: {}".format(self.types.model_types)
             assert mesh_type in self.types.mesh_types, "'Mesh types must be of type: {}".format(self.types.mesh_types)
-            assert model_type in self.types.model_types, "Data format must be of type: {}".format(self.types.data_formats)
+            assert data_format in self.types.data_formats, "Data format must be of type: {}".format(self.types.data_formats)
 
             if data_folder != None:
                 assert os.path.isdir(data_folder) == True, "{} is an invalid path".format(data_folder)
