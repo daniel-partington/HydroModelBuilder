@@ -89,7 +89,6 @@ class GWModelManager(object):
         self.GW_build[packaged_model['name']].initial_conditions = packaged_model['initial_conditions']
         self.GW_build[packaged_model['name']].out_data_folder_grid = packaged_model['out_data_folder_grid']
         self.GW_build[packaged_model['name']].model_boundary = packaged_model['model_boundary']
-        print packaged_model['model_boundary']        
         self.GW_build[packaged_model['name']].boundary_poly_file = packaged_model['boundary_poly_file']
         #self.GW_build[self.models].data_boundary = packaged_model['data_boundary']
         self.GW_build[packaged_model['name']].boundary_data_file = packaged_model['boundary_data_file']

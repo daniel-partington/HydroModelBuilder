@@ -41,14 +41,23 @@ def run_GW_model(testMM, river_stages, rainfall):
     AvgDepthToGWTable = 1   
     DepthToGWTable = [1]
 
+    modflow_model.viewHeads()
+    modflow_model.viewHeads2()
+
     return SWGWexchange, AvgDepthToGWTable, DepthToGWTable
 
-#modflow_model.viewHeads()
-#modflow_model.viewHeads2()
 
 if __name__ == "__main__":
     # To do: add irrigation inputs to modify recharge boundary condition
+    river_stages = 1
+    rainfall = 1
+
     testMM = Groundwater.GWModelManager()
     testMM.load_GW_model(r"C:\Workspace\part0075\MDB modelling\HydroModelBuilder\Campaspe_packaged.pkl")
+    # modify data folder
+    testMM.GW_build['Campaspe'].data_folder
+    #modify output folder
+    testMM.GW_build['Campaspe'].out_data_folder
+    
     run_GW_model(testMM, river_stages, rainfall)    
     

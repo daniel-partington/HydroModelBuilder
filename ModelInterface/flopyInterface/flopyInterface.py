@@ -31,8 +31,8 @@ class ModflowModel(object):
         self.xul = self.model_data.model_boundary[0]
         self.yul = self.model_data.model_boundary[3]
         self.nper = 1
-        self.perlen = 36500 
-        self.nstp = 10
+        self.perlen = 1 #36500 
+        self.nstp = 1 #10
         self.steady = False
         self.start_datetime = "1/1/1970"
         
