@@ -46,7 +46,7 @@ Interface.projected_coordinate_system = Proj_CS
 Interface.pcs_EPSG = "EPSG:28355"
 
 test_model = GWModelBuilder(name="Campaspe", 
-                            data_folder=r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\input_data\\",
+                            data_folder=r"test",
                             out_data_folder=r"C:\Workspace\part0075\MDB modelling\testbox\model_files\\",
                             GISInterface=Interface,
                             model_type='Modflow',
