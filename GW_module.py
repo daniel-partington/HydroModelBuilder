@@ -40,18 +40,28 @@ class GWModelBuilder(object):
         # Define the constants for the model data types to use for checking input
         self.types = ModelBuilderType()
 
-        # -- tests to alert user to incorrect inputs ...
-        assert model_type in self.types.model_types, "Model types must be of type: {}".format(self.types.model_types)
-        assert mesh_type in self.types.mesh_types, "'Mesh types must be of type: {}".format(self.types.mesh_types)
-        assert model_type in self.types.model_types, "Data format must be of type: {}".format(self.types.data_formats)
+        try:
+            # -- tests to alert user to incorrect inputs ...
+            assert model_type in self.types.model_types, "Model types must be of type: {}".format(self.types.model_types)
+            assert mesh_type in self.types.mesh_types, "'Mesh types must be of type: {}".format(self.types.mesh_types)
+            assert model_type in self.types.model_types, "Data format must be of type: {}".format(self.types.data_formats)
 
-        if data_folder != None:
-            assert os.path.isdir(data_folder) == True, "{} is an invalid path".format(data_folder)
+            if data_folder != None:
+                assert os.path.isdir(data_folder) == True, "{} is an invalid path".format(data_folder)
+            #End if
+        except AssertionError as e:
+            import traceback
+            _, _, tb = sys.exc_info()
+            #traceback.print_tb(tb) # Fixed format
+            tb_info = traceback.extract_tb(tb)
+            filename, line, func, text = tb_info[-1]
+            sys.exit("An error occured in {} on line {} with the message '{}'".format(filename, line, e))
+        #End try
 
         if not os.path.isdir(out_data_folder):
             print out_data_folder + ' is an invalid path'
             try_again = True                
-            while try_again:                
+            while try_again:
                 create_path = raw_input('Would you like to create this path? [y/n]')
                 if 'y' in create_path.lower():
                     os.mkdir(out_data_folder)
