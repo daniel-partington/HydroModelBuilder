@@ -56,6 +56,7 @@ class GWModelBuilder(object):
             tb_info = traceback.extract_tb(tb)
             filename, line, func, text = tb_info[-1]
             sys.exit("An error occured in {} on line {} with the message '{}'".format(filename, line, e))
+            
         #End try
 
         if not os.path.isdir(out_data_folder):
