@@ -2,7 +2,7 @@ import Groundwater
 from ModelInterface.flopyInterface import flopyInterface
 # MM is short for model manager
 
-def run_GW_model(testMM, river_stages, rainfall):
+def run_GW_model(testMM, river_stages, rainfall, data_folder):
     print "************************************************************************"
     print " Updating recharge boundary "
     
@@ -28,7 +28,7 @@ def run_GW_model(testMM, river_stages, rainfall):
     print " Build and run MODFLOW model "
     
     
-    modflow_model = flopyInterface.ModflowModel(testMM.GW_build['Campaspe'])
+    modflow_model = flopyInterface.ModflowModel(testMM.GW_build['Campaspe'], data_folder=data_folder)
     
     modflow_model.runMODFLOW()
     
@@ -58,6 +58,8 @@ if __name__ == "__main__":
     testMM.GW_build['Campaspe'].data_folder
     #modify output folder
     testMM.GW_build['Campaspe'].out_data_folder
+
+    data_folder = r"C:\Workspace\part0075\MDB modelling\testbox\\"    
     
-    run_GW_model(testMM, river_stages, rainfall)    
+    run_GW_model(testMM, river_stages, rainfall, data_folder)    
     

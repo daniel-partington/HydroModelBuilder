@@ -57,7 +57,7 @@ class GWModelManager(object):
             elif emulation_method in ['multi-fidelity', 'M-F']:
                 pass
 
-    def load_GW_model(self, GW_model):
+    def load_GW_model(self, GW_model, out_data_folder=None):
         packaged_model = self.load_obj(GW_model)
 
         self.models += 1 
