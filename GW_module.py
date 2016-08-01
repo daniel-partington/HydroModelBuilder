@@ -49,6 +49,9 @@ class GWModelBuilder(object):
             if data_folder != None:
                 assert os.path.isdir(data_folder) == True, "{} is an invalid path".format(data_folder)
             #End if
+
+            assert os.path.isdir(out_data_folder) == True, "{} is an invalid path".format(out_data_folder)
+
         except AssertionError as e:
             import traceback
             _, _, tb = sys.exc_info()
@@ -59,19 +62,19 @@ class GWModelBuilder(object):
             
         #End try
 
-        if not os.path.isdir(out_data_folder):
-            print out_data_folder + ' is an invalid path'
-            try_again = True                
-            while try_again:
-                create_path = raw_input('Would you like to create this path? [y/n]')
-                if 'y' in create_path.lower():
-                    os.mkdir(out_data_folder)
-                    try_again = False
-                elif 'n' in create_path.lower():
-                    print 'Ok then, quitting model builder'
-                    sys.exit(1)
-                else:
-                    print '"y" or "n" requested, instead you input: ', create_path                
+        # if not os.path.isdir(out_data_folder):
+        #     print out_data_folder + ' is an invalid path'
+        #     try_again = True                
+        #     while try_again:
+        #         create_path = raw_input('Would you like to create this path? [y/n]')
+        #         if 'y' in create_path.lower():
+        #             os.mkdir(out_data_folder)
+        #             try_again = False
+        #         elif 'n' in create_path.lower():
+        #             print 'Ok then, quitting model builder'
+        #             sys.exit(1)
+        #         else:
+        #             print '"y" or "n" requested, instead you input: ', create_path                
 
         self.name = name
         self.model_type = model_type  
