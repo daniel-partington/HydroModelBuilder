@@ -1,1 +1,0 @@
-"C:\Program Files\Anaconda\python.exe" map_poly2mesh.py

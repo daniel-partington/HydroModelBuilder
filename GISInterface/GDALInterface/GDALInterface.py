@@ -14,8 +14,7 @@ import reproject
 import create_buffer 
 import basement
 import map_raster2mesh_NEW
-import map_poly2mesh
-import map_points2grid
+import map2grid
 import point_values_from_raster
 
 class GDALInterface(GISInterface):
@@ -393,7 +392,7 @@ class GDALInterface(GISInterface):
         returns masked array highlighting cells where polylines intersects        
         
         """
-        length_and_centroids = map_poly2mesh.poly_line2mesh(polyline_obj, self.model_mesh)  
+        length_and_centroids = map2grid.shp2grid(polyline_obj, self.model_mesh, shp_type='poly', data_folder=self.out_data_folder)  
         return length_and_centroids
           
         
@@ -481,7 +480,7 @@ class GDALInterface(GISInterface):
         returns masked array highlighting cells where polylines intersects        
         
         """
-        ids_and_centroids = map_points2grid.points2mesh(points_obj, self.model_mesh, feature_id=feature_id)  
+        ids_and_centroids = map2grid.shp2grid(points_obj, self.model_mesh, feature_id=feature_id, shp_type='points', data_folder=self.out_data_folder)  
           
         return ids_and_centroids
         

@@ -46,7 +46,7 @@ Interface.projected_coordinate_system = Proj_CS
 Interface.pcs_EPSG = "EPSG:28355"
 
 test_model = GWModelBuilder(name="Campaspe", 
-                            data_folder=r"test",
+                            data_folder=r"C:\Workspace\part0075\MDB modelling\testbox\input_data\\",
                             out_data_folder=r"C:\Workspace\part0075\MDB modelling\testbox\model_files\\",
                             GISInterface=Interface,
                             model_type='Modflow',
@@ -152,16 +152,16 @@ print '########################################################################'
 # Define the grid width and grid height for the model mesh which is stored as a multipolygon shapefile GDAL object
 print "************************************************************************"
 print " Defining structured mesh"
-test_model.define_structured_mesh(1000, 1000) #10000,10000)
+test_model.define_structured_mesh(10000, 10000) #10000,10000)
 
 # Read in hydrostratigraphic raster info for layer elevations:
 #hu_raster_path = r"C:\Workspace\part0075\MDB modelling\Campaspe_model\GIS\GIS_preprocessed\Hydrogeological_Unit_Layers\\"
 hu_raster_path = r"C:\Workspace\part0075\MDB modelling\VAF_v2.0_ESRI_GRID\ESRI_GRID\\"
 #hu_raster_path = r"C:\Workspace\part0075\MDB modelling\VAF_v2.0_ESRI_GRID\ESRI_GRID_raw\ESRI_GRID\\"
+
 # Build basement file ... only need to do this once as it is time consuming so commented out for future runs
 #test_model.create_basement_bottom(hu_raster_path, "sur_1t", "bse_1t", "bse_2b", hu_raster_path)
 
-#hu_raster_files = ["utqa_1t", "utqa_2b"]  #, , "utaf_1t", "utaf_2b", "lta_1t", "lta_2b","bse_1t", "bse_2b.tif"]
 hu_raster_files = ["qa_1t", "qa_2b", "utb_1t", "utb_2b", "utqa_1t", "utqa_2b", "utam_1t", "utam_2b", "utaf_1t", "utaf_2b", "lta_1t", "lta_2b", "bse_1t", "bse_2b.tif"]
 #hu_raster_files = ["qa_1t", "qa_2b", "utb_1t", "utb_2b", "utqa_1t", "utqa_2b", "utam_1t", "utam_2b", "utaf_1t", "utaf_2b", "lta_1t", "lta_2b", "bse_1t", "bse_2b.tif"]
 test_model.read_rasters(hu_raster_files, path=hu_raster_path)
@@ -415,7 +415,7 @@ print "************************************************************************"
 print " Set up Modflow and RUN"
 
 
-modflow_model = flopyInterface.ModflowModel(test_model)
+modflow_model = flopyInterface.ModflowModel(test_model, data_folder=r"C:\Workspace\part0075\MDB modelling\testbox\\")
 
 modflow_model.runMODFLOW()
 
