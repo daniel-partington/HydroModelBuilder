@@ -13,7 +13,7 @@ import fishnet
 import reproject 
 import create_buffer 
 import basement
-import map_raster2mesh_NEW
+import map_raster2mesh
 import map2grid
 import point_values_from_raster
 
@@ -352,7 +352,7 @@ class GDALInterface(GISInterface):
     def build_3D_mesh_from_rasters(self, raster_files, raster_path, minimum_thickness, maximum_thickness):
         if self.name == None:
             self.name = 'Default'
-        return map_raster2mesh_NEW.map_raster_array_to_mesh(raster_path, raster_files, self.out_data_folder_grid, self.name + '_model', minimum_thickness, maximum_thickness)    
+        return map_raster2mesh.map_raster_array_to_mesh(raster_path, raster_files, self.out_data_folder_grid, self.name + '_model', minimum_thickness, maximum_thickness)    
    
     def read_polyline(self, filename, path=None):     
         """
