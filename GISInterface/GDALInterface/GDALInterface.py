@@ -7,7 +7,7 @@ from osgeo import ogr, osr, gdal, gdalconst
 import numpy as np
 
 # Import the GIS interface
-from GISInterface.GISInterface import GISInterface
+from HydroModelBuilder.GISInterface.GISInterface import GISInterface
 # Import spatial processing functions that use GDAL
 import fishnet
 import reproject 

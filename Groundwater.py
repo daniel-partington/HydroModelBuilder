@@ -1,8 +1,7 @@
 import sys
 import pickle
 
-from GW_module import GWModelBuilder
-
+from HydroModelBuilder.GW_module import GWModelBuilder
 
 class GWModelManager(object):
     
