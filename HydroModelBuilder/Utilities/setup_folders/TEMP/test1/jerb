@@ -1,0 +1,8 @@
+#$ -cwd
+#$ -pe threaded 4
+#$ -m be -M part0075@flinders.edu.au
+#$ -q 1g.q
+./scropt.sh
+
+wait
+exit
