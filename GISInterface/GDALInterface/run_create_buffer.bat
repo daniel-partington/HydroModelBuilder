@@ -1,1 +1,0 @@
-"C:\Program Files\Anaconda\python.exe" create_buffer.py
