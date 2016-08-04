@@ -8,6 +8,7 @@ import os
 import sys
 import datetime
 import csv
+import numpy as np
 import pandas as pd
 
 class PESTInterface(object):
@@ -270,7 +271,6 @@ class PESTInterface(object):
         # Retain only observations corresponding to current models (uses the column 'model' of Dataframe PESTobs)
         required = []
         for row in self.PEST_data['PESTobs'].iterrows():
-            print row[1]['model']
             if row[1]['model'] in models_ID:
                 required += [row[0]]
         #end for
@@ -502,7 +502,6 @@ class PESTInterface(object):
         
 #        writetable(table(PESTpar.PARNAME,PESTpar.PARVAL1,'VariableNames',{'PARNAME','PARVAL'}),INFLE{1},'Delimiter','\t');
         
-        
         # Generate PEST template file
         
         with open(PEST_folder + os.path.sep + TEMPFLE, 'w') as f:
@@ -517,15 +516,16 @@ class PESTInterface(object):
         # Generate PEST instruction file
         
         for model in models_ID: # n in range(1:length(INSFLE)):
-            used_observations = [False] * NOBS
-            for i in range(NOBS):
-                used_observations(i) = is_used(PESTobs.model{i},models_ID(n))
+            used_observations = []
+            for row in self.PEST_data['PESTobs'].iterrows():
+                if row[1]['model'] == model:
+                    used_observations += [row[0]]
             #end for
             PESTobs_filtered = self.PEST_data['PESTobs'].loc[used_observations]
             
             with open(PEST_folder + os.path.sep + INSFLE[model],'w') as f:
                 f.write('pif %%\n')
-                for row in PEST_obs_filtered.iterrows(): #i in range(1:size(PESTobs_n,1))
+                for row in PESTobs_filtered.iterrows(): #i in range(1:size(PESTobs_n,1))
                     f.write('l1 !%s!\n' %(row[1]['OBSNME']))
                 #end for
             #end with
@@ -533,26 +533,33 @@ class PESTInterface(object):
         
         # Generate a parameter uncertainty file using bound values
         
-        ## Calculate parameter standard deviation assuming normal distribution and that lower and upper bounds are 95% intervals
-#        PESTpar.STD = 0.25 * (PESTpar.PARUBND - PESTpar.PARLBND);
-#        log_trans_params = strcmp(PESTpar.PARTRANS,'log');
-#        PESTpar.STD(log_trans_params) = 0.25 * (log10(PESTpar.PARUBND(log_trans_params)) - log10(PESTpar.PARLBND(log_trans_params)));
-#        
-#        UNCERTAINTYFILE = PEST_name + '.unc'
-#        with open(PEST_folder + os.path.sep + UNCERTAINTYFILE],'w') as f:
-#            f.write('# Uncertainty file\n');
-#            f.write('\n');
-#            f.write('START STANDARD_DEVIATION\n');
-#            for i in range(1:size(PESTpar,1)):
-#                if PESTpar.PARTRANS[i] != 'fixed':
-#                    f.write('%s\t%g\n' %(PESTpar.PARNAME[i]
-#                                         PESTpar.STD[i]))
-#                #end if
-#            #end for
-#            f.write('END STANDARD_DEVIATION\n')
-#        #end with
-#        
-#        
+        # Calculate parameter standard deviation assuming normal distribution and that lower and upper bounds are 95% intervals
+        STD = []        
+        for row in self.PEST_data['PESTpar'].iterrows(): #
+            if row[1]['PARTRANS'] == 'log':
+                #log_trans_params += [row[0]]
+                STD += [0.25 * (np.log10(row[1]['PARUBND']) - np.log10(row[1]['PARLBND']))]
+            else:
+                STD += [0.25 * (row[1]['PARUBND'] - row[1]['PARLBND'])]
+            #end if
+        #end for                
+        self.PEST_data['PESTpar']['STD'] = STD
+        
+        UNCERTAINTYFILE = PEST_name + '.unc'
+        with open(PEST_folder + os.path.sep + UNCERTAINTYFILE, 'w') as f:
+            f.write('# Uncertainty file\n')
+            f.write('\n')
+            f.write('START STANDARD_DEVIATION\n')
+            for row in self.PEST_data['PESTpar'].iterrows(): #i in range(1:size(PESTpar,1)):
+                if row[1]['PARTRANS'] != 'fixed':
+                    f.write('%s\t%g\n' %(row[1]['PARNAME'],
+                                         row[1]['STD']))
+                #end if
+            #end for
+            f.write('END STANDARD_DEVIATION\n')
+        #end with
+        
+        
 #        # Copy necessary files
 #        copyfile('run.m',[PEST_folder '\run.m']);
 #        copyfile('run.bat',[PEST_folder '\run.bat']);
@@ -657,8 +664,8 @@ class PESTInterface(object):
 #        
         # Bye-bye message
         
-         print('\nPEST files generated\n')
-         print(' %s\n' %PESTFILE)
+        print('\nPEST files generated\n')
+        print(' %s\n' %PESTFILE)
 #        # for i=1:length(TEMPFLE), fprintf(' %s\n',TEMPFLE{i}); end;
 #        # for i=1:length(INFLE)  , fprintf(' %s\n',INFLE{i});   end;
 #        # for i=1:length(INSFLE) , fprintf(' %s\n',INSFLE{i});  end;
@@ -668,51 +675,43 @@ class PESTInterface(object):
 #        # fprintf(' %s\n',[PEST_folder '\runpestchek.bat']);
 #        # fprintf(' %s\n',[PEST_folder '\runpest.bat']);
 #        # fprintf('\n ***** TO RUN PEST --> runpest.bat *****\n');
-#        print('\nPEST files generation completed!\n')
+        print('\nPEST files generation completed!\n')
 #        print('\n ******* INSTRUCTIONS *******\n')
 #        print('\n 1. runpest.bat --> normally with NOPTMAX=0 to estimate group contributions to objective function\n')
 #        print('\n 2. runpwtadj1.bat --> creates pest_pwtadj1.pst with adjusted weights so that all group contributions equal 1\n')
-#        
-#
-#    def updateparameterswithpestbestpar(pestparfile):
-#        # Generate parameters.txt containing all models parameters
-#        #
-#        # Parameters names and values are taken from 'PARNAME' and 'PARVAL1' in PESTpar
-#        
-#        print('Generating parameters.txt\n');
-#        
-#        # Check existence of the Excel file and read relevant worksheet
-#        
-#        excelfile = 'PEST.xlsm';
-#        if ~exist(excelfile,'file')
-#            error('Can''t find Excel file <<%s>>',excelfile);
-#        end
-#        PESTpar = readtable(excelfile,'filetype','spreadsheet','sheet','PESTpar');
-#        
-#        
-#        # Check existence of the PEST .par file and read it
-#        
-#        if ~exist(pestparfile,'file')
-#            error('Can''t find PEST .par file <<%s>>',pestparfile);
-#        end
-#        fileID = fopen(pestparfile);
+
+    def updateparameterswithpestbestpar(pestparfile):
+        # Generate parameters.txt containing all models parameters
+        #
+        # Parameters names and values are taken from 'PARNAME' and 'PARVAL1' in PESTpar
+        
+        print('Generating parameters.txt\n')
+        
+        # Check existence of the PEST .par file and read it
+        
+        if not os.path.exists(pestparfile):
+            sys.exit("Can't find PEST .par file <<%s>>" %pestparfile)
+        #end if
+
+        with open(pestparfile, 'r') as f:
+            text = f.readlines()
+        #end with
+            
 #        PESTbestpar = textscan(fileID,'%s %f %f %f\n','HeaderLines',1,'Delimiter',' ','MultipleDelimsAsOne',1);
 #        if isnan(PESTbestpar{1,2})
 #            fclose(fileID);
 #            fileID = fopen(pestparfile);
 #            PESTbestpar = textscan(fileID,'%s %f %f %f','HeaderLines',1,'Delimiter','\t','MultipleDelimsAsOne',1);
 #        end
-#        fclose(fileID);
-#        
-#        
-#        # Assign PEST best parameter value
-#        
-#        PESTpar.PARVAL1 = PESTbestpar{:,2};
-#        
-#        
-#        # Generate *name*_parameters.txt
-#        
-#        writetable(table(PESTpar.PARNAME,PESTpar.PARVAL1,'VariableNames',{'PARNAME','PARVAL'}),'..\common_basis\parameters.txt','Delimiter','\t');
+        
+        
+        # Assign PEST best parameter value
+        
+        self.PEST_data['PESTpar']['PARVAL1'] = PESTbestpar
+        
+        # Generate *name*_parameters.txt
+        
+        self.PEST_data['PESTpar'].to_csv(self.directory + 'best_parameters.txt', sep='\t', columns=['PARNAME', 'PARVAL1'], index=False)
 
 if __name__ == '__main__':
 
