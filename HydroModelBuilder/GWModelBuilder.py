@@ -1,5 +1,5 @@
 import sys
-import os # NOTE TO SELF: use os.path.sep to specify the separator
+import os
 import shutil
 import pickle
 
@@ -59,23 +59,8 @@ class GWModelBuilder(object):
             tb_info = traceback.extract_tb(tb)
             filename, line, func, text = tb_info[-1]
             sys.exit("An error occured in {} on line {} with the message '{}'".format(filename, line, e))
-            
         #End try
-
-        # if not os.path.isdir(out_data_folder):
-        #     print out_data_folder + ' is an invalid path'
-        #     try_again = True                
-        #     while try_again:
-        #         create_path = raw_input('Would you like to create this path? [y/n]')
-        #         if 'y' in create_path.lower():
-        #             os.mkdir(out_data_folder)
-        #             try_again = False
-        #         elif 'n' in create_path.lower():
-        #             print 'Ok then, quitting model builder'
-        #             sys.exit(1)
-        #         else:
-        #             print '"y" or "n" requested, instead you input: ', create_path                
-
+                 
         self.name = name
         self.model_type = model_type  
         self.mesh_type = mesh_type
