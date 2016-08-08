@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import flopy
 import flopy.utils.binaryfile as bf
 
-
 class ModflowModel(object):
 
     def __init__(self, model_data, data_folder=None, **kwargs):
@@ -47,6 +46,9 @@ class ModflowModel(object):
         self.hk = self.model_data.model_mesh3D[1].astype(float)
         self.hk[self.hk > 0] = 10.0
         self.hk[self.hk == -1] = 1.
+        self.vka = 1.0 
+        self.sy = 0.01 
+        self.ss = 1.0E-4        
 
         #Set all other kwargs as class attributes
         for key, value in kwargs.items():
@@ -110,9 +112,9 @@ class ModflowModel(object):
         # Add UPW package to the MODFLOW model to represent aquifers
         self.upw = flopy.modflow.ModflowUpw(self.mf, 
                                             hk=self.hk, 
-                                            vka=1.0, 
-                                            sy=0.01, 
-                                            ss=1.0E-4, 
+                                            vka=self.vka, 
+                                            sy=self.sy, 
+                                            ss=self.ss, 
                                             hdry=-999.9, 
                                             laytyp=1)
 
@@ -125,7 +127,7 @@ class ModflowModel(object):
         
     def createRCHpackage(self, rchrate=None):
         # Add RCH package to the MODFLOW model to represent recharge
-        #rchrate  = 1.0E-3 * np.random.rand(self.nrow, self.ncol)
+        # rchrate  = 1.0E-3 * np.random.rand(self.nrow, self.ncol)
         self.rch = flopy.modflow.ModflowRch(self.mf, ipakcb=53, rech=rchrate, nrchop=3)
     #end createRCHpackage
         
@@ -208,20 +210,52 @@ class ModflowModel(object):
 
         return heads_zoned
 
+    def writeObservations(self):
+
+        # Set model output arrays to None to initialise        
+        head = None
+        
+        with open(self.data_folder + os.path.sep + 'observations_'+ self.model_data.name +'.txt', 'w') as f:
+            # Write observation to file         
+            for obs_set in self.model_data.observations.obs_group.keys():
+                obs_type = self.model_data.observations.obs_group[obs_set]['obs_type']
+                # Import the required model outputs for processing            
+                if obs_type == 'head':
+                    # Check if model outputs have already been imported and if not import                
+                    if not head:
+                        headobj = self.importHeads()
+                        times = headobj.get_times()
+                        head = headobj.get_data(totim=times[0])
+                elif obs_type == 'stage':
+                    #stage = self.importStage()
+                    pass
+                #end if
+                obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
+                obs_df = obs_df[obs_df['active'] == True]
+                sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']        
+                for observation in obs_df['name']:
+                    sim_head = head[sim_map_dict[observation][0]][sim_map_dict[observation][1]][sim_map_dict[observation][2]]
+                    f.write('%f\n' %sim_head)
+
     def CompareObservedHead(self, obs_set, head):
         
         self.comparison = []
         self.comp_zone = []
         self.obs_loc_val_lay = []
-        obs_df = self.model_data.observations.obs[obs_set]['time_series']
-        sim_map_dict = self.model_data.observations.obs[obs_set]['mapped_observations']        
-        for observation in self.model_data.observations.obs[obs_set]['time_series']['HydroCode']:
-            idx = obs_df[obs_df['HydroCode'] == observation].index.tolist()[0]            
-            obs = obs_df.get_value(idx, 'mean level')
+        obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
+        obs_df = obs_df[obs_df['active'] == True]
+        sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']        
+        for observation in obs_df['name']: #self.model_data.observations.obs_group[obs_set]['time_series']['name']:
+            idx = obs_df[obs_df['name'] == observation].index.tolist()[0]            
+            obs = obs_df.get_value(idx, 'value')
             sim = head[sim_map_dict[observation][0]][sim_map_dict[observation][1]][sim_map_dict[observation][2]]
 
-            if sim == np.float32(-999.99): continue
-            if sim == np.float32(1E+30): continue
+            # The following commented block should no longer be required as these
+            # conditions should no longer arise due to prefiltering of observations.
+#            if sim == np.float32(-999.99):
+#                continue
+#            if sim == np.float32(1E+30): 
+#                continue
 
             self.comparison += [[obs, sim]]    
             self.comp_zone += self.model_data.model_mesh3D[1][sim_map_dict[observation][0]][sim_map_dict[observation][1]][sim_map_dict[observation][2]]/np.max(self.model_data.model_mesh3D[1])
@@ -270,8 +304,8 @@ class ModflowModel(object):
         modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
         max_head = np.amax(head)         
         min_head = np.amin(head)
-        print max_head
-        print min_head
+        #print max_head
+        #print min_head
         
         array = modelmap.plot_array(head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)        
         ax.xaxis.set_ticklabels([])
@@ -334,7 +368,7 @@ class ModflowModel(object):
 
     
         
-        self.CompareObservedHead('average head', head)                
+        self.CompareObservedHead('head', head)                
         scatterx = [h[0] for h in self.comparison]        
         scattery = [h[1] for h in self.comparison]        
 
@@ -556,7 +590,7 @@ class ModflowModel(object):
 
         #fig.tight_layout()
         plt.show()
-        plt.savefig('test_model.png')
+        #plt.savefig('test_model.png')
 
         #self.mf.upw.hk.plot(masked_values=[0.], colorbar=True)
         #plt.show()

@@ -51,14 +51,57 @@ class GWModelManager(object):
         # Create new GW_model using emulation of existing model    
         emulation_methods = ['polynomial chaos expansions', 'PCE', 'multi-fidelity', 'M-F']
         if emulation_method in emulation_methods:
-            if emulation_method in ['polynomical chaos expansions', 'PCE']:
+            if emulation_method in ['polynomial chaos expansions', 'PCE']:
                 pass
             elif emulation_method in ['multi-fidelity', 'M-F']:
                 pass
 
-    def setupPEST(self):
-        from HydroModelBuilder.Utilities.PESTInterface.PESTInterface import PESTInterface
-        self.PEST = PESTInterface(name=None, directory=None, csv_copy=False, excel_copy=False, param_name_values=None)
+    def updateParameters(self, model_name, parameters):
+        
+        params_new = {}
+        if type(parameters) == str:
+            """
+            Assume string is a filename to load in the format:               
+            Header: PARNAME PARVAL
+            Rows:   p1      val           
+            """
+            with open(parameters, 'r') as f:
+                text = f.readlines()
+                for line in text:
+                    par, val = line.strip('\n').split('\t')
+                    params_new[par] = val
+        
+        elif type(parameters) == dict:
+            """
+            Assume parameter names match those defined in the model
+            e.g. if params are 'p1' and 'p2' expect e.g. {'p1':0.1, 'p2':3.2}            
+            """
+            params_new = parameters
+            
+        # Check parameter passed against existing parameters in the model
+        original_param_names = self.GW_build[model_name].parameters.param.keys()    
+        differences = list(set(original_param_names) - set(params_new.keys()))
+        if len(differences) > 0:
+            print 'The following parameters were no matched: ', differences
+        #end if
+        for key in params_new.keys():
+            if key not in original_param_names:
+                print 'Parameter name passed not matched, hence not assigned: ', key
+            elif key in original_param_names:
+                self.GW_build[model_name].parameters.param[key] = params_new[key]
+            #end if
+        #end for
+        
+    def setupPEST(self, model_name, directory=None, csv_copy=False, excel_copy=False):
+        from HydroModelBuilder.HydroModelBuilder.Utilities.PESTInterface.PESTInterface import PESTInterface
+        name = self.GW_build[model_name].name
+        if not directory:        
+            directory = self.GW_build[model_name].out_data_folder_grid
+        params = self.GW_build[model_name].parameters.param
+        obs = self.GW_build[model_name].observations.obs
+        print self.GW_build[model_name]
+        self.PEST = PESTInterface(name=name, directory=directory, csv_copy=csv_copy, excel_copy=excel_copy, params=params, obs=obs)
+                
 
     def load_GW_model(self, GW_model, out_data_folder=None):
         packaged_model = self.load_obj(GW_model)

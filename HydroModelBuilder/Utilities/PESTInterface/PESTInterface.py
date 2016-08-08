@@ -67,8 +67,8 @@ class PESTInterface(object):
                         'FACORIG': 1.00E-04,
                         'PHIREDSHW': 0.02,
                         'NOPTSWITCH': 6,
-                        'BOUNDSCALE': 'boundscale',
-                        'NOPTMAX':	0,
+                        'BOUNDSCALE': '', #'boundscale',
+                        'NOPTMAX':	50,
                         'PHIREDSTP':	0.005,
                         'NPHISTP':	4,
                         'NPHINORED': 4,
@@ -80,7 +80,7 @@ class PESTInterface(object):
                         }        
                         
         singular_value_decomposition = {'SVDMODE': 1,
-                                        'MAXSING': 68, # Number of parameters
+                                        'MAXSING': 0, # Number of parameters
                                         'EIGTHRESH': 5.00E-07,
                                         'EIGWRITE': 1,
                                         }
@@ -417,10 +417,10 @@ class PESTInterface(object):
             # SVD
             f.write('* singular value decomposition\n')
             f.write('%d\n' %(self.PEST_data['PESTcon']['singular_value_decomposition']['SVDMODE']))
+            self.PEST_data['PESTcon']['singular_value_decomposition']['MAXSING'] = len(self.PEST_data['PESTpar'].index)
             f.write('%d %g\n' %(self.PEST_data['PESTcon']['singular_value_decomposition']['MAXSING'], 
                                 self.PEST_data['PESTcon']['singular_value_decomposition']['EIGTHRESH']))
             f.write('%d\n' %self.PEST_data['PESTcon']['singular_value_decomposition']['EIGWRITE'])
-            
             # Parameter groups
             f.write('* parameter groups\n')
             for row in self.PEST_data['PESTpgp'].iterrows():
@@ -713,18 +713,18 @@ class PESTInterface(object):
         
         self.PEST_data['PESTpar'].to_csv(self.directory + 'best_parameters.txt', sep='\t', columns=['PARNAME', 'PARVAL1'], index=False)
 
-if __name__ == '__main__':
-
-    params = {'p1':12, 'p2':34, 'p3':32}
-    
-    obs = {'ob1':2.0, 'ob2':3.5}
-
-    test = PESTInterface(directory=r"C:\Workspace\part0075\MDB modelling\testbox\PESTtest\\", params=params, obs=obs, csv_copy=True)    
-    
-    test.genParameters(method='csv')
-    
-    
-    test.genPESTpgp()
-    
-    test.genPestfiles(models_ID=['default'])
+#if __name__ == '__main__':
+#
+#    params = {'p1':12, 'p2':34, 'p3':32}
+#    
+#    obs = {'ob1':2.0, 'ob2':3.5}
+#
+#    test = PESTInterface(directory=r"C:\Workspace\part0075\MDB modelling\testbox\PESTtest\\", params=params, obs=obs, csv_copy=True)    
+#    
+#    test.genParameters(method='csv')
+#    
+#    
+#    test.genPESTpgp()
+#    
+#    test.genPestfiles(models_ID=['default'])
     

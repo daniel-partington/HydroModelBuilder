@@ -498,10 +498,6 @@ class GWModelBuilder(object):
 
         self.gridded_data_register += [point_name]
 
-    #def map_points_to_3Dmesh(self, points_obj, model_mesh, feature_id):    
-    #    
-    #    return self.GISInterface.map_points_to_3Dmesh(points_obj, model_mesh=None, feature_id=None)
-
     def map_points_to_3Dmesh(self, points, identifier=None):    
                 
         model_mesh_points = np.array(self.centroid2mesh3Dindex.keys())
@@ -509,16 +505,11 @@ class GWModelBuilder(object):
         if type(points) == list:
             points = np.array(points)
         #end if 
-            
-        #points = points.T
         
         def do_kdtree(model_mesh_points, points):
             mytree = spatial.cKDTree(model_mesh_points)
             dist, indexes = mytree.query(points)
             return indexes
-
-        #print model_mesh_points.shape
-        #print points.shape
 
         closest = do_kdtree(model_mesh_points, points)        
         point2mesh_map = {}
@@ -529,6 +520,7 @@ class GWModelBuilder(object):
             else:
                 point2mesh_map[point] = self.centroid2mesh3Dindex[tuple(model_mesh_points[closest[index]])]                
             #end if
+        #end for
                 
         return point2mesh_map
 
@@ -538,10 +530,20 @@ class GWModelBuilder(object):
         mesh        
         
         """
-        for key in self.observations.obs:
-            points = [list(x) for x in self.observations.obs[key]['locations'].to_records(index=False)]
-            self.observations.obs[key]['mapped_observations'] = self.map_points_to_3Dmesh(points, identifier=self.observations.obs[key]['locations'].index)
+        for key in self.observations.obs_group:
+            points = [list(x) for x in self.observations.obs_group[key]['locations'].to_records(index=False)]
+            self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_3Dmesh(points, identifier=self.observations.obs_group[key]['locations'].index)
+
+            # Check that 'mapped_observations' are in active cells and if not then set the observation to inactive
+            for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
+                [k,j,i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
+                if self.model_mesh3D[1][k][j][i] == -1:
+                    # This next line needs to be rewritten, however, works for now                    
+                    self.observations.obs_group[key]['time_series']['active'][self.observations.obs_group[key]['time_series']['name'] == obs_loc] = False
+                #end if
+            #end if
         #end for
+        
     
     def getXYpairs(self, points_obj, feature_id=None):
 
@@ -615,11 +617,16 @@ class GWModelBuilder(object):
         # Not required at the moment
         pass
 
-    def save_mapped_dictionaries(self):
+    def package_data(self):
+        """ 
+        Option to save all important attributes of GWModelBuilder class to 
+        allow quick loading of data that may have required transforms and 
+        processing in its orignial state.
+
+        This will include GIS type objects
+        """
         pass
-        # Save self.polyline_mapped
-        # Save self.points_mapped
-            
+
     def package_model(self):
         """ 
         Option to save all important attributes of model class to allow quick 
@@ -673,7 +680,7 @@ class GWModelBuilder(object):
         packaged_model['gridWidth'] = self.gridWidth
         
         
-        self.save_obj(packaged_model, self.out_data_folder + self.name + '_packaged')
+        self.save_obj(packaged_model, self.out_data_folder_grid + self.name + '_packaged')
     
     ###########################################################################   
    
@@ -731,7 +738,7 @@ class ModelBoundaries(object):
     def __init__(self):
         self.bc = {}
         #self.bc_locale_types = ['point', 'layer', 'domain']        
-        self.bc_types = ['river', 'wells', 'recharge', 'head']
+        self.bc_types = ['river', 'wells', 'recharge', 'rainfall', 'head']
         
     def create_model_boundary_condition(self, bc_name, bc_type, bc_static=True, bc_parameter=None):
         #if bc_locale_type not in self.bc_locale_types:        
@@ -764,8 +771,9 @@ class ModelParameters(object):
     def create_model_parameter(self, name, value):
         self.param[name] = value
 
-    def create_model_parameter_set(self):
-        pass
+    def create_model_parameter_set(self, name, values):
+        for i in range(len(values)):
+            self.param[name+str(i)] = values[i]
 
     def assign_to_model_parameter(self):
         pass        
@@ -780,7 +788,9 @@ class ModelObservations(object):
     outputs that correspond to the observation, e.g. head
     """
     def __init__(self):
+        self.obs_group = {}
         self.obs = {}
+        self.obID = 0        
         
     def set_as_observations(self, name, time_series, locations, domain=None, obs_type=None, units=None):
         """
@@ -797,13 +807,23 @@ class ModelObservations(object):
         equal number of locations with x, y and z        
         
         """        
+        self.obs_types = ['head', 'stage', 'discharge', 'concentration']        
+        
+        self.obs_group[name] = {}
+        # check time series meets the standard format of columns = ['name', 'value']
+        self.obs_group[name]['time_series'] = time_series
+        self.obs_group[name]['time_series']['active'] = True
+        self.obs_group[name]['locations'] = locations
+        self.obs_group[name]['domain'] = domain        
+        self.obs_group[name]['obs_type'] = obs_type
+        self.obs_group[name]['units'] = units        
 
-        self.obs[name] = {}
-        self.obs[name]['time_series'] = time_series
-        self.obs[name]['locations'] = locations
-        self.obs[name]['domain'] = domain        
-        self.obs[name]['obs_type'] = obs_type
-        self.obs[name]['units'] = units        
+    def collate_observations(self):
+        for name in self.obs_group.keys():
+            for ob in self.obs_group[name]['time_series'].iterrows():
+                if ob[1]['active'] == True:                
+                    self.obs['ob' + str(self.obID)] = ob[1]['value']
+                    self.obID += 1
 
     
 class ModelInitialConditions(object):
