@@ -22,6 +22,7 @@ import array2Vtk
 
 def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out, min_height, max_height):
     raster_set = {}
+    raster_zone_map = {}    
     
     for raster in hu_raster_files:
         fname = hu_raster_path + raster # + hu_ext
@@ -260,7 +261,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             fig = plt.figure()
             ax = fig.add_subplot(1, 3, 1, aspect='equal')        
             plt.imshow(mesh_zone_thickness[i], interpolation='none')
-            plt.title('Thickness in mesh')
+            plt.title('Thickness in mesh: ' + hu_raster_files[i*2])
             plt.colorbar()
             ax = fig.add_subplot(1, 3, 2, aspect='equal')        
             plt.imshow(raster_thickness[i], interpolation='none')        
@@ -285,7 +286,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             fig = plt.figure()
             ax = fig.add_subplot(1, 3, 1, aspect='equal')        
             plt.imshow(thickness2[i], interpolation='none')
-            plt.title('Thickness in active cells')
+            plt.title('Thickness in active cells: ', hu_raster_files[i*2][0:5])
             plt.colorbar()
             ax = fig.add_subplot(1, 3, 2, aspect='equal')        
             plt.imshow(thick_zero[i], interpolation='none')        

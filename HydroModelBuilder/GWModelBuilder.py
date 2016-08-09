@@ -89,6 +89,7 @@ class GWModelBuilder(object):
             pass
         # End if
 
+        self.properties = ModelProperties()
         self.boundaries = ModelBoundaries()
         self.parameters = ModelParameters()
         self.observations = ModelObservations()
@@ -655,6 +656,7 @@ class GWModelBuilder(object):
 
         packaged_model['array_ordering'] = self.array_ordering
         packaged_model['boundaries'] = self.boundaries
+        packaged_model['properties'] = self.properties
         packaged_model['parameters'] = self.parameters
         packaged_model['observations'] = self.observations
         packaged_model['initial_conditions'] = self.initial_conditions
@@ -759,7 +761,23 @@ class ModelBoundaries(object):
         else:
             print 'No boundary condition with name: ', bc_name
             sys.exit(1)            
+
+class ModelProperties(object):
+    """
+    This class is used to set all of the parameters which can then be easily 
+    accessed for modification for model pertubations
+    """
+    def __init__(self):
+        self.properties = {}
+        self.prop_types = ['Kh', 'Kv', 'SS', 'Sy']        
         
+    def assign_model_properties(self, prop_type, value):
+        if prop_type in self.prop_types:        
+            self.properties[prop_type] = value
+        else:
+            print prop_type + ' not in ' + self.prop_types
+            sys.exit('Property type not recognised')
+
 class ModelParameters(object):
     """
     This class is used to set all of the parameters which can then be easily 
@@ -768,12 +786,19 @@ class ModelParameters(object):
     def __init__(self):
         self.param = {}
         
-    def create_model_parameter(self, name, value):
-        self.param[name] = value
+        
+    # 'PARTRANS', 'PARCHGLIM', 'PARVAL1', 'PARLBND', 'PARUBND', 'PARGP', 'SCALE', 'OFFSET' 
+    def create_model_parameter(self, name, value=None):
+        self.param[name] = {}
+        self.param[name]['PARVAL1'] = value
 
-    def create_model_parameter_set(self, name, values):
+    def parameter_options(self):
+        print "'PARVAL1', 'PARTRANS', 'PARCHGLIM', 'PARVAL1', 'PARLBND', 'PARUBND', 'PARGP', 'SCALE', 'OFFSET'"
+
+    def create_model_parameter_set(self, name, values=None):
         for i in range(len(values)):
-            self.param[name+str(i)] = values[i]
+            self.param[name+str(i)] = {}
+            self.param[name+str(i)]['PARVAL1'] = values[i]
 
     def assign_to_model_parameter(self):
         pass        
@@ -824,7 +849,6 @@ class ModelObservations(object):
                 if ob[1]['active'] == True:                
                     self.obs['ob' + str(self.obID)] = ob[1]['value']
                     self.obID += 1
-
     
 class ModelInitialConditions(object):
     """ 
