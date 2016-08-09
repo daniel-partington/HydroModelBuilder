@@ -130,6 +130,7 @@ class GWModelManager(object):
         
         self.GW_build[packaged_model['name']].array_ordering = packaged_model['array_ordering']
         self.GW_build[packaged_model['name']].boundaries = packaged_model['boundaries']
+        self.GW_build[packaged_model['name']].properties = packaged_model['properties']
         self.GW_build[packaged_model['name']].parameters = packaged_model['parameters']
         self.GW_build[packaged_model['name']].observations = packaged_model['observations']
         self.GW_build[packaged_model['name']].initial_conditions = packaged_model['initial_conditions']

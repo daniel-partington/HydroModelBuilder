@@ -50,12 +50,78 @@ class PESTInterface(object):
         self.PEST_data['PESTobs'] = self.PESTobs(obs=self.obs)
         
     def PESTcon(self):
+        """
+        Control data for the *.pst file of pest, which takes the form:
+
+        * control data
+        RSTFLE PESTMODE
+        NPAR NOBS NPARGP NPRIOR NOBSGP [MAXCOMPDIM] [DERZEROLIM]
+        NTPLFLE NINSFLE PRECIS DPOINT [NUMCOM JACFILE MESSFILE] [OBSREREF]
+        RLAMBDA1 RLAMFAC PHIRATSUF PHIREDLAM NUMLAM [JACUPDATE] [LAMFORGIVE] [DERFORGIVE]
+        RELPARMAX FACPARMAX FACORIG [IBOUNDSTICK UPVECBEND] [ABSPARMAX]
+        PHIREDSWH [NOPTSWITCH] [SPLITSWH] [DOAUI] [DOSENREUSE] [BOUNDSCALE]
+        NOPTMAX PHIREDSTP NPHISTP NPHINORED RELPARSTP NRELPAR [PHISTOPTHRESH] [LASTRUN] [PHIABANDON]
+        ICOV ICOR IEIG [IRES] [JCOSAVE] [VERBOSEREC] [JCOSAVEITN] [REISAVEITN] [PARSAVEITN] [PARSAVERUN]
+
+        Where (brief description of options, but details can be accessed from
+        the PEST user manual):
+        
+        *** 2nd line ***
+        RSTFLE = "restart" or "norestart", with the former allowing PEST to 
+        recommence if the PEST run is halted [string]
+        
+        PESTMODE = "estimation", "prediction", "regularisation" or "pareto" [string]
+
+        *** 3rd line ***
+        NPAR  = total number of parameters [integer]
+        
+        NOBS = the total number of observations [integer]
+        
+        NPARGP = number of parameter groups [integer]
+        
+        NPRIOR = number of articles of prior information included in the parameter
+        estimation process [integer]
+        
+        NOBSGP = number of observation groups [integer]
+
+        MAXCOMPDIM (optional) = acivates compressed internal storage of the Jacobian matrix [integer]
+
+        DERZEROLIM (optional) = theshold for consdiering element of the Jacobian matrix zero [float]         
+        
+        *** 4th line ***
+        NTPLFLE = number of template files [integer]
+       
+        NINSFLE = number of instruction files [integer]
+        
+        PRECIS = "single" or "double", precision with which PEST writes parameters to input file [string]
+
+        DPOINT = "point" or "nopoint", allows ignoring of decimal points if the latter option is chosen [string]         
+        
+        NUMCOM, JACFILE and MESSFILE (optional) = the manner in which PEST can obrain derivatives 
+          directly from the model, typically set as 1,0,0 [3 * integer]       
+        
+        OBSREFEF (optional) = "obsrefref" or "noobsrefref" for observation re-referncing [string]
+        
+        *** 5th line ***
+        RLAMBDA1 = initial Marquardt lambda [real]
+
+        RLAMFAC = factor for adjusting the Marquardt lambda, set as >1.0 or <-1.0 [float]                
+        
+        PHIRATSUF = stands for "phi ratio sufficient", real variable, 0.3 is mostly appropriate,  [float]
+        
+        ...
+        
+        *** end file ***
+        
+        NOTE: Run pestchek to insure that all control data has been entered appropriately
+        """
+        
         control_data = {'RSTFLE': 'restart',
                         'PESTMODE': 'estimation',
                         'PRECIS': 'single',
                         'DPOINT': 'point',
                         'RLAMBDA1': 10,
-                        'RLAMFAC': -3,
+                        'RLAMFAC': 2, #-3
                         'PHIRATSUF': 0.3,
                         'PHIREDLAM': 1.00E-02,
                         'NUMLAM': -20,
@@ -67,7 +133,7 @@ class PESTInterface(object):
                         'FACORIG': 1.00E-04,
                         'PHIREDSHW': 0.02,
                         'NOPTSWITCH': 6,
-                        'BOUNDSCALE': '', #'boundscale',
+                        'BOUNDSCALE': 'noboundscale', #'boundscale',
                         'NOPTMAX':	50,
                         'PHIREDSTP':	0.005,
                         'NPHISTP':	4,
@@ -123,7 +189,7 @@ class PESTInterface(object):
         PESTpar['PARNAME'] = params.keys()
         PESTpar['PARTRANS'] = ['log'] * num_param 
         PESTpar['PARCHGLIM'] = ['factor'] * num_param         
-        PESTpar['PARVAL1'] = params.values()
+        PESTpar['PARVAL1'] = [x['PARVAL1'] for x in params.values()]
         PESTpar['PARLBND'] = [0] * num_param        
         PESTpar['PARUBND'] = [0] * num_param
         PESTpar['PARGP'] = ['default'] * num_param

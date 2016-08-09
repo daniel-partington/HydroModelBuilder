@@ -35,7 +35,7 @@ class ModflowModel(object):
         self.xul = self.model_data.model_boundary[0]
         self.yul = self.model_data.model_boundary[3]
         self.nper = 1
-        self.perlen = 1 #36500 
+        self.perlen = 3650 
         self.nstp = 1 #10
         self.steady = False
         self.start_datetime = "1/1/1970"
@@ -43,12 +43,18 @@ class ModflowModel(object):
         # Initial data:
         self.strt = self.model_data.initial_conditions.ic_data["Head"] #self.model_data.model_mesh3D[0][1:] + 20.         
         
-        self.hk = self.model_data.model_mesh3D[1].astype(float)
-        self.hk[self.hk > 0] = 10.0
+#        self.hk = self.model_data.model_mesh3D[1].astype(float)
+#        self.hk[self.hk > 0] = 10.0
+#        self.hk[self.hk == -1] = 1.
+#        self.vka = 1.0 
+#        self.sy = 0.01 
+#        self.ss = 1.0E-4        
+
+        self.hk = self.model_data.properties.properties['Kh']
         self.hk[self.hk == -1] = 1.
-        self.vka = 1.0 
-        self.sy = 0.01 
-        self.ss = 1.0E-4        
+        self.vka = self.model_data.properties.properties['Kv']
+        self.sy = self.model_data.properties.properties['Sy']
+        self.ss = self.model_data.properties.properties['SS']
 
         #Set all other kwargs as class attributes
         for key, value in kwargs.items():
