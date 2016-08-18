@@ -13,7 +13,7 @@ import pandas as pd
 
 class PESTInterface(object):
 
-    def __init__(self, name=None, directory=None, csv_copy=False, excel_copy=False, params=None, obs=None):
+    def __init__(self, name=None, directory=None, csv_copy=False, excel_copy=False, params=None, obs=None, models_ID=None):
         self.PEST_data = {}
         if name == None:
             self.name = 'default' 
@@ -39,7 +39,9 @@ class PESTInterface(object):
             self.obs = {}
         #end if
             
-        self.obs = obs
+        #self.obs = obs
+        
+        self.models_ID = models_ID        
         
         self.PEST_data['PESTcon'] = {}
         self.PESTcon()
@@ -73,20 +75,20 @@ class PESTInterface(object):
         PESTMODE = "estimation", "prediction", "regularisation" or "pareto" [string]
 
         *** 3rd line ***
-        NPAR  = total number of parameters [integer]
+        NPAR  = total number of parameters [integer] (self generated)
         
-        NOBS = the total number of observations [integer]
+        NOBS = the total number of observations [integer] (self generated)
         
-        NPARGP = number of parameter groups [integer]
+        NPARGP = number of parameter groups [integer] (self generated)
         
         NPRIOR = number of articles of prior information included in the parameter
-        estimation process [integer]
+        estimation process [integer] (self generated)
         
-        NOBSGP = number of observation groups [integer]
+        NOBSGP = number of observation groups [integer] (self generated)
 
         MAXCOMPDIM (optional) = acivates compressed internal storage of the Jacobian matrix [integer]
 
-        DERZEROLIM (optional) = theshold for consdiering element of the Jacobian matrix zero [float]         
+        DERZEROLIM (optional) = theshold for considering element of the Jacobian matrix zero [float]         
         
         *** 4th line ***
         NTPLFLE = number of template files [integer]
@@ -97,7 +99,7 @@ class PESTInterface(object):
 
         DPOINT = "point" or "nopoint", allows ignoring of decimal points if the latter option is chosen [string]         
         
-        NUMCOM, JACFILE and MESSFILE (optional) = the manner in which PEST can obrain derivatives 
+        NUMCOM, JACFILE and MESSFILE (optional) = the manner in which PEST can obtain derivatives 
           directly from the model, typically set as 1,0,0 [3 * integer]       
         
         OBSREFEF (optional) = "obsrefref" or "noobsrefref" for observation re-referncing [string]
@@ -120,29 +122,29 @@ class PESTInterface(object):
                         'PESTMODE': 'estimation',
                         'PRECIS': 'single',
                         'DPOINT': 'point',
-                        'RLAMBDA1': 10,
-                        'RLAMFAC': 2, #-3
+                        'RLAMBDA1': 20,
+                        'RLAMFAC': -3,
                         'PHIRATSUF': 0.3,
                         'PHIREDLAM': 1.00E-02,
-                        'NUMLAM': -20,
+                        'NUMLAM': 7,
                         'JACUPDATE': 999,
                         'LAMFORGIVE': 'lamforgive',
                         'DERFORGIVE': 'derforgive',
-                        'RELPARMAX': 0.5,
-                        'FACPARMAX': 5,
-                        'FACORIG': 1.00E-04,
-                        'PHIREDSHW': 0.02,
-                        'NOPTSWITCH': 6,
+                        'RELPARMAX': 10,
+                        'FACPARMAX': 10,
+                        'FACORIG': 1.00E-03,
+                        'PHIREDSHW': 0.1,
+                        'NOPTSWITCH': 1,
                         'BOUNDSCALE': 'noboundscale', #'boundscale',
-                        'NOPTMAX':	50,
-                        'PHIREDSTP':	0.005,
-                        'NPHISTP':	4,
-                        'NPHINORED': 4,
-                        'RELPARSTP': 0.005,
-                        'NRELPAR': 4,
-                        'ICOV': 1,
-                        'ICOR': 1,
-                        'IEIG': 1
+                        'NOPTMAX':	25,
+                        'PHIREDSTP':	0.01,
+                        'NPHISTP':	5,
+                        'NPHINORED': 5,
+                        'RELPARSTP': 0.01,
+                        'NRELPAR': 3,
+                        'ICOV': 0,
+                        'ICOR': 0,
+                        'IEIG': 0
                         }        
                         
         singular_value_decomposition = {'SVDMODE': 1,
@@ -187,16 +189,16 @@ class PESTInterface(object):
         num_param = len(params.keys())
         PESTpar = pd.DataFrame(columns=header, index=self.params.keys())
         PESTpar['PARNAME'] = params.keys()
-        PESTpar['PARTRANS'] = ['log'] * num_param 
-        PESTpar['PARCHGLIM'] = ['factor'] * num_param         
+        PESTpar['PARTRANS'] = [x['PARTRANS'] if 'PARTRANS' in x.keys() else 'log' for x in params.values()] #['log'] * num_param 
+        PESTpar['PARCHGLIM'] = [x['PARCHGLIM'] if 'PARCHGLIM' in x.keys() else 'factor' for x in params.values()] # ['factor'] * num_param         
         PESTpar['PARVAL1'] = [x['PARVAL1'] for x in params.values()]
-        PESTpar['PARLBND'] = [0] * num_param        
-        PESTpar['PARUBND'] = [0] * num_param
-        PESTpar['PARGP'] = ['default'] * num_param
-        PESTpar['SCALE'] = [1.0] * num_param
-        PESTpar['OFFSET'] = [0.0] * num_param
+        PESTpar['PARLBND'] = [x['PARLBND'] if 'PARLBND' in x.keys() else x['PARVAL1'] * 0.9 for x in params.values()] #[0] * num_param        
+        PESTpar['PARUBND'] = [x['PARUBND'] if 'PARUBND' in x.keys() else x['PARVAL1'] * 1.1 for x in params.values()] #[0] * num_param
+        PESTpar['PARGP'] = [x['PARGP'] if 'PARGP' in x.keys() else 'default' for x in params.values()] #['default'] * num_param
+        PESTpar['SCALE'] = [x['SCALE'] if 'SCALE' in x.keys() else 1.0 for x in params.values()] #[1.0] * num_param
+        PESTpar['OFFSET'] = [x['OFFSET'] if 'OFFSET' in x.keys() else 0.0 for x in params.values()] #[0.0] * num_param
         PESTpar['PARTIED'] = [''] * num_param
-        PESTpar['models'] = ['default'] * num_param
+        PESTpar['models'] = [self.models_ID[0]] * num_param
         PESTpar['unit'] = ['-'] * num_param
         
         if self.csv_copy:
@@ -239,7 +241,7 @@ class PESTInterface(object):
         PESTobs['OBSVAL'] = obs.values()
         PESTobs['WEIGHT'] = [1.0] * num_obs
         PESTobs['OBGNME'] = ['default'] * num_obs
-        PESTobs['model'] = ['default'] * num_obs
+        PESTobs['model'] = [self.models_ID[0]] * num_obs
    
         if self.csv_copy:
             self._createCSVcopyFromDataFrame(PESTobs, 'PESTobs')
@@ -416,7 +418,8 @@ class PESTInterface(object):
         INSFLE = {}        
         for model in models_ID:
             # Find model folder
-            model_folder = self.directory + os.path.sep + model
+            #model_folder = self.directory + os.path.sep + model
+            model_folder = '..' + os.path.sep + model
             if not os.path.isdir(model_folder):
                 sys.exit('Model folder not found for model %s' %(model))
             #end if
