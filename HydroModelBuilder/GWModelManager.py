@@ -92,7 +92,7 @@ class GWModelManager(object):
             #end if
         #end for
         
-    def setupPEST(self, model_name, directory=None, csv_copy=False, excel_copy=False):
+    def setupPEST(self, model_name, directory=None, csv_copy=False, excel_copy=False, models_ID=None):
         from HydroModelBuilder.HydroModelBuilder.Utilities.PESTInterface.PESTInterface import PESTInterface
         name = self.GW_build[model_name].name
         if not directory:        
@@ -100,7 +100,7 @@ class GWModelManager(object):
         params = self.GW_build[model_name].parameters.param
         obs = self.GW_build[model_name].observations.obs
         print self.GW_build[model_name]
-        self.PEST = PESTInterface(name=name, directory=directory, csv_copy=csv_copy, excel_copy=excel_copy, params=params, obs=obs)
+        self.PEST = PESTInterface(name=name, directory=directory, csv_copy=csv_copy, excel_copy=excel_copy, params=params, obs=obs, models_ID=models_ID)
                 
 
     def load_GW_model(self, GW_model, out_data_folder=None):
@@ -140,6 +140,7 @@ class GWModelManager(object):
         #self.GW_build[self.models].data_boundary = packaged_model['data_boundary']
         self.GW_build[packaged_model['name']].boundary_data_file = packaged_model['boundary_data_file']
         #self.GW_build[self.models].model_mesh = packaged_model['model_mesh']
+        self.GW_build[packaged_model['name']].model_time = packaged_model['model_time']
         self.GW_build[packaged_model['name']].model_mesh_centroids = packaged_model['model_mesh_centroids']
         self.GW_build[packaged_model['name']].model_mesh3D = packaged_model['model_mesh3D']
         self.GW_build[packaged_model['name']].model_mesh3D_centroids = packaged_model['model_mesh3D_centroids']

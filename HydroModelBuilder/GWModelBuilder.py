@@ -2,6 +2,7 @@ import sys
 import os
 import shutil
 import pickle
+import datetime
 
 import numpy as np
 import pandas as pd
@@ -108,6 +109,7 @@ class GWModelBuilder(object):
         self.model_mesh3D_centroids = None
         self.model_layers = None
         self.model_features = None
+        self.model_time = ModelTime()
         self.polyline_mapped = {}
         self.points_mapped = {}
 
@@ -525,27 +527,29 @@ class GWModelBuilder(object):
                 
         return point2mesh_map
 
-    def map_obs_loc2mesh3D(self):
+    def map_obs_loc2mesh3D(self, method='nearest'):
         """
         This is a function to map the obs locations to the nearest node in the
         mesh        
         
         """
-        for key in self.observations.obs_group:
-            points = [list(x) for x in self.observations.obs_group[key]['locations'].to_records(index=False)]
-            self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_3Dmesh(points, identifier=self.observations.obs_group[key]['locations'].index)
 
-            # Check that 'mapped_observations' are in active cells and if not then set the observation to inactive
-            for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
-                [k,j,i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
-                if self.model_mesh3D[1][k][j][i] == -1:
-                    # This next line needs to be rewritten, however, works for now                    
-                    self.observations.obs_group[key]['time_series']['active'][self.observations.obs_group[key]['time_series']['name'] == obs_loc] = False
-                #end if
-            #end if
-        #end for
-        
+        if method == 'nearest':
+            for key in self.observations.obs_group:
+                points = [list(x) for x in self.observations.obs_group[key]['locations'].to_records(index=False)]
+                self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_3Dmesh(points, identifier=self.observations.obs_group[key]['locations'].index)
     
+                # Check that 'mapped_observations' are in active cells and if not then set the observation to inactive
+                for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
+                    [k,j,i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
+                    if self.model_mesh3D[1][k][j][i] == -1:
+                        # This next line needs to be rewritten, however, works for now                    
+                        self.observations.obs_group[key]['time_series']['active'][self.observations.obs_group[key]['time_series']['name'] == obs_loc] = False
+                    #end if
+                #end for
+            #end for
+        #end if
+                        
     def getXYpairs(self, points_obj, feature_id=None):
 
         return self.GISInterface.getXYpairs(points_obj, feature_id=feature_id)
@@ -596,8 +600,34 @@ class GWModelBuilder(object):
 
         pass
 
-    def update_model_using_parameters():
-        pass
+    def map_obs2model_times(self):
+        """
+        This is a function to map the obs at different times within the bounding interval in the
+        model times intervals        
+        
+        """
+        def findInterval(key_time, times):
+            lower_time = times[0]            
+            for period, time in enumerate(times):
+                if period > 0:
+                    if lower_time <= key_time < time:
+                        return period
+
+        for key in self.observations.obs_group:
+            pass
+            #self.observations.obs_group[key]['time_series']['interval'] = 
+
+    def updateModelParameters(self, fname):
+        with open(fname, 'r') as f:
+            text = f.readlines()
+            # Remove header    
+            text = text[1:]
+            # Read in parameters and replace values in parameters class for param
+            for line in text:
+                param_name, value = line.strip('\n').split('\t')
+                value = value.lstrip()
+                self.parameters.param[param_name]['PARVAL1'] = float(value)
+
 
     def add2register(self, addition):
         
@@ -666,6 +696,7 @@ class GWModelBuilder(object):
         #packaged_model['data_boundary'] = self.data_boundary
         packaged_model['boundary_data_file'] = self.boundary_data_file
         #packaged_model['model_mesh'] = self.model_mesh
+        packaged_model['model_time'] = self.model_time
         packaged_model['model_mesh_centroids'] = self.model_mesh_centroids
         packaged_model['model_mesh3D'] = self.model_mesh3D
         packaged_model['model_mesh3D_centroids'] = self.model_mesh3D_centroids
@@ -707,16 +738,42 @@ class GeneralModelDataStructure(object):
 class ModelTime(object):
     """
     Class to set the temporal aspects of the model
+    
+    within the dictionary "t", the following items are found:
+    'start_time': start time of model simulation
+    'end_time': end time of model simulation
+    'time_step': model time step, if always the same, use 'M' for monthly and 'A' for annual
+    'duration': total model simulation time
+    'intervals': list of length of time of each time period in the model, stored as datetime object Timedelta
+    'steps': number of steps in which model stresses can change
     """
     
     def __init__(self):
         self.t = {}
+        self.t['steady_state'] = True
         
-    def set_temporal_components(self, steady_state=True, start_time=None, end_time=None, time_step=None):
+    def set_temporal_components(self, steady_state=True, start_time=None, end_time=None, time_step=None, date_index=None):
         self.t['steady_state'] = steady_state
+        if steady_state == True:
+            return
+        
         self.t['start_time'] = start_time
         self.t['end_time'] = end_time
         self.t['time_step'] = time_step
+        self.t['duration'] = self.t['end_time'] - self.t['start_time']
+        
+        date_index = pd.date_range(start=start_time, end=end_time, freq=time_step)
+        self.t['dateindex'] = date_index
+
+        intervals = []
+        old_time = date_index[0]
+        for index, time in enumerate(date_index):
+            if index > 0:
+                intervals += [time - old_time]
+                old_time = time
+                
+        self.t['intervals'] = intervals
+        self.t['steps'] = len(self.t['intervals'])
        
 class ModelBoundaries(object):
     """
@@ -792,20 +849,45 @@ class ModelParameters(object):
         self.param[name] = {}
         self.param[name]['PARVAL1'] = value
 
-    def parameter_options(self):
-        print "'PARVAL1', 'PARTRANS', 'PARCHGLIM', 'PARVAL1', 'PARLBND', 'PARUBND', 'PARGP', 'SCALE', 'OFFSET'"
+    def parameter_options(self, param_name, PARTRANS=None, PARCHGLIM=None, PARLBND=None, PARUBND=None, PARGP=None, SCALE=None, OFFSET=None):
+        if PARTRANS:
+            self.param[param_name]['PARTRANS'] = PARTRANS
+        if PARCHGLIM:
+            self.param[param_name]['PARCHGLIM'] = PARCHGLIM
+        if PARLBND:
+            self.param[param_name]['PARLBND'] = PARLBND
+        if PARUBND:
+            self.param[param_name]['PARUBND'] = PARUBND
+        if PARGP:
+            self.param[param_name]['PARGP'] = PARGP
+        if SCALE:
+            self.param[param_name]['SCALE'] = SCALE
+        if OFFSET:
+            self.param[param_name]['OFFSET'] = PARTRANS
 
-    def create_model_parameter_set(self, name, values=None):
+    def create_model_parameter_set(self, name, values):
         for i in range(len(values)):
             self.param[name+str(i)] = {}
             self.param[name+str(i)]['PARVAL1'] = values[i]
+
+    def create_model_parameter_set_pilot_points(self, name, values, points):
+        """
+        Create pilot points parameter set
+        :param name: parameter set of pilot points name.
+        :param values: values for each pilot point 
+        :param points: location of each pilot point         
+        """
+        for i in range(len(values)):
+            self.param[name+str(i)] = {}
+            self.param[name+str(i)]['PARVAL1'] = values[i]
+            self.param[name+str(i)]['point'] = values[i]
 
     def assign_to_model_parameter(self):
         pass        
 
     def define_parameter2value_relationship(self):
         pass
-    
+
 class ModelObservations(object):
     """
     This class is used to store all of the obervations relevant to the model
@@ -849,6 +931,12 @@ class ModelObservations(object):
                 if ob[1]['active'] == True:                
                     self.obs['ob' + str(self.obID)] = ob[1]['value']
                     self.obID += 1
+
+    def check_obs(self):
+        obs_nodes = []        
+        for ob in self.observations.obs.keys():
+            obs_nodes += self.observations.obs[ob]
+
     
 class ModelInitialConditions(object):
     """ 

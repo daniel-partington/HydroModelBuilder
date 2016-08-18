@@ -34,11 +34,19 @@ class ModflowModel(object):
         self.botm = self.model_data.model_mesh3D[0][1:] 
         self.xul = self.model_data.model_boundary[0]
         self.yul = self.model_data.model_boundary[3]
-        self.nper = 1
-        self.perlen = 3650 
-        self.nstp = 1 #10
-        self.steady = False
-        self.start_datetime = "1/1/1970"
+        
+        if self.model_data.model_time.t['steady_state'] = True:
+            self.nper = 1
+            self.perlen = 365000 
+            self.nstp = 1
+            self.steady = True
+            #self.start_datetime = self.model_data.model_time.t['start_time']
+        else:
+            self.nper = self.model_data.model_time.t['steps']
+            self.perlen = [x.total_seconds()/86400. for x in self.model_data.model_time.t['intervals']] #365000 
+            self.nstp = 1 #10
+            self.steady = False #True
+            self.start_datetime = self.model_data.model_time.t['start_time']
         
         # Initial data:
         self.strt = self.model_data.initial_conditions.ic_data["Head"] #self.model_data.model_mesh3D[0][1:] + 20.         
@@ -130,7 +138,10 @@ class ModflowModel(object):
         self.riv = flopy.modflow.ModflowRiv(self.mf, ipakcb=53, stress_period_data=lrcd)
 
     # end createRIVpackage        
-        
+       
+    def createSTRpackage(self, STRvariables=None):
+        self.str = flopy.modflow.ModflowStr(self.mf, ipakcb=53, stress_period_data=strd)
+       
     def createRCHpackage(self, rchrate=None):
         # Add RCH package to the MODFLOW model to represent recharge
         # rchrate  = 1.0E-3 * np.random.rand(self.nrow, self.ncol)
@@ -153,6 +164,10 @@ class ModflowModel(object):
         self.oc = flopy.modflow.ModflowOc(self.mf, stress_period_data=spd, cboufm='(20i5)')
 
     # end createOCpackage
+
+    def createBTNpackage(self):
+        #Add the BTN package to the model
+        self.btn = flopy.mt3d.Mt3dBtn()
 
     def finaliseModel(self):
         # Write the MODFLOW model input files
@@ -185,14 +200,21 @@ class ModflowModel(object):
             if self.model_data.boundaries.bc[boundary]['bc_type'] == 'wells':
                 self.createWELpackage(self.model_data.boundaries.bc[boundary]['bc_array'])
 
-        river = {}
-        river[0] = []
+        river_exists = False
         for boundary in self.model_data.boundaries.bc:
             if self.model_data.boundaries.bc[boundary]['bc_type'] == 'river':
-                time_key = self.model_data.boundaries.bc[boundary]['bc_array'].keys()[0]
-                river[0] += self.model_data.boundaries.bc[boundary]['bc_array'][time_key]
+                river_exists = True
+                break
         
-        self.createRIVpackage(river)
+        if river_exists:
+            river = {}
+            river[0] = []
+            for boundary in self.model_data.boundaries.bc:
+                if self.model_data.boundaries.bc[boundary]['bc_type'] == 'river':
+                    time_key = self.model_data.boundaries.bc[boundary]['bc_array'].keys()[0]
+                    river[0] += self.model_data.boundaries.bc[boundary]['bc_array'][time_key]
+            
+            self.createRIVpackage(river)
         
         self.finaliseModel()
 
@@ -208,13 +230,28 @@ class ModflowModel(object):
         
         self.model_data.model_mesh3D[1]
 
-        heads_zoned = np.full(self.model_data.model_mesh3D[1].shape, np.Nan)
+        heads_zoned = [np.full(self.model_data.model_mesh3D[1].shape[1:3], np.nan)] * int(np.max(self.model_data.model_mesh3D[1]))
         
-        for zone in range(np.max(self.model_data.model_mesh3D[1])):
-            
-            heads_zoned[zone] = heads[zone]
-
+        for zone in range(int(np.max(self.model_data.model_mesh3D[1]))):
+            temp_heads = np.array([np.full(self.model_data.model_mesh3D[1].shape[1:3], np.nan)] * self.model_data.model_mesh3D[1].shape[0])
+            # for each layer in mesh get the heads from zone and average:
+            for layer in range(self.model_data.model_mesh3D[1].shape[0]):
+                temp_heads[layer][self.model_data.model_mesh3D[1][layer] == float(zone+1)] = heads[layer][self.model_data.model_mesh3D[1][layer] == float(zone+1)]
+            masked_temp_heads = np.ma.masked_array(temp_heads, np.isnan(temp_heads))
+            heads_zoned[zone] = np.mean(masked_temp_heads, axis=0) 
+        #end for
         return heads_zoned
+
+#    def ObservedHeadsByZone(self, obs_set, head):
+#        self.obs_heads_by_zone = [] * int(np.max(self.model_data.model_mesh3D[1]))
+#        obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
+#        obs_df = obs_df[obs_df['active'] == True]
+#        sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']        
+#
+#        for observation in obs_df['name']:
+#            idx = obs_df[obs_df['name'] == observation].index.tolist()[0]            
+#            obs = obs_df.get_value(idx, 'value')
+#            self.obs_heads_by_zone[] +=             
 
     def writeObservations(self):
 
@@ -243,18 +280,18 @@ class ModflowModel(object):
                     sim_head = head[sim_map_dict[observation][0]][sim_map_dict[observation][1]][sim_map_dict[observation][2]]
                     f.write('%f\n' %sim_head)
 
-    def CompareObservedHead(self, obs_set, head):
+    def CompareObservedHead(self, obs_set, simulated, nper=0):
         
         self.comparison = []
         self.comp_zone = []
-        self.obs_loc_val_lay = []
+        self.obs_loc_val_zone = []
         obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
         obs_df = obs_df[obs_df['active'] == True]
         sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']        
         for observation in obs_df['name']: #self.model_data.observations.obs_group[obs_set]['time_series']['name']:
             idx = obs_df[obs_df['name'] == observation].index.tolist()[0]            
             obs = obs_df.get_value(idx, 'value')
-            sim = head[sim_map_dict[observation][0]][sim_map_dict[observation][1]][sim_map_dict[observation][2]]
+            sim = simulated[sim_map_dict[observation][0]][sim_map_dict[observation][1]][sim_map_dict[observation][2]]
 
             # The following commented block should no longer be required as these
             # conditions should no longer arise due to prefiltering of observations.
@@ -263,13 +300,14 @@ class ModflowModel(object):
 #            if sim == np.float32(1E+30): 
 #                continue
 
-            self.comparison += [[obs, sim]]    
+            self.comparison += [[obs, sim]] 
             self.comp_zone += self.model_data.model_mesh3D[1][sim_map_dict[observation][0]][sim_map_dict[observation][1]][sim_map_dict[observation][2]]/np.max(self.model_data.model_mesh3D[1])
             
-            #x = self.model_data.observations.obs[obs_set]['locations']            
-            #y = self.model_data.observations.obs[obs_set]['locations']            
-            #self.obs_loc_val_lay += [[obs, x, y, sim_map_dict[observation][0]]]
-            
+            x = self.model_data.observations.obs_group[obs_set]['locations']['Easting'].loc[observation]            
+            y = self.model_data.observations.obs_group[obs_set]['locations']['Northing'].loc[observation]            
+            zone = self.model_data.model_mesh3D[1][sim_map_dict[observation][0]][sim_map_dict[observation][1]][sim_map_dict[observation][2]]            
+            self.obs_loc_val_zone += [[obs, (x, y), zone, sim]]
+        
     def importHeads(self):
         self.headobj = bf.HeadFile(self.data_folder + self.name+'.hds')
         return self.headobj
@@ -278,6 +316,207 @@ class ModflowModel(object):
         self.cbbobj = bf.CellBudgetFile(self.data_folder + self.name+'.cbc')
         return self.cbbobj
       
+    def viewHeadsByZone(self, nper=0):
+
+        # Create the headfile object
+        headobj = self.importHeads()
+        times = headobj.get_times()        
+        head = headobj.get_data(totim=times[nper])
+        head_orig = head
+        zoned = self.HeadsByZone(head)
+        head = zoned
+
+        self.CompareObservedHead('head', head_orig)                
+        scatterx = [h[0] for h in self.comparison]        
+        scattery = [h[1] for h in self.comparison]        
+
+        # First step is to set up the plot
+        width = 20
+        height = 10
+        multiplier = 1.
+        fig = plt.figure(figsize=(width * multiplier, height * multiplier))
+
+        vmin = 50
+        vmax = 200
+
+        ax = fig.add_subplot(2, 4, 1, aspect='equal')
+        ax.set_title('qa')
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        max_head = np.amax(head)         
+        min_head = np.amin(head)
+        #print max_head
+        #print min_head
+        
+        array = modelmap.plot_array(head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)        
+        ax.xaxis.set_ticklabels([])
+        cbar_ax1 = fig.add_axes([0.19, 0.525, 0.01, 0.42])
+        fig.colorbar(array, cax=cbar_ax1)
+        #linecollection = modelmap.plot_grid()
+        scatterx2 = [loc[1][0] for loc in self.obs_loc_val_zone if loc[2]==1.0]        
+        scattery2 = [loc[1][1] for loc in self.obs_loc_val_zone if loc[2]==1.0]        
+        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_loc_val_zone if loc[2]==1.0], alpha=0.5, vmin=vmin, vmax=vmax)
+        ax.text(2.7e5, 6030000, 'Observations: %d' %(len(scatterx2)))        
+
+
+        ax = fig.add_subplot(2, 4, 2, aspect='equal')
+        ax.set_title('utb')
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        max_head = np.amax(head)         
+        min_head = np.amin(head)
+        #print max_head
+        #print min_head
+        
+        array = modelmap.plot_array(head[1], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)        
+        ax.xaxis.set_ticklabels([])
+        ax.yaxis.set_ticklabels([])
+        cbar_ax2 = fig.add_axes([0.43, 0.525, 0.01, 0.42])
+        fig.colorbar(array, cax=cbar_ax2)
+
+        scatterx2 = [loc[1][0] for loc in self.obs_loc_val_zone if loc[2] == 2.0]        
+        scattery2 = [loc[1][1] for loc in self.obs_loc_val_zone if loc[2] == 2.0]        
+        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_loc_val_zone if loc[2] == 2.0], alpha=0.5, vmin=vmin, vmax=vmax)
+        ax.text(2.7e5, 6030000, 'Observations: %d' %(len(scatterx2)))        
+
+
+        ax = fig.add_subplot(2, 4, 3, aspect='equal')
+        ax.set_title('utqa')
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        array = modelmap.plot_array(head[2], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)        
+        ax.xaxis.set_ticklabels([])
+        ax.yaxis.set_ticklabels([])
+        cbar_ax1 = fig.add_axes([0.67, 0.525, 0.01, 0.42])
+        fig.colorbar(array, cax=cbar_ax1)
+
+        scatterx2 = [loc[1][0] for loc in self.obs_loc_val_zone if loc[2] == 3.0]        
+        scattery2 = [loc[1][1] for loc in self.obs_loc_val_zone if loc[2] == 3.0]        
+        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_loc_val_zone if loc[2] == 3.0], alpha=0.5, vmin=vmin, vmax=vmax)
+        ax.text(2.7e5, 6030000, 'Observations: %d' %(len(scatterx2)))        
+
+
+        ax = fig.add_subplot(2, 4, 4, aspect='equal')
+        ax.set_title('Residuals')
+        ax.hist([loc[0]-loc[3] for loc in self.obs_loc_val_zone], bins=20, alpha=0.5)
+#        ax.set_title('utam')
+#        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+#        array = modelmap.plot_array(head[3], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)        
+#        ax.xaxis.set_ticklabels([])
+#        ax.yaxis.set_ticklabels([])
+#        cbar_ax5 = fig.add_axes([0.91, 0.525, 0.01, 0.42])
+#        fig.colorbar(array, cax=cbar_ax5)
+#
+#        scatterx2 = [loc[1][0] for loc in self.obs_loc_val_zone if loc[2] == 4.0]        
+#        scattery2 = [loc[1][1] for loc in self.obs_loc_val_zone if loc[2] == 4.0]        
+#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_loc_val_zone if loc[2] == 4.0], alpha=0.5, vmin=vmin, vmax=vmax)
+#        ax.text(2.7e5, 6030000, 'Observations: %d' %(len(scatterx2)))        
+        
+        ax = fig.add_subplot(2, 4, 5, aspect='equal')
+        ax.set_title('utaf')
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        array = modelmap.plot_array(head[4], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)        
+        start, end = ax.get_xlim()
+        start = start // 1000 * 1000 + 1000
+        end = end // 1000 * 1000 - 1000
+        ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+        ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+        cbar_ax3 = fig.add_axes([0.19, 0.055, 0.01, 0.42])
+        fig.colorbar(array, cax=cbar_ax3)
+
+        scatterx2 = [loc[1][0] for loc in self.obs_loc_val_zone if loc[2] == 5.0]        
+        scattery2 = [loc[1][1] for loc in self.obs_loc_val_zone if loc[2] == 5.0]        
+        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_loc_val_zone if loc[2] == 5.0], alpha=0.5, vmin=vmin, vmax=vmax)
+        ax.text(2.7e5, 6030000, 'Observations: %d' %(len(scatterx2)))        
+
+        ax = fig.add_subplot(2, 4, 6, aspect='equal')
+        ax.set_title('lta')
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        array = modelmap.plot_array(head[5], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)        
+        ax.yaxis.set_ticklabels([])
+        ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+        ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+        cbar_ax4 = fig.add_axes([0.43, 0.055, 0.01, 0.42])
+        fig.colorbar(array, cax=cbar_ax4)
+
+        scatterx2 = [loc[1][0] for loc in self.obs_loc_val_zone if loc[2] == 6.0]        
+        scattery2 = [loc[1][1] for loc in self.obs_loc_val_zone if loc[2] == 6.0]        
+        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_loc_val_zone if loc[2] == 6.0], alpha=0.5, vmin=vmin, vmax=vmax)
+        ax.text(2.7e5, 6030000, 'Observations: %d' %(len(scatterx2)))        
+
+        ax = fig.add_subplot(2, 4, 7, aspect='equal')
+        ax.set_title('bse')
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        array = modelmap.plot_array(head[6], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)        
+        ax.yaxis.set_ticklabels([])
+        ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+        ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+        cbar_ax5 = fig.add_axes([0.67, 0.055, 0.01, 0.42])
+        fig.colorbar(array, cax=cbar_ax5)
+
+        scatterx2 = [loc[1][0] for loc in self.obs_loc_val_zone if loc[2] == 7.0]        
+        scattery2 = [loc[1][1] for loc in self.obs_loc_val_zone if loc[2] == 7.0]        
+        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_loc_val_zone if loc[2] == 7.0], alpha=0.5, vmin=vmin, vmax=vmax)
+        ax.text(2.7e5, 6030000, 'Observations: %d' %(len(scatterx2)))        
+
+        ax = fig.add_subplot(2, 4, 8, aspect=0.9)
+        ax.set_title('Sim vs Obs (%d points)' %(len(scatterx)))
+        #ax.scatter(scatterx, scattery, edgecolor='none', c=[loc[2] for loc in self.obs_loc_val_zone], alpha=0.5, vmin=1, vmax=7)
+        comp_zone_plots={}        
+        colors = ['b', 'c', 'y', 'm', 'r', 'green', 'orange']
+        for i in range(1,8):
+            scatterx2 = [loc[0] for loc in self.obs_loc_val_zone if loc[2]==float(i)]        
+            scattery2 = [loc[3] for loc in self.obs_loc_val_zone if loc[2]==float(i)]        
+            comp_zone_plots[i] = ax.scatter(scatterx2, scattery2, edgecolors=colors[i-1], facecolors='none', alpha=0.5)
+        
+        plt.legend((comp_zone_plots[1], comp_zone_plots[2], comp_zone_plots[3], 
+                    comp_zone_plots[4], comp_zone_plots[5], comp_zone_plots[6],
+                    comp_zone_plots[7]), 
+                   ('qa', 'utb', 'utqa', 'utam', 'utaf', 'lta', 'bse'),
+                   scatterpoints=1,
+                   loc='upper left',
+                   ncol=4,
+                   fontsize=11)
+        
+        plt.xlabel('Observed')
+        plt.ylabel('Simulated', labelpad=-10)
+
+        scatterx = np.array(scatterx)        
+        scattery = np.array(scattery)        
+        sum1 = 0.
+        sum2 = 0.
+        mean = np.mean(scatterx)
+        for i in range(len(scatterx)):
+            num1 = (scatterx[i] - scattery[i])          
+            num2 = (scatterx[i] - mean)
+            sum1 += num1 ** np.float64(2.)
+            sum2 += num2 ** np.float64(2.)
+        
+        ME = 1 - sum1 / sum2
+        
+        ax.text(150, 75, 'Model Efficiency = %4.2f' %(ME))        
+        
+        # For rmse
+        def rmse(simulated, observed):
+            return np.sqrt(((simulated - observed) ** 2).mean())
+
+        ax.text(150, 25, 'RMSE = %4.2f' %(rmse(scattery, scatterx)))        
+        
+        ax.plot(ax.get_ylim(), ax.get_ylim())        
+        #modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        #ffrf = modelmap.plot_array(head[6], masked_values=[-999.98999023, max_head, min_head], alpha=0.5)        
+        
+        #ax.yaxis.set_ticklabels([])
+        #ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+        #ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+
+        #cbar_ax5 = fig.add_axes([0.67, 0.055, 0.01, 0.42])
+        #fig.colorbar(ffrf, cax=cbar_ax5)
+        
+        fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
+
+        plt.show()
+
+    #End viewHeads        
+
+
     def viewHeads(self):
 
         # Create the headfile object
