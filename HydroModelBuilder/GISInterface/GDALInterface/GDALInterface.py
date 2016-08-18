@@ -16,6 +16,7 @@ import basement
 import map_raster2mesh
 import map2grid
 import point_values_from_raster
+import polygon2points
 
 class GDALInterface(GISInterface):
     """
@@ -36,7 +37,8 @@ class GDALInterface(GISInterface):
          map_points_to_grid
     
     Things to fix ...
-    inconsistent use of 'mesh' and 'grid', need consistent terminology
+    inconsistent use of 'mesh' and 'grid', need consistent terminology. Will change
+    all to 'mesh' as it is more generic.
     
     """
     def __init__(self):
@@ -397,6 +399,13 @@ class GDALInterface(GISInterface):
         length_and_centroids = map2grid.shp2grid(polyline_obj, self.model_mesh, shp_type='poly', data_folder=self.out_data_folder)  
         return length_and_centroids
           
+    def polygon2points(self, polygon_obj, to_fname=None, density=10):
+        
+        polygon2points.poly2points(polygon_obj, to_fname=to_fname, density=density, working_directory=self.out_data_folder_grid)        
+        points_obj = ogr.Open(to_fname)
+        points = self.getXYpairs(points_obj)
+
+        return points                
         
     def read_points_data_from_csv(self, filename, path=None):     
         """
@@ -411,7 +420,7 @@ class GDALInterface(GISInterface):
     def read_points_data(self, filename, path=None):
 
         """
-        Read in point data from shapefile, e.g. observation bore locations, rianfall gauges
+        Read in point data from shapefile, e.g. observation bore locations, rainfall gauges
                 
         :param filename: filename for the point shapefile that is to be read in.
         :param path: Path of the files, which is optional, default path is working directory
@@ -496,6 +505,7 @@ class GDALInterface(GISInterface):
     def getXYpairs(self, points_obj, feature_id=1):
 
         Layer = points_obj.GetLayer()
+        Layer.ResetReading()
         #points_list = []
         point_ids = {}
         for feat in Layer:
