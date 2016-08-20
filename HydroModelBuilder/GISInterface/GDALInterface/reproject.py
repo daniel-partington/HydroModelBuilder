@@ -163,7 +163,7 @@ def reproject_layer(lyr_src,
     # create the output layer
     #outputShapefile = r'c:\data\spatial\basemap_4326.shp'
     if os.path.exists(copy_dest):
-        driver.DeleteDataSource(copy_dest)
+        os.remove(copy_dest)
     outDataSet = driver.CreateDataSource(copy_dest)
     outLayer = outDataSet.CreateLayer("", geom_type=geom_type)
     
