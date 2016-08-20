@@ -47,11 +47,11 @@ class GWModelBuilder(object):
             assert mesh_type in self.types.mesh_types, "'Mesh types must be of type: {}".format(self.types.mesh_types)
             assert data_format in self.types.data_formats, "Data format must be of type: {}".format(self.types.data_formats)
 
-            if data_folder != None:
-                assert os.path.isdir(data_folder) == True, "{} is an invalid path".format(data_folder)
+            #if data_folder != None:
+            #    assert os.path.isdir(data_folder) == True, "{} is an invalid path".format(data_folder)
             #End if
 
-            assert os.path.isdir(out_data_folder) == True, "{} is an invalid path".format(out_data_folder)
+            #assert os.path.isdir(out_data_folder) == True, "{} is an invalid path".format(out_data_folder)
 
         except AssertionError as e:
             import traceback
@@ -606,17 +606,22 @@ class GWModelBuilder(object):
         model times intervals        
         
         """
-        def findInterval(key_time, times):
-            lower_time = times[0]            
+        def findInterval(row, times):
+            key_time = row['datetime']            
+            lower_time = times[0] 
             for period, time in enumerate(times):
                 if period > 0:
                     if lower_time <= key_time < time:
-                        return period
+                        return period - 1
+                lower_time = time
+            return np.nan
 
-        for key in self.observations.obs_group:
-            pass
-            #self.observations.obs_group[key]['time_series']['interval'] = 
-
+        for key in self.observations.obs_group.keys():
+            self.observations.obs_group[key]['time_series']['interval'] = self.observations.obs_group[key]['time_series'].apply(lambda row: findInterval(row, self.model_time.t['dateindex']), axis=1)
+            # remove np.nan values from the obs as they are not relevant
+            self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key]['time_series'][pd.notnull(self.observations.obs_group[key]['time_series']['interval'])]
+            self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key]['time_series'][self.observations.obs_group[key]['time_series']['value'] != 0.]
+            
     def updateModelParameters(self, fname):
         with open(fname, 'r') as f:
             text = f.readlines()
@@ -797,7 +802,7 @@ class ModelBoundaries(object):
     def __init__(self):
         self.bc = {}
         #self.bc_locale_types = ['point', 'layer', 'domain']        
-        self.bc_types = ['river', 'wells', 'recharge', 'rainfall', 'head']
+        self.bc_types = ['river', 'wells', 'recharge', 'rainfall', 'head', 'drain', 'channel', 'general head']
         
     def create_model_boundary_condition(self, bc_name, bc_type, bc_static=True, bc_parameter=None):
         #if bc_locale_type not in self.bc_locale_types:        
@@ -907,7 +912,7 @@ class ModelObservations(object):
         groundwater head, groundwater EC etc.
 
         Each time series should be of the pandas dataframe format where the 
-        index is datetime, the first column is an identifier for the data and 
+        first column is an identifier for the data, the second column is datetime and 
         the next column is the value of interest
         
         For observation dataframes with multiple identifiers there should be an
@@ -917,7 +922,7 @@ class ModelObservations(object):
         self.obs_types = ['head', 'stage', 'discharge', 'concentration']        
         
         self.obs_group[name] = {}
-        # check time series meets the standard format of columns = ['name', 'value']
+        # check time series meets the standard format of columns = ['name', 'datetime', 'value']
         self.obs_group[name]['time_series'] = time_series
         self.obs_group[name]['time_series']['active'] = True
         self.obs_group[name]['locations'] = locations
