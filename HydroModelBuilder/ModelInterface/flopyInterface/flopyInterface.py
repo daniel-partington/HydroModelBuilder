@@ -37,9 +37,9 @@ class ModflowModel(object):
         
         if self.model_data.model_time.t['steady_state'] == True:
             self.nper = 1
-            self.perlen = 365000 
-            self.nstp = 1
-            self.steady = True
+            self.perlen = 3650000 
+            self.nstp = 10
+            self.steady = False
             #self.start_datetime = self.model_data.model_time.t['start_time']
         else:
             self.nper = self.model_data.model_time.t['steps']
