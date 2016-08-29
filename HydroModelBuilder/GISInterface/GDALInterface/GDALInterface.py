@@ -386,6 +386,17 @@ class GDALInterface(GISInterface):
 
         return ds
 
+    def smooth_poly(self, poly_file, smooth_factor=0.0001):
+        # Smooth  poly shape using ogr
+        #FNULL = open(os.devnull, 'w')
+        poly_out = poly_file.split(os.path.sep)[-1]
+        poly_out = poly_out.split('.')[0]         
+        
+        command = "ogr2ogr -t_srs " + self.out_data_folder + poly_out + '_smoothed.shp" "' +  poly_file + '" -simplify ' + smooth_factor
+        print command 
+        subprocess.call(command)#, stdout=FNULL, stderr=subprocess.STDOUT)                
+        
+            
     def map_polyline_to_grid(self, polyline_obj):
         """
         Map the polyline object to the grid
@@ -435,7 +446,8 @@ class GDALInterface(GISInterface):
         else:
             # Clip first using boundary polygon
             #target_srs = self.projected_coordinate_system.ExportToProj4()   
-            target_srs = self.projected_coordinate_system.ExportToWkt()   
+            #target_srs = self.projected_coordinate_system.ExportToWkt()   
+            target_srs = self.pcs_EPSG                
             
             clipping_poly = self.boundary_data_file             
             #command = 'ogr2ogr -t_srs "' + target_srs + '" "'  + clipping_poly[:-4] + '_reproj.shp" "' + clipping_poly + '"'

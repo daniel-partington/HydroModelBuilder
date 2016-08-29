@@ -142,6 +142,7 @@ class GWModelManager(object):
         #self.GW_build[self.models].model_mesh = packaged_model['model_mesh']
         self.GW_build[packaged_model['name']].model_time = packaged_model['model_time']
         self.GW_build[packaged_model['name']].model_mesh_centroids = packaged_model['model_mesh_centroids']
+        #self.GW_build[packaged_model['name']].mesh2centroid2Dindex = packaged_model['mesh2centroid2Dindex']
         self.GW_build[packaged_model['name']].model_mesh3D = packaged_model['model_mesh3D']
         self.GW_build[packaged_model['name']].model_mesh3D_centroids = packaged_model['model_mesh3D_centroids']
         self.GW_build[packaged_model['name']].model_layers = packaged_model['model_layers']

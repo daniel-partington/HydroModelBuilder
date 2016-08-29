@@ -105,6 +105,7 @@ class GWModelBuilder(object):
 
         self.model_mesh = None
         self.model_mesh_centroids = None
+        self.mesh2centroid2Dindex = None       
         self.model_mesh3D = None
         self.model_mesh3D_centroids = None
         self.model_layers = None
@@ -299,12 +300,14 @@ class GWModelBuilder(object):
 
 
         self.centroid2mesh2Dindex = {}        
+        self.mesh2centroid2Dindex = {}        
             
         if self.mesh_type == 'structured':
             if self.array_ordering.array_order == 'UL_RowColumn':
                 for row in range(rows):
                     for col in range(cols):
                         self.centroid2mesh2Dindex[(x[col], y[row])] = [row, col]
+                        self.mesh2centroid2Dindex[(row, col)] = [x[col], y[row]]
                     #end for
                 #end for
             #end if
@@ -538,7 +541,7 @@ class GWModelBuilder(object):
             for key in self.observations.obs_group:
                 points = [list(x) for x in self.observations.obs_group[key]['locations'].to_records(index=False)]
                 self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_3Dmesh(points, identifier=self.observations.obs_group[key]['locations'].index)
-    
+
                 # Check that 'mapped_observations' are in active cells and if not then set the observation to inactive
                 for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
                     [k,j,i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
@@ -628,11 +631,24 @@ class GWModelBuilder(object):
             # Remove header    
             text = text[1:]
             # Read in parameters and replace values in parameters class for param
+            updated = {}
+            for key in self.parameters.param.keys():
+                updated[key] = False
+
             for line in text:
                 param_name, value = line.strip('\n').split('\t')
                 value = value.lstrip()
-                self.parameters.param[param_name]['PARVAL1'] = float(value)
+                    
+                if param_name in self.parameters.param.keys():
+                    self.parameters.param[param_name]['PARVAL1'] = float(value)
+                    updated[param_name] = True
+                else:
+                    print 'Parameter not defined in model: ', param_name
 
+        were_updated = [key for key in updated.keys() if updated[key]==True]       
+        if len(were_updated) > 0: print 'Parameters updated for : ', were_updated
+        not_updated = [key for key in updated.keys() if updated[key]==False]       
+        if len(not_updated) > 0: print 'Parameters unchanged for : ', not_updated
 
     def add2register(self, addition):
         
@@ -703,6 +719,7 @@ class GWModelBuilder(object):
         #packaged_model['model_mesh'] = self.model_mesh
         packaged_model['model_time'] = self.model_time
         packaged_model['model_mesh_centroids'] = self.model_mesh_centroids
+        packaged_model['mesh2centroid2Dindex'] = self.mesh2centroid2Dindex
         packaged_model['model_mesh3D'] = self.model_mesh3D
         packaged_model['model_mesh3D_centroids'] = self.model_mesh3D_centroids
         packaged_model['model_layers'] = self.model_layers
@@ -932,10 +949,13 @@ class ModelObservations(object):
 
     def collate_observations(self):
         for name in self.obs_group.keys():
+            self.obs_group[name]['time_series']['obs_map'] = 'null'
             for ob in self.obs_group[name]['time_series'].iterrows():
                 if ob[1]['active'] == True:                
                     self.obs['ob' + str(self.obID)] = ob[1]['value']
+                    self.obs_group[name]['time_series']['obs_map'][ob[0]] = 'ob' + str(self.obID)
                     self.obID += 1
+                    
 
     def check_obs(self):
         obs_nodes = []        
