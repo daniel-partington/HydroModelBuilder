@@ -37,9 +37,9 @@ class ModflowModel(object):
         
         if self.model_data.model_time.t['steady_state'] == True:
             self.nper = 1
-            self.perlen = 1 #8260000#65 #000000 
-            self.nstp = 1
-            self.steady = True # False #True #False#True #False
+            self.perlen = 1 #1000 #8260000#65 #000000 
+            self.nstp = 1#0
+            self.steady = True #False # False #True #False#True #False
             #self.start_datetime = self.model_data.model_time.t['start_time']
         else:
             self.nper = self.model_data.model_time.t['steps']
@@ -361,14 +361,14 @@ class ModflowModel(object):
 #                        try:
 #                            if self.model_data.model_mesh3D[1][lay][row-1][col] == sim_zone:
 #                                sim_heads += [head[interval][lay][row-1][col]]
-#                        except:
-#                            pass
+#                        except IndexError as e:
+#                            print e.mmsg
 #                        if west:     
 #                            try:
 #                                if self.model_data.model_mesh3D[1][lay][row-1][col-1] == sim_zone:
 #                                    sim_heads += [head[interval][lay][row-1][col-1]]
-#                            except:
-#                                pass
+#                             except IndexError as e:
+#                                 print e.mmsg
 #                        else:
 #                            try:
 #                                if self.model_data.model_mesh3D[1][lay][row-1][col+1] == sim_zone:
