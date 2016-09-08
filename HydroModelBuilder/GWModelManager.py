@@ -3,7 +3,6 @@ import pickle
 
 from HydroModelBuilder.HydroModelBuilder.GWModelBuilder import GWModelBuilder
 
-
 class GWModelManager(object):
 
     """
@@ -18,6 +17,41 @@ class GWModelManager(object):
         self.default = 'default'
         self.model_register = None
         self.GW_build = {}
+
+        self.target_attr = [
+            'name',
+            'model_type',
+            'mesh_type',
+            'units',
+            'data_folder',
+            'out_data_folder',
+            'data_format',
+            'array_ordering',
+            'boundaries',
+            'properties',
+            'parameters',
+            'observations',
+            'initial_conditions',
+            'out_data_folder_grid',
+            'model_boundary',
+            'boundary_poly_file',
+            'boundary_data_file',
+            'model_time',
+            'model_mesh_centroids',
+            'mesh2centroid2Dindex',
+            'model_mesh3D',
+            'model_mesh3D_centroids',
+            'model_layers',
+            'model_features',
+            'polyline_mapped',
+            'points_mapped',
+            'model_register',
+            'base_data_register',
+            'gridded_data_register',
+            # Some necessary parameters for now which should be replaced later
+            'gridHeight',
+            'gridWidth'
+        ]
 
     # Save and load utility using pickle
     def save_obj(self, obj, filename):
@@ -46,7 +80,8 @@ class GWModelManager(object):
                                                     data_folder=None,
                                                     out_data_folder=None,
                                                     GISInterface=None,
-                                                    data_format='binary')
+                                                    data_format='binary',
+                                                    target_attr=self.target_attr)
 
     def emulate_GW_model(self, emulation_method):
         # Create new GW_model using emulation of existing model
@@ -116,7 +151,8 @@ class GWModelManager(object):
                                                     out_data_folder=packaged_model[
                                                         'out_data_folder'],
                                                     GISInterface=None,
-                                                    data_format=packaged_model['data_format'])
+                                                    data_format=packaged_model['data_format'],
+                                                    target_attr=self.target_attr)
 
         # Rename model in dictionary by it's model builder name
         self.GW_build[packaged_model['name']] = self.GW_build.pop(self.models)
@@ -132,34 +168,9 @@ class GWModelManager(object):
 
         ref_pkg_model = self.GW_build[packaged_model['name']]
 
-        ref_pkg_model.array_ordering = packaged_model['array_ordering']
-        ref_pkg_model.boundaries = packaged_model['boundaries']
-        ref_pkg_model.properties = packaged_model['properties']
-        ref_pkg_model.parameters = packaged_model['parameters']
-        ref_pkg_model.observations = packaged_model['observations']
-        ref_pkg_model.initial_conditions = packaged_model['initial_conditions']
-        ref_pkg_model.out_data_folder_grid = packaged_model['out_data_folder_grid']
-        ref_pkg_model.model_boundary = packaged_model['model_boundary']
-        ref_pkg_model.boundary_poly_file = packaged_model['boundary_poly_file']
-        # self.GW_build[self.models].data_boundary = packaged_model['data_boundary']
-        ref_pkg_model.boundary_data_file = packaged_model['boundary_data_file']
-        # self.GW_build[self.models].model_mesh = packaged_model['model_mesh']
-        ref_pkg_model.model_time = packaged_model['model_time']
-        ref_pkg_model.model_mesh_centroids = packaged_model['model_mesh_centroids']
-        # ref_pkg_model.mesh2centroid2Dindex = packaged_model['mesh2centroid2Dindex']
-        ref_pkg_model.model_mesh3D = packaged_model['model_mesh3D']
-        ref_pkg_model.model_mesh3D_centroids = packaged_model['model_mesh3D_centroids']
-        ref_pkg_model.model_layers = packaged_model['model_layers']
-        ref_pkg_model.model_features = packaged_model['model_features']
-        ref_pkg_model.polyline_mapped = packaged_model['polyline_mapped']
-        ref_pkg_model.points_mapped = packaged_model['points_mapped']
-        ref_pkg_model.model_register = packaged_model['model_register']
-        ref_pkg_model.base_data_register = packaged_model['base_data_register']
-        ref_pkg_model.gridded_data_register = packaged_model['gridded_data_register']
-
-        # Temporary package variables that need embedding elsewhere ...
-        ref_pkg_model.gridHeight = packaged_model['gridHeight']
-        ref_pkg_model.gridWidth = packaged_model['gridWidth']
+        for key in self.target_attr:
+            setattr(ref_pkg_model, key, packaged_model[key])
+        # End for
 
     def load_GW_models(self, GW_models):
         for model in GW_models:
