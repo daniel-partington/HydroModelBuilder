@@ -22,7 +22,7 @@ class GWModelBuilder(object):
 
     def __init__(self, name=None, model_type=None, mesh_type=None, 
                  units=None, data_folder=None, out_data_folder=None, 
-                 GISInterface=None, data_format='binary', **kwargs):
+                 GISInterface=None, data_format='binary', target_attr=None, **kwargs):
 
         """
         :param name: Model name.
@@ -119,6 +119,8 @@ class GWModelBuilder(object):
         self.model_register = []
         self.base_data_register = []
         self.gridded_data_register = []
+
+        self.target_attr = target_attr
 
         #Set all other kwargs as class attributes
         for key, value in kwargs.items():
@@ -688,55 +690,13 @@ class GWModelBuilder(object):
         This will not include any GIS type objects
         """
         packaged_model = {}
-        #for key, value in self.__dict__.items():
-        #    if type(value) is not object:
-        #        print 'Packaging: ', key
-        #        packaged_model[key] = value
-        #    else:
-        #        print 'Not packaging: ', key
-            #End if
-        #End for
 
-        packaged_model['name'] = self.name
-        packaged_model['model_type'] = self.model_type
-        packaged_model['mesh_type'] = self.mesh_type
-        packaged_model['units'] = self.units
-        packaged_model['data_folder'] = self.data_folder
-        packaged_model['out_data_folder'] = self.out_data_folder
-        packaged_model['data_format'] = self.data_format
+        target_attr = self.target_attr
 
-        packaged_model['array_ordering'] = self.array_ordering
-        packaged_model['boundaries'] = self.boundaries
-        packaged_model['properties'] = self.properties
-        packaged_model['parameters'] = self.parameters
-        packaged_model['observations'] = self.observations
-        packaged_model['initial_conditions'] = self.initial_conditions
-        packaged_model['out_data_folder_grid'] = self.out_data_folder_grid
-        packaged_model['model_boundary'] = self.model_boundary[0:4]
-        packaged_model['boundary_poly_file'] = self.boundary_poly_file
-        #packaged_model['data_boundary'] = self.data_boundary
-        packaged_model['boundary_data_file'] = self.boundary_data_file
-        #packaged_model['model_mesh'] = self.model_mesh
-        packaged_model['model_time'] = self.model_time
-        packaged_model['model_mesh_centroids'] = self.model_mesh_centroids
-        packaged_model['mesh2centroid2Dindex'] = self.mesh2centroid2Dindex
-        packaged_model['model_mesh3D'] = self.model_mesh3D
-        packaged_model['model_mesh3D_centroids'] = self.model_mesh3D_centroids
-        packaged_model['model_layers'] = self.model_layers
-        packaged_model['model_features'] = self.model_features
-        packaged_model['polyline_mapped'] = self.polyline_mapped
-        packaged_model['points_mapped'] = self.points_mapped
-        packaged_model['model_register'] = self.model_register
-        packaged_model['base_data_register'] = self.base_data_register
-        packaged_model['gridded_data_register'] = self.gridded_data_register
-        
-        # Some necessary parameters for now which should be replaced later
-        packaged_model['gridHeight'] = self.gridHeight
-        packaged_model['gridWidth'] = self.gridWidth
-        
-        
+        packaged_model = {k: Builder.__dict__[k] for k in Builder.__dict__ if k in target_attr}
+
         self.save_obj(packaged_model, self.out_data_folder_grid + self.name + '_packaged')
-    
+
     ###########################################################################   
    
     def __exit__(self):
