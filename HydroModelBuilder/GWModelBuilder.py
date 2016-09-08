@@ -120,7 +120,45 @@ class GWModelBuilder(object):
         self.base_data_register = []
         self.gridded_data_register = []
 
-        self.target_attr = target_attr
+        # Set default target attributes
+        if target_attr is None:
+            self.target_attr = [
+                'name',
+                'model_type',
+                'mesh_type',
+                'units',
+                'data_folder',
+                'out_data_folder',
+                'data_format',
+                'array_ordering',
+                'boundaries',
+                'properties',
+                'parameters',
+                'observations',
+                'initial_conditions',
+                'out_data_folder_grid',
+                'model_boundary',
+                'boundary_poly_file',
+                'boundary_data_file',
+                'model_time',
+                'model_mesh_centroids',
+                'mesh2centroid2Dindex',
+                'model_mesh3D',
+                'model_mesh3D_centroids',
+                'model_layers',
+                'model_features',
+                'polyline_mapped',
+                'points_mapped',
+                'model_register',
+                'base_data_register',
+                'gridded_data_register',
+                # Some necessary parameters for now which should be replaced later
+                'gridHeight',
+                'gridWidth'
+            ]
+        else:
+            self.target_attr = target_attr
+        # End if
 
         #Set all other kwargs as class attributes
         for key, value in kwargs.items():
@@ -689,11 +727,9 @@ class GWModelBuilder(object):
 
         This will not include any GIS type objects
         """
-        packaged_model = {}
 
         target_attr = self.target_attr
-
-        packaged_model = {k: Builder.__dict__[k] for k in Builder.__dict__ if k in target_attr}
+        packaged_model = {k: self.__dict__[k] for k in self.__dict__ if k in target_attr}
 
         self.save_obj(packaged_model, self.out_data_folder_grid + self.name + '_packaged')
 
