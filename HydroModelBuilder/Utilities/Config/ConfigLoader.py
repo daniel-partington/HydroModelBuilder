@@ -21,8 +21,6 @@ class ConfigLoader():
         self.model_config = {}
         sep = os.path.sep
 
-        print Config.__file__
-
         try:
             self.model_config = json.load(
                 open(os.path.join(os.path.dirname('__file__'), 'model_config.json')))
