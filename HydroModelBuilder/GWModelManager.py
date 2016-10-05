@@ -1,7 +1,7 @@
 import sys
 import pickle
 
-from HydroModelBuilder.HydroModelBuilder.GWModelBuilder import GWModelBuilder
+from HydroModelBuilder.GWModelBuilder import GWModelBuilder
 
 class GWModelManager(object):
 
@@ -129,7 +129,7 @@ class GWModelManager(object):
         # end for
 
     def setupPEST(self, model_name, directory=None, csv_copy=False, excel_copy=False, models_ID=None):
-        from HydroModelBuilder.HydroModelBuilder.Utilities.PESTInterface.PESTInterface import PESTInterface
+        from HydroModelBuilder.Utilities.PESTInterface.PESTInterface import PESTInterface
         name = self.GW_build[model_name].name
         if not directory:
             directory = self.GW_build[model_name].out_data_folder_grid
