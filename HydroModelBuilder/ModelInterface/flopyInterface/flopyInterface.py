@@ -174,21 +174,31 @@ class ModflowModel(object):
 
     def createBTNpackage(self):
         #Add the BTN package to the model
-        self.btn = flopy.mt3d.Mt3dBtn()
+        self.btn = flopy.mt3d.Mt3dBtn(self.mf, ncomp=1, mcomp=1, cinact=-9.9E1, thkmin=-1.0E-6, ifmtcn=5, mtnp=0, ifmtrf=0, ifmtdp=0, nprs=1, imprs=1, savucn=1, nobs=0, nprobs=0, chkmas=1, nprmas=1)
+
+    def createADVpackage(self):
+        #Add the ADV package to the model
+        self.adv = flopy.mt3d.Mt3dAdv(self.mf, mexelm=1, percel=1, mxpart=250000, nadvfd=1, itrack=3, sd=0,5, dceps=1.0E-4, nplane=0, npl=5, nph=8, npmin=1, npmax=16, interp=1, nlsink=0, npsink=8, dchmoc=0.01)
+
+    def createDSPpackage(self):
+        #Add the DSP package to the model
+        self.dfp = flopy.mt3d.Mt3dDsp(self.mf, multiDiff=True)
+
+    def createRCTpackage(self):
+        #Add the RCT package to the model
+        self.rct = flopy.mt3d.Mt3dRct(self.mf, isothm=1, ireact=1, igetsc=0)
+
+    def createGCGpackage(self):
+        #Add the GCG package to the model
+        self.gcg = flopy.mt3d.Mt3dGcg(self.mf, mxiter=1000, iter1=100, isolve=1, ncrs=0, accl=1, cclose=1.0E-3, iprgcg=0)
 
     def finaliseModel(self):
         # Write the MODFLOW model input files
         self.mf.write_input()        
-
     # end finaliseModel
 
     def buildMODFLOW(self):
-        pass
-    #End buildMODFLOW        
 
-    def runMODFLOW(self):
-
-        self.name += str(multiprocessing.current_process().name) # so each process has own files
         self.mf = flopy.modflow.Modflow(self.name, exe_name=self.executable, model_ws=self.data_folder, version='mfnwt')
 
         self.createDiscretisation()
@@ -233,30 +243,87 @@ class ModflowModel(object):
             self.createRIVpackage(river)
         
         self.finaliseModel()
+    #End buildMODFLOW        
 
-        #self.mf.check()
+    def finaliseMT3Dmodel(self):
+        self.mt.write_input()
+    # end finaliseMT3Dmodel
 
-        # Run the MODFLOW model
+    def buildMT3D(self):
+
+        self.mt = flopy.mt3d.Mt3dms(modflowmodel=self.mf, model_name=self.name, model_ws=self.data_folder)
+
+        self.createBTNpackage()
+        self.createADVpackage()
+        self.createRCTpackage()
+        self.createGCGpackage()
+        
+        
+        for boundary in self.model_data.boundaries.bc:
+            if self.model_data.boundaries.bc[boundary]['bc_type'] == 'recharge':
+                self.createRCHpackage(rchrate=self.model_data.boundaries.bc[boundary]['bc_array'])
+                
+            #if self.model_data.boundaries.bc[boundary]['bc_type'] == 'river':
+            #    self.createRIVpackage(self.model_data.boundaries.bc[boundary]['bc_array'])
+                
+            if self.model_data.boundaries.bc[boundary]['bc_type'] == 'wells':
+                self.createWELpackage(self.model_data.boundaries.bc[boundary]['bc_array'])
+
+            if self.model_data.boundaries.bc[boundary]['bc_type'] == 'drain':
+                self.createDRNpackage(self.model_data.boundaries.bc[boundary]['bc_array'])
+
+            if self.model_data.boundaries.bc[boundary]['bc_type'] == 'general head':
+                self.createGHBpackage(self.model_data.boundaries.bc[boundary]['bc_array'])
+
+        river_exists = False
+        for boundary in self.model_data.boundaries.bc:
+            if self.model_data.boundaries.bc[boundary]['bc_type'] == 'river':
+                river_exists = True
+                break
+        
+        if river_exists:
+            river = {}
+            river[0] = []
+            for boundary in self.model_data.boundaries.bc:
+                if self.model_data.boundaries.bc[boundary]['bc_type'] == 'river':
+                    time_key = self.model_data.boundaries.bc[boundary]['bc_array'].keys()[0]
+                    river[0] += self.model_data.boundaries.bc[boundary]['bc_array'][time_key]
+                if self.model_data.boundaries.bc[boundary]['bc_type'] == 'channel':
+                    time_key = self.model_data.boundaries.bc[boundary]['bc_array'].keys()[0]
+                    river[0] += self.model_data.boundaries.bc[boundary]['bc_array'][time_key]
+            
+            self.createRIVpackage(river)
+        
+        self.finaliseMT3Dmodel()
+    #End buildMODFLOW        
+
+    def checkMODFLOW(self):
+        self.mf.check()
+    #End checkMODFLOW        
+
+    def runMODFLOW(self):
+
         success, buff = self.mf.run_model()
         if not success:
             raise Exception('MODFLOW did not terminate normally.')
         #End if
-
     #End runMODFLOW()
 
-#    def getRiverAquiferFlux(self, from_cell, to_cell):
-#        """
-#        Function to retrieve the flux between "from_cell" and "to_cell", works
-#        on the assumption that the stream cells are in order from top of stream
-#        to the bottom of the stream and includes fluxes for the bounding cells.
-#        """
-#        exchange = 0.0
-#        riv_flux = self.cbbobj.get_data(text = 'RIVER LEAKAGE', full3D=True)
-#        
-#        for cell in reach_cells:
-#            exchange += 1
-#        
-#        return exchange
+    def runMT3D(self):
+
+        success, buff = self.mt.run_model()
+        if not success:
+            raise Exception('MT3D did not terminate normally.')
+        #End if
+    #End runMODFLOW()
+
+    #**************************************************************************
+    #**************************************************************************
+    #**************************************************************************
+    #**** PROCESSING OF MODEL RUN *********************************************
+    #**************************************************************************
+    #**************************************************************************
+    #**************************************************************************
 
     def getRiverFlux(self, name):
         cbbobj = self.importCbb()
@@ -486,33 +553,35 @@ class ModflowModel(object):
     
     def checkCovergence(self, path=None, name=None):
         if path:
-            converge_fail = "****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP"
+            converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP", " PERCENT DISCREPANCY =         200.00"]
             with open(os.path.join(path,name) + '.list', 'r') as f:
                 list_file = f.read()
-            if converge_fail in list_file:
-                print "*** Convergence failure ***"            
-                print os.getcwd()            
-                import datetime                
-                now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
-                with open(os.path.join(self.data_folder, "converge_fail_%s.txt" %now), 'w') as fail:
-                    fail.write("Model did not converge, @ %s" %datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-                return False
-            else:
-                return True
+            for converge_fail in converge_fail_options:
+                if converge_fail in list_file:
+                    print "*** Convergence failure ***"            
+                    print os.getcwd()            
+                    import datetime                
+                    now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
+                    with open(os.path.join(self.data_folder, "converge_fail_%s.txt" %now), 'w') as fail:
+                        fail.write("Model did not converge, @ %s" %datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                    return False
+                else:
+                    return True
         else:
-            converge_fail = "****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP"
+            converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP", " PERCENT DISCREPANCY =         200.00"]
             with open(self.data_folder + self.name + '.list', 'r') as f:
                 list_file = f.read()
-            if converge_fail in list_file:
-                print "*** Convergence failure ***"            
-                print os.getcwd()            
-                import datetime                
-                now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
-                with open(os.path.join(self.data_folder, "converge_fail_%s.txt" %now), 'w') as fail:
-                    fail.write("Model did not converge, @ %s" %datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-                return False
-            else:
-                return True
+            for converge_fail in converge_fail_options:
+                if converge_fail in list_file:
+                    print "*** Convergence failure ***"            
+                    print os.getcwd()            
+                    import datetime                
+                    now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
+                    with open(os.path.join(self.data_folder, "converge_fail_%s.txt" %now), 'w') as fail:
+                        fail.write("Model did not converge, @ %s" %datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                    return False
+                else:
+                    return True
 
     def importHeads(self, path=None, name=None):
         if path:
@@ -525,6 +594,56 @@ class ModflowModel(object):
     def importCbb(self):
         self.cbbobj = bf.CellBudgetFile(self.data_folder + self.name+'.cbc')
         return self.cbbobj
+
+    def waterBalance(self):
+        import flopy.utils.binaryfile as bf
+        import pandas as pd
+        
+        cbbobj = bf.CellBudgetFile(self.data_folder + self.name+'.cbc')
+
+        water_balance_components = cbbobj.textlist
+        water_balance = {}        
+        water_balance_summary = {}
+        water_bal_summed_titles = []
+        water_bal_summed_values = []
+        for component in water_balance_components:
+            component_stripped = component.lstrip().rstrip()
+            if 'FLOW' in component_stripped: continue            
+            water_balance[component_stripped] = cbbobj.get_data(text = component, full3D=True)#[-1]            
+            #print water_balance[component_stripped]            
+            if np.any(water_balance[component_stripped][0] > 0):
+                water_balance_summary[component_stripped+'_pos'] = np.sum(water_balance[component_stripped][0][water_balance[component_stripped][0] > 0])
+            else:
+                water_balance_summary[component_stripped+'_pos'] = 0.0
+            if np.any(water_balance[component_stripped][0] < 0):
+                water_balance_summary[component_stripped+'_neg'] = np.sum(water_balance[component_stripped][0][water_balance[component_stripped][0] < 0])
+            else:
+                water_balance_summary[component_stripped+'_neg'] = 0.0
+            
+            water_bal_summed_titles += component_stripped+'_pos', component_stripped+'_neg'
+            water_bal_summed_values += water_balance_summary[component_stripped+'_pos'], water_balance_summary[component_stripped+'_neg']            
+
+        water_bal_summed_titles += ['Error']
+        Error = sum(water_bal_summed_values)        
+        water_bal_summed_values += [Error]       
+        wat_bal_df = pd.DataFrame(water_bal_summed_values, water_bal_summed_titles) # pd.DataFrame.from_dict(water_balance_summary, orient='index')
+        wat_bal_df.columns = ['Flux m^3/d']        
+        wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.]
+        print wat_bal_df       
+
+        # Setup params to get water balance aspect ratio looking nice
+        #aspect = float(12.5715/((wat_bal_df.max()[0]-wat_bal_df.min()[0])/float(wat_bal_df.shape[1])))        
+
+        fig = plt.figure(figsize=(10, 7))
+        ax = fig.add_subplot(1, 1, 1) #, aspect=aspect)
+        ax.set_title('Water Balance')
+        wat_bal_df.plot(kind='bar', ax=plt.gca())        
+        ax.grid(True)        
+        gridlines = ax.get_xgridlines() #+ ax.get_ygridlines()
+        for line in gridlines:
+            line.set_linestyle('-')
+
+        fig.subplots_adjust(left=0.1, right=0.9, bottom=0.35, top=0.95, wspace=0.1, hspace=0.12) 
 
     def compareAllObs(self):
 
@@ -1337,7 +1456,6 @@ class ModflowModel(object):
         plt.show()
 
     #End viewHeads        
-
 
     def viewHeads2(self):
 

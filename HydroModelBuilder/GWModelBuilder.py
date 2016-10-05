@@ -439,7 +439,55 @@ class GWModelBuilder(object):
             
         # Build 3D centroids array:
         self.build_centroids_array3D()
+    
+    def removeIsolatedCells(self, passes=1):
+        """ 
+        Function to remove cells that are surrounded by non-active cells in the horizontal plane
+        
+        e.g. if cells with positive integer is surrounded in above, below and to each side, then reassign to -1.
+        
+        """        
             
+        # Clean up idle cells:
+        for p in range(passes):
+            (lay,row,col) = self.model_mesh3D[1].shape        
+            for k in range(lay):
+                for j in range(row):
+                    for i in range(col):
+                        cell_zone = self.model_mesh3D[1][k][j][i]
+                        if cell_zone == -1:
+                            continue
+        
+                        cell_active = False
+                        #  Check neighbours
+                        #if k > 0:
+                        #    cell_above_zone = MM.GW_build[name].model_mesh3D[1][k-1][j][i]
+                        #    if cell_above_zone != -1: #cell_zone:
+                        #        cell_active = True                        
+                        #if k < lay - 1:
+                        #    cell_below_zone = MM.GW_build[name].model_mesh3D[1][k+1][j][i]
+                        #    if cell_below_zone != -1: # == cell_zone:
+                        #        cell_active = True                        
+                        if j > 0:
+                            cell_north_zone = self.model_mesh3D[1][k][j-1][i]
+                            if cell_north_zone != -1: # == cell_zone:
+                                cell_active = True                        
+                        if i < col - 1:
+                            cell_east_zone = self.model_mesh3D[1][k][j][i+1]
+                            if cell_east_zone != -1: # == cell_zone:
+                                cell_active = True
+                        if j < row - 1:
+                            cell_south_zone = self.model_mesh3D[1][k][j+1][i]
+                            if cell_south_zone != -1: # == cell_zone:
+                                cell_active = True
+                        if i > 0:
+                            cell_west_zone = self.model_mesh3D[1][k][j][i-1]
+                            if cell_west_zone != -1: # == cell_zone:
+                                cell_active = True
+                            
+                        if cell_active == False:
+                            self.model_mesh3D[1][k][j][i] = -1             
+        
     def read_polyline(self, filename, path=None):     
 
         return self.GISInterface.read_polyline(filename, path)
@@ -587,7 +635,8 @@ class GWModelBuilder(object):
                     [k,j,i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
                     if self.model_mesh3D[1][k][j][i] == -1:
                         # This next line needs to be rewritten, however, works for now                    
-                        self.observations.obs_group[key]['time_series']['active'][self.observations.obs_group[key]['time_series']['name'] == obs_loc] = False
+                        #self.observations.obs_group[key]['time_series']['active'][self.observations.obs_group[key]['time_series']['name'] == obs_loc] = False
+                        self.observations.obs_group[key]['time_series'].loc[self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
                     #end if
                 #end for
             #end for
@@ -730,6 +779,9 @@ class GWModelBuilder(object):
 
         target_attr = self.target_attr
         packaged_model = {k: self.__dict__[k] for k in self.__dict__ if k in target_attr}
+        
+        # Hack to fix up model boundary which contains a gdal object as well:
+        packaged_model['model_boundary'] = packaged_model['model_boundary'][0:4]
 
         self.save_obj(packaged_model, self.out_data_folder_grid + self.name + '_packaged')
 
@@ -949,9 +1001,9 @@ class ModelObservations(object):
             for ob in self.obs_group[name]['time_series'].iterrows():
                 if ob[1]['active'] == True:                
                     self.obs['ob' + str(self.obID)] = ob[1]['value']
-                    self.obs_group[name]['time_series']['obs_map'][ob[0]] = 'ob' + str(self.obID)
+                    #self.obs_group[name]['time_series']['obs_map'][ob[0]] = 'ob' + str(self.obID)
+                    self.obs_group[name]['time_series'].set_value(ob[0], 'obs_map', 'ob' + str(self.obID))
                     self.obID += 1
-                    
 
     def check_obs(self):
         obs_nodes = []        
