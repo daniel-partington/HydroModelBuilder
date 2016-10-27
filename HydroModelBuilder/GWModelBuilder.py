@@ -10,75 +10,76 @@ from scipy import spatial
 
 from Utilities import interpolation
 
+
 class GWModelBuilder(object):
-
     """
-    The ModelBuilder class contains a number of useful tools for building 
-    numerical groundwater models in packages such as MODFLOW, by dealing with 
+    The ModelBuilder class contains a number of useful tools for building
+    numerical groundwater models in packages such as MODFLOW, by dealing with
     spatial data using GIS type objects for reading and manipulating spatial
-    data before mapping it to a model grid and converting it into an easily readable 
-    array structure to pass to the groundwater model. 
+    data before mapping it to a model grid and converting it into an easily readable
+    array structure to pass to the groundwater model.
     """
 
-    def __init__(self, name=None, model_type=None, mesh_type=None, 
-                 units=None, data_folder=None, out_data_folder=None, 
+    def __init__(self, name=None, model_type=None, mesh_type=None,
+                 units=None, data_folder=None, out_data_folder=None,
                  GISInterface=None, data_format='binary', target_attr=None, **kwargs):
-
         """
         :param name: Model name.
-        :param model_type: Type of model, e.g. MODFLOW (makes use of flopy), HGS (uses pyHGS ... which is not developed yet ;) ). 
+        :param model_type: Type of model, e.g. MODFLOW (makes use of flopy), HGS (uses pyHGS ... which is not developed yet ;) ).
         :param mesh_type: type of mesh to be used in the model, i.e. structured or unstructured.
         :param data_folder: Path to get model data from.
         :param out_data_folder: Path to store processed model data.
         :param model_boundary: Boundary for the model domain.
         :param model_mesh: Mesh for the model.
-        
-        :param       
-        
+
+        :param
+
         *** This list and every function description needs significant updating ...
         """
-
         # Define the constants for the model data types to use for checking input
         self.types = ModelBuilderType()
 
         try:
             # -- tests to alert user to incorrect inputs ...
-            assert model_type in self.types.model_types, "Model types must be of type: {}".format(self.types.model_types)
-            assert mesh_type in self.types.mesh_types, "'Mesh types must be of type: {}".format(self.types.mesh_types)
-            assert data_format in self.types.data_formats, "Data format must be of type: {}".format(self.types.data_formats)
+            assert model_type in self.types.model_types, "Model types must be of type: {}".format(
+                self.types.model_types)
+            assert mesh_type in self.types.mesh_types, "'Mesh types must be of type: {}".format(
+                self.types.mesh_types)
+            assert data_format in self.types.data_formats, "Data format must be of type: {}".format(
+                self.types.data_formats)
 
-            #if data_folder != None:
+            # if data_folder != None:
             #    assert os.path.isdir(data_folder) == True, "{} is an invalid path".format(data_folder)
-            #End if
+            # End if
 
-            #assert os.path.isdir(out_data_folder) == True, "{} is an invalid path".format(out_data_folder)
+            # assert os.path.isdir(out_data_folder) == True, "{} is an invalid path".format(out_data_folder)
 
         except AssertionError as e:
             import traceback
             _, _, tb = sys.exc_info()
-            #traceback.print_tb(tb) # Fixed format
+            # traceback.print_tb(tb) # Fixed format
             tb_info = traceback.extract_tb(tb)
             filename, line, func, text = tb_info[-1]
             sys.exit("An error occured in {} on line {} with the message '{}'".format(filename, line, e))
-        #End try
-                 
+        # End try
+
         self.name = name
-        self.model_type = model_type  
+        self.model_type = model_type
         self.mesh_type = mesh_type
-        
-        self.units = {}        
-        if units != None: 
+
+        self.units = {}
+        if units != None:
             if type(units) == list:
-                self.set_units(length=units[0], time=units[1], mass=units[2]) 
+                self.set_units(length=units[0], time=units[1], mass=units[2])
             elif type(units) == dict:
-                self.set_units(length=units['length'], time=units['time'], mass=units['mass']) 
-            #end if
+                self.set_units(length=units['length'], time=units['time'], mass=units['mass'])
+            # end if
         else:
-            self.set_units(length='m', time='d', mass='kg') 
+            self.set_units(length='m', time='d', mass='kg')
         # End if
         self.data_folder = data_folder
         self.out_data_folder = out_data_folder
-        self.GISInterface = GISInterface        
+        self.GISInterface = GISInterface
         self.data_format = data_format
 
         self.array_ordering = ArrayOrdering()
@@ -97,15 +98,15 @@ class GWModelBuilder(object):
         self.initial_conditions = ModelInitialConditions()
 
         # OTHER variables
-        self.out_data_folder_grid = None        
-        self.model_boundary = None        
+        self.out_data_folder_grid = None
+        self.model_boundary = None
         self.data_boundary = None
         self.boundary_poly_file = None
         self.boundary_data_file = None
 
         self.model_mesh = None
         self.model_mesh_centroids = None
-        self.mesh2centroid2Dindex = None       
+        self.mesh2centroid2Dindex = None
         self.model_mesh3D = None
         self.model_mesh3D_centroids = None
         self.model_layers = None
@@ -115,7 +116,7 @@ class GWModelBuilder(object):
         self.points_mapped = {}
 
         # Create registers to store details of processed and imported data for
-        # quick future loading                 
+        # quick future loading
         self.model_register = []
         self.base_data_register = []
         self.gridded_data_register = []
@@ -160,99 +161,99 @@ class GWModelBuilder(object):
             self.target_attr = target_attr
         # End if
 
-        #Set all other kwargs as class attributes
+        # Set all other kwargs as class attributes
         for key, value in kwargs.items():
             setattr(self, key, value)
-        #End For
-        
-        #Set all key word arguments as attributes
-        if self.GISInterface == None:        
+        # End For
+
+        # Set all key word arguments as attributes
+        if self.GISInterface == None:
             print 'No GIS interface defined'
         else:
             for key, value in self.__dict__.items():
                 if type(value) is not object:
                     setattr(self.GISInterface, key, value)
                     #setattr(self.ModelInterface, key, value)
-                #End if
-            #End for
-        #end if
-                
+                # End if
+            # End for
+        # end if
+
     def updateGISinterface(self):
         for key, value in self.__dict__.items():
             if type(value) is not object:
                 setattr(self.GISInterface, key, value)
 
     def set_units(self, length='m', time='s', mass='kg'):
-       
-        if length in self.types.length:        
-            self.units['length'] = length    
+
+        if length in self.types.length:
+            self.units['length'] = length
         else:
             print 'Length unit not recognised, please use one of: ', self.types.length
-            print 'Default unit "m" is set'    
-        #end if
-        if time in self.types.time:        
+            print 'Default unit "m" is set'
+        # end if
+        if time in self.types.time:
             self.units['time'] = time
         else:
             print 'Time unit not recognised, please use one of: ', self.types.time
-            print 'Default unit "s" is set'    
-        #end if
-        if mass in self.types.mass:        
+            print 'Default unit "s" is set'
+        # end if
+        if mass in self.types.mass:
             self.units['mass'] = mass
         else:
             print 'Mass unit not recognised, please use one of: ', self.types.mass
-            print 'Default unit "kg is set'    
-        #end if
-            
-    def check_for_existing(self, f): 
+            print 'Default unit "kg is set'
+        # end if
+
+    def check_for_existing(self, f):
         """
         Function to determine if input files have previously been processed
-        and if so to do nothing unless flagged otherwise. This is done by 
-        checking the output data path. 
+        and if so to do nothing unless flagged otherwise. This is done by
+        checking the output data path.
         """
         filename_suffixes = ['_model', '_grid']
-        
-        for suffix in filename_suffixes:        
-            if os.path.isfile(self.out_data_folder + f[:-4] + \
-                                    suffix + f[-4:]):   
+
+        for suffix in filename_suffixes:
+            if os.path.isfile(self.out_data_folder + f[:-4] +
+                              suffix + f[-4:]):
                 print 'found processed file'
-        #end for
-        #if any(os.path.isfile(x) in filename for x in filename_suffixes):
+        # end for
+        # if any(os.path.isfile(x) in filename for x in filename_suffixes):
         #    pass
-                
+
     def save_array(self, filename, array):
-        if self.data_format == self.types.data_formats[0]: # if it is 'ascii'
+        if self.data_format == self.types.data_formats[0]:  # if it is 'ascii'
             np.savetxt(filename, array)
-        elif self.data_format == self.types.data_formats[1]: # if it is 'binary'
+        elif self.data_format == self.types.data_formats[1]:  # if it is 'binary'
             np.save(filename, array)
         else:
             print 'Data format not recognised, use "binary" or "ascii"'
-        #end if
-            
+        # end if
+
     def load_array(self, array_file):
         if array_file[-3:] == 'txt':
             return np.loadtxt(array_file)
-        elif array_file[-3:] == 'npy' or array_file[-3:] == 'npz':     
+        elif array_file[-3:] == 'npy' or array_file[-3:] == 'npz':
             return np.load(array_file)
         else:
             print 'File type not recognised as "txt", "npy" or "npz" \n'
             sys.exit(1)
-        #end if
-            
+        # end if
+
     def save_dataframe(self, filename, df):
-        df.to_hdf(filename+'.h5', 'table')
-    
+        df.to_hdf(filename + '.h5', 'table')
+
     def load_dataframe(self, filename):
         if filename[-3:] == '.h5':
             return pd.read_hdf(filename, 'table')
         else:
             print 'File type not recognised as "h5"'
             sys.exit(1)
-        #end if
+        # end if
 
     def save_obj(self, obj, filename):
         with open(filename + '.pkl', 'wb') as f:
             pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
-    
+
     def load_obj(self, filename):
         if filename[-4:] == '.pkl':
             with open(filename, 'rb') as f:
@@ -260,25 +261,25 @@ class GWModelBuilder(object):
         else:
             print 'File type not recognised as "pkl"'
             sys.exit(1)
-        #end if
-    
+        # end if
+
     def flush(self):
         folder = self.out_data_folder
         if folder == None:
             print 'No folder set, so no flushing'
             sys.exit(1)
-        #end if
+        # end if
         for the_file in os.listdir(folder):
             file_path = os.path.join(folder, the_file)
             try:
                 if os.path.isfile(file_path):
                     os.unlink(file_path)
-                elif os.path.isdir(file_path): 
+                elif os.path.isdir(file_path):
                     shutil.rmtree(file_path)
-                #end if
+                # end if
             except Exception as e:
-                print(e)    
-        #End for
+                print(e)
+        # End for
 
     def set_model_boundary_from_corners(self, xmin, xmax, ymin, ymax):
         """
@@ -288,24 +289,26 @@ class GWModelBuilder(object):
                     |         |
                     |         |
                     |         |
-                    ._________.        
+                    ._________.
          (xmin,ymin)
-        """        
-        
+        """
+
         self.model_boundary[0] = xmin
-        self.model_boundary[1] = xmax 
+        self.model_boundary[1] = xmax
         self.model_boundary[2] = ymin
         self.model_boundary[3] = ymax
 
     def set_model_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None):
 
-        self.model_boundary, self.boundary_poly_file = self.GISInterface.set_model_boundary_from_polygon_shapefile(shapefile_name, shapefile_path)
+        self.model_boundary, self.boundary_poly_file = self.GISInterface.set_model_boundary_from_polygon_shapefile(
+            shapefile_name, shapefile_path)
         return self.model_boundary, self.boundary_poly_file
 
     def set_data_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None, buffer_dist=None):
-        
-        self.data_boundary, self.boundary_data_file = self.GISInterface.set_data_boundary_from_polygon_shapefile(shapefile_name, shapefile_path=shapefile_path, buffer_dist=buffer_dist)
-        self.updateGISinterface()        
+
+        self.data_boundary, self.boundary_data_file = self.GISInterface.set_data_boundary_from_polygon_shapefile(
+            shapefile_name, shapefile_path=shapefile_path, buffer_dist=buffer_dist)
+        self.updateGISinterface()
         return self.data_boundary, self.boundary_data_file
 
     def build_centroids_array(self, gridHeight):
@@ -317,43 +320,42 @@ class GWModelBuilder(object):
         If key isn't found then it returns nearest centroid
         """
 
-        (xmin, xmax, ymin, ymax) = self.model_boundary[0:4] 
+        (xmin, xmax, ymin, ymax) = self.model_boundary[0:4]
         gridHeight = gridHeight
 
-
         # get rows
-        rows = int((ymax-ymin)/gridHeight)+1
+        rows = int((ymax - ymin) / gridHeight) + 1
         # get columns
-        cols = int((xmax-xmin)/gridHeight)+1
+        cols = int((xmax - xmin) / gridHeight) + 1
 
         # Nasty workaround until I find out why extent is wrong:
-        (xmin, xmax, ymin, ymax) = self.model_mesh.GetLayer().GetExtent() #
-        (xmin2, xmax2, ymin2, ymax2) = (xmin, xmin + cols*gridHeight, ymax - rows*gridHeight, ymax)        
-        
-        x = np.linspace(xmin2+gridHeight/2.0, xmax2-gridHeight/2.0, cols)
-        #y = np.linspace(ymin+gridHeight/2.0, ymax-gridHeight/2.0, rows)
-        # To put it in MODFLOW ordering ... need to invoke the array ordering here to handle automatically
-        y = np.linspace(ymax2-gridHeight/2.0, ymin2+gridHeight/2.0, rows)
-       
+        (xmin, xmax, ymin, ymax) = self.model_mesh.GetLayer().GetExtent()
+        (xmin2, xmax2, ymin2, ymax2) = (xmin, xmin + cols * gridHeight, ymax - rows * gridHeight, ymax)
+
+        x = np.linspace(xmin2 + gridHeight / 2.0, xmax2 - gridHeight / 2.0, cols)
+        # y = np.linspace(ymin+gridHeight/2.0, ymax-gridHeight/2.0, rows)
+        # To put it in MODFLOW ordering ... need to invoke the array ordering here
+        # to handle automatically
+        y = np.linspace(ymax2 - gridHeight / 2.0, ymin2 + gridHeight / 2.0, rows)
+
         X, Y = np.meshgrid(x, y)
         self.model_mesh_centroids = (X, Y)
 
+        self.centroid2mesh2Dindex = {}
+        self.mesh2centroid2Dindex = {}
 
-        self.centroid2mesh2Dindex = {}        
-        self.mesh2centroid2Dindex = {}        
-            
         if self.mesh_type == 'structured':
             if self.array_ordering.array_order == 'UL_RowColumn':
                 for row in range(rows):
                     for col in range(cols):
                         self.centroid2mesh2Dindex[(x[col], y[row])] = [row, col]
                         self.mesh2centroid2Dindex[(row, col)] = [x[col], y[row]]
-                    #end for
-                #end for
-            #end if
-        #end if
-                        
-        return self.model_mesh_centroids        
+                    # end for
+                # end for
+            # end if
+        # end if
+
+        return self.model_mesh_centroids
 
     def build_centroids_array3D(self):
         """
@@ -363,132 +365,135 @@ class GWModelBuilder(object):
         2. Creates a dictionary with centroids as key and lay row col as entries
         If key isn't found then it returns nearest centroid
         """
-        
+
         (X, Y) = self.model_mesh_centroids
-    
+
         (lays, rows, cols) = self.model_mesh3D[0].shape
 
         x = X[0]
         y = [y[0] for y in Y]
 
-        X = np.asarray([X] * (lays-1)) #np.repeat(X[np.newaxis, :, :], (lays-1), axis=0)
-        Y = np.asarray([Y] * (lays-1)) #np.repeat(Y[np.newaxis, :, :], (lays-1), axis=0)
+        X = np.asarray([X] * (lays - 1))  # np.repeat(X[np.newaxis, :, :], (lays-1), axis=0)
+        Y = np.asarray([Y] * (lays - 1))  # np.repeat(Y[np.newaxis, :, :], (lays-1), axis=0)
 
         self.model_mesh3D_centroids = (X, Y, self.model_mesh3D[0])
 
-        self.centroid2mesh3Dindex = {}        
-            
+        self.centroid2mesh3Dindex = {}
+
         if self.mesh_type == 'structured':
             if self.array_ordering.array_order == 'UL_RowColumn':
-                for lay in range(lays-1):
+                for lay in range(lays - 1):
                     for row in range(rows):
                         for col in range(cols):
                             self.centroid2mesh3Dindex[(
-                                                       x[col], 
-                                                       y[row], 
-                                                       (self.model_mesh3D[0][lay][row][col] + self.model_mesh3D[0][lay+1][row][col]) / 2.
-                                                       )] = [lay, row, col]
-                        #end for
-                    #end for
-                #end for
-            #end if
-        #end if
-        return self.model_mesh3D_centroids        
+                                x[col],
+                                y[row],
+                                (self.model_mesh3D[0][lay][row][col] +
+                                 self.model_mesh3D[0][lay + 1][row][col]) / 2.
+                            )] = [lay, row, col]
+                        # end for
+                    # end for
+                # end for
+            # end if
+        # end if
+        return self.model_mesh3D_centroids
 
     def define_structured_mesh(self, gridHeight, gridWidth):
 
         self.gridHeight = gridHeight
         self.gridWidth = gridWidth
-        self.out_data_folder_grid = self.out_data_folder + 'structured_model_grid_%im' %int(gridHeight) + os.path.sep #'\\'        
+        self.out_data_folder_grid = self.out_data_folder + \
+            'structured_model_grid_%im' % int(gridHeight) + os.path.sep  # '\\'
         self.updateGISinterface()
         self.model_mesh = self.GISInterface.define_structured_mesh(gridHeight, gridWidth)
         self.model_mesh_centroids = self.build_centroids_array(self.gridHeight)
         return self.out_data_folder_grid, self.gridHeight, self.gridWidth, self.model_mesh_centroids, self.model_mesh
 
     def read_rasters(self, files, path=None):
-        
+
         return self.GISInterface.read_rasters(files, path=path)
 
     def map_rasters_to_grid(self, raster_files, raster_path):
 
-        return self.GISInterface.map_rasters_to_grid(raster_files, raster_path)                        
+        return self.GISInterface.map_rasters_to_grid(raster_files, raster_path)
 
     def map_heads_to_mesh_by_layer(self):
-        
+
         return self.GISInterface.map_heads_to_mesh_by_layer()
 
     def create_basement_bottom(self, hu_raster_path, surface_raster_file, basement_top_raster_file, basement_bot_raster_file, output_path, raster_driver='GTiff'):
         """
         Utility to build a bottom basement array where it doesn't exist based on top of bedrock, surface elevation and a thickness function
-        
+
         writes a raster file for the bottom basement array
-        
+
         ** This perhaps would better sit in a separate utilities folder ...
         """
         return self.GISInterface.create_basement_bottom(hu_raster_path, surface_raster_file, basement_top_raster_file, basement_bot_raster_file, output_path, raster_driver=raster_driver)
 
     def build_3D_mesh_from_rasters(self, raster_files, raster_path, minimum_thickness, maximum_thickness):
         if os.path.isfile(self.out_data_folder_grid + 'model_mesh.npy') & os.path.isfile(self.out_data_folder_grid + 'zone_matrix.npy'):
-            print 'Using previously generated mesh'    
-            self.model_mesh3D = self.load_array(self.out_data_folder_grid + 'model_mesh.npy'), self.load_array(self.out_data_folder_grid + 'zone_matrix.npy')
-        else:    
-            self.model_mesh3D = self.GISInterface.build_3D_mesh_from_rasters(raster_files, raster_path, minimum_thickness, maximum_thickness)                        
+            print 'Using previously generated mesh'
+            self.model_mesh3D = self.load_array(
+                self.out_data_folder_grid + 'model_mesh.npy'), self.load_array(self.out_data_folder_grid + 'zone_matrix.npy')
+        else:
+            self.model_mesh3D = self.GISInterface.build_3D_mesh_from_rasters(
+                raster_files, raster_path, minimum_thickness, maximum_thickness)
             self.save_array(self.out_data_folder_grid + 'model_mesh', self.model_mesh3D[0])
             self.save_array(self.out_data_folder_grid + 'zone_matrix', self.model_mesh3D[1])
         # end if
-            
+
         # Build 3D centroids array:
         self.build_centroids_array3D()
-    
+
     def removeIsolatedCells(self, passes=1):
-        """ 
+        """
         Function to remove cells that are surrounded by non-active cells in the horizontal plane
-        
+
         e.g. if cells with positive integer is surrounded in above, below and to each side, then reassign to -1.
-        
-        """        
-            
+
+        """
+
         # Clean up idle cells:
-        for p in range(passes):
-            (lay,row,col) = self.model_mesh3D[1].shape        
-            for k in range(lay):
-                for j in range(row):
-                    for i in range(col):
+        (lay, row, col) = self.model_mesh3D[1].shape
+        for p in xrange(passes):
+            for k in xrange(lay):
+                for j in xrange(row):
+                    for i in xrange(col):
                         cell_zone = self.model_mesh3D[1][k][j][i]
                         if cell_zone == -1:
                             continue
-        
-                        cell_active = False
+                        # End if
+
+                        # Check North, South, East, West zones
+                        # If any condition is true, then continue on
+                        # Otherwise, set the cell to -1
+                        target_zone = self.model_mesh3D[1][k]
+                        if (((j > 0) and (target_zone[j - 1][i] != -1)) or       # North
+                           ((j < row - 1) and (target_zone[j + 1][i] != -1)) or  # South
+                           ((i < col - 1) and (target_zone[j][i + 1] != -1)) or  # East
+                           ((i > 0) and (target_zone[j][i - 1] != -1))):         # West
+                            continue
+                        # End if
+
                         #  Check neighbours
-                        #if k > 0:
+                        # if k > 0:
                         #    cell_above_zone = MM.GW_build[name].model_mesh3D[1][k-1][j][i]
                         #    if cell_above_zone != -1: #cell_zone:
-                        #        cell_active = True                        
-                        #if k < lay - 1:
+                        #        cell_active = True
+                        # if k < lay - 1:
                         #    cell_below_zone = MM.GW_build[name].model_mesh3D[1][k+1][j][i]
                         #    if cell_below_zone != -1: # == cell_zone:
-                        #        cell_active = True                        
-                        if j > 0:
-                            cell_north_zone = self.model_mesh3D[1][k][j-1][i]
-                            if cell_north_zone != -1: # == cell_zone:
-                                cell_active = True                        
-                        if i < col - 1:
-                            cell_east_zone = self.model_mesh3D[1][k][j][i+1]
-                            if cell_east_zone != -1: # == cell_zone:
-                                cell_active = True
-                        if j < row - 1:
-                            cell_south_zone = self.model_mesh3D[1][k][j+1][i]
-                            if cell_south_zone != -1: # == cell_zone:
-                                cell_active = True
-                        if i > 0:
-                            cell_west_zone = self.model_mesh3D[1][k][j][i-1]
-                            if cell_west_zone != -1: # == cell_zone:
-                                cell_active = True
-                            
-                        if cell_active == False:
-                            self.model_mesh3D[1][k][j][i] = -1             
-        
-    def read_polyline(self, filename, path=None):     
+                        #        cell_active = True
+
+                        # None of the above conditions were true
+                        target_zone[j][i] = -1
+                    # End for
+                # End for
+            # End for
+        # End for
+
+    def read_polyline(self, filename, path=None):
 
         return self.GISInterface.read_polyline(filename, path)
 
@@ -496,21 +501,22 @@ class GWModelBuilder(object):
 
         if type(polyline_obj) is str:
             polyline_obj = self.read_polyline(polyline_obj)
-        #end if
+        # end if
         if os.path.sep in polyline_obj.GetDescription():
-            poly_name = polyline_obj.GetDescription().split(os.path.sep)[-1]  
+            poly_name = polyline_obj.GetDescription().split(os.path.sep)[-1]
         else:
             poly_name = polyline_obj.GetDescription()
-        #end if
+        # end if
         if os.path.exists(self.out_data_folder_grid + poly_name + '_mapped.pkl'):
-            print "Using previously mapped points to grid object"            
-            self.polyline_mapped[poly_name] = self.load_obj(self.out_data_folder_grid + poly_name + '_mapped.pkl')            
+            print "Using previously mapped points to grid object"
+            self.polyline_mapped[poly_name] = self.load_obj(
+                self.out_data_folder_grid + poly_name + '_mapped.pkl')
         else:
-            temp = []        
+            temp = []
             self.polyline_mapped[poly_name] = self.GISInterface.map_polyline_to_grid(polyline_obj)
-            for item in self.polyline_mapped[poly_name]:        
+            for item in self.polyline_mapped[poly_name]:
                 centroid = (float(item[1][0]), float(item[1][1]))
-                #replace centroid with row col
+                # replace centroid with row col
                 try:
                     grid_loc = self.centroid2mesh2Dindex[centroid]
                 except:
@@ -519,51 +525,53 @@ class GWModelBuilder(object):
                     # Perhaps better to actually define this array in fishnet
                     # when define structured mesh is called
                     def pointsdist(p1, p2):
-                        return ((p2[0]-p1[0])**2+(p2[1]-p1[1])**2)**0.5
-                        
-                    dist_min = 1E6    
+                        return ((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)**0.5
+
+                    dist_min = 1E6
                     for key in self.centroid2mesh2Dindex:
                         dist = pointsdist(centroid, key)
                         if dist < dist_min:
-                            dist_min = dist                        
+                            dist_min = dist
                             closest_key = key
-                            if dist_min < self.gridHeight/2.0:
-                                break    
-                    #print 'Closest key is: ', closest_key
+                            if dist_min < self.gridHeight / 2.0:
+                                break
+                    # print 'Closest key is: ', closest_key
                     grid_loc = self.centroid2mesh2Dindex[closest_key]
-                    
+
                 temp += [[grid_loc, item[0]]]
-            #end for
+            # end for
             self.polyline_mapped[poly_name] = temp
             self.save_obj(temp, self.out_data_folder_grid + poly_name + '_mapped')
-        #end if
+        # end if
         self.gridded_data_register += [poly_name]
 
-    def read_points_data(self, filename, path=None):     
+    def read_points_data(self, filename, path=None):
 
         return self.GISInterface.read_points_data(filename, path)
-    
+
     def map_points_to_grid(self, points_obj, feature_id=None):
-        
+
         if type(points_obj) is str:
             points_obj = self.read_points_data(points_obj)
-        #end if
+        # end if
         if os.path.sep in points_obj.GetDescription():
-            point_name = points_obj.GetDescription().split(os.path.sep)[-1]  
+            point_name = points_obj.GetDescription().split(os.path.sep)[-1]
         else:
             point_name = points_obj.GetDescription()
-        #end if
-            
+        # end if
+
         if os.path.exists(self.out_data_folder_grid + point_name + '_mapped.pkl'):
-            print "Using previously mapped points to grid object"            
-            self.points_mapped[point_name] = self.load_obj(self.out_data_folder_grid + point_name + '_mapped.pkl')            
+            print "Using previously mapped points to grid object"
+            self.points_mapped[point_name] = self.load_obj(
+                self.out_data_folder_grid + point_name + '_mapped.pkl')
         else:
-            temp = []            
-            self.points_mapped[point_name] =  self.GISInterface.map_points_to_grid(points_obj, feature_id=feature_id)
-            # Go from centroids to ij indexing        
-            for item in self.points_mapped[point_name]:        
+            temp = []
+            self.points_mapped[point_name] = self.GISInterface.map_points_to_grid(
+                points_obj, feature_id=feature_id)
+            # Go from centroids to ij indexing
+            for item in self.points_mapped[point_name]:
                 centroid = (float(item[1][0]), float(item[1][1]))
-                #replace centroid with row col
+                # replace centroid with row col
                 try:
                     grid_loc = self.centroid2mesh2Dindex[centroid]
                 except:
@@ -572,76 +580,82 @@ class GWModelBuilder(object):
                     # Perhaps better to actually define this array in fishnet
                     # when define_structured_mesh is called
                     def pointsdist(p1, p2):
-                        return ((p2[0]-p1[0])**2+(p2[1]-p1[1])**2)**0.5
-                        
-                    dist_min = 1E6    
+                        return ((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)**0.5
+
+                    dist_min = 1E6
                     for key in self.centroid2mesh2Dindex:
                         dist = pointsdist(centroid, key)
                         if dist < dist_min:
-                            dist_min = dist                        
+                            dist_min = dist
                             closest_key = key
-                            if dist_min < self.gridHeight/2.0:
-                                break    
-                    #print 'Closest key is: ', closest_key
+                            if dist_min < self.gridHeight / 2.0:
+                                break
+                    # print 'Closest key is: ', closest_key
                     grid_loc = self.centroid2mesh2Dindex[closest_key]
-                
+
                 temp += [[grid_loc, item[0]]]
-     
+
             self.points_mapped[point_name] = temp
             self.save_obj(temp, self.out_data_folder_grid + point_name + '_mapped')
 
         self.gridded_data_register += [point_name]
 
-    def map_points_to_3Dmesh(self, points, identifier=None):    
-                
+    def map_points_to_3Dmesh(self, points, identifier=None):
+
         model_mesh_points = np.array(self.centroid2mesh3Dindex.keys())
-        
+
         if type(points) == list:
             points = np.array(points)
-        #end if 
-        
+        # end if
+
         def do_kdtree(model_mesh_points, points):
             mytree = spatial.cKDTree(model_mesh_points)
             dist, indexes = mytree.query(points)
             return indexes
 
-        closest = do_kdtree(model_mesh_points, points)        
+        closest = do_kdtree(model_mesh_points, points)
         point2mesh_map = {}
 
         for index, point in enumerate(points):
             if identifier[0]:
-                point2mesh_map[identifier[index]] = self.centroid2mesh3Dindex[tuple(model_mesh_points[closest[index]])]                
+                point2mesh_map[identifier[index]] = self.centroid2mesh3Dindex[
+                    tuple(model_mesh_points[closest[index]])]
             else:
-                point2mesh_map[point] = self.centroid2mesh3Dindex[tuple(model_mesh_points[closest[index]])]                
-            #end if
-        #end for
-                
+                point2mesh_map[point] = self.centroid2mesh3Dindex[
+                    tuple(model_mesh_points[closest[index]])]
+            # end if
+        # end for
+
         return point2mesh_map
 
     def map_obs_loc2mesh3D(self, method='nearest'):
         """
         This is a function to map the obs locations to the nearest node in the
         mesh        
-        
+
         """
 
         if method == 'nearest':
             for key in self.observations.obs_group:
-                points = [list(x) for x in self.observations.obs_group[key]['locations'].to_records(index=False)]
-                self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_3Dmesh(points, identifier=self.observations.obs_group[key]['locations'].index)
+                points = [list(x) for x in self.observations.obs_group[
+                    key]['locations'].to_records(index=False)]
+                self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_3Dmesh(
+                    points, identifier=self.observations.obs_group[key]['locations'].index)
 
-                # Check that 'mapped_observations' are in active cells and if not then set the observation to inactive
+                # Check that 'mapped_observations' are in active cells and if not then set
+                # the observation to inactive
                 for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
-                    [k,j,i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
+                    [k, j, i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
                     if self.model_mesh3D[1][k][j][i] == -1:
-                        # This next line needs to be rewritten, however, works for now                    
+                        # This next line needs to be rewritten, however, works for now
                         #self.observations.obs_group[key]['time_series']['active'][self.observations.obs_group[key]['time_series']['name'] == obs_loc] = False
-                        self.observations.obs_group[key]['time_series'].loc[self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
-                    #end if
-                #end for
-            #end for
-        #end if
-                        
+                        self.observations.obs_group[key]['time_series'].loc[
+                            self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
+                    # end if
+                # end for
+            # end for
+        # end if
+
     def getXYpairs(self, points_obj, feature_id=None):
 
         return self.GISInterface.getXYpairs(points_obj, feature_id=feature_id)
@@ -661,32 +675,32 @@ class GWModelBuilder(object):
         Get values from raster at given points defined by list or by points object
         points must be a list made up of point lists or points shapefile object
         """
-        
+
         return self.GISInterface.points_value_from_raster(points, raster_obj)
 
     def map_points_to_raster_layers(self, points, depths, rasters):
 
-        #create boolean array
+        # create boolean array
         len_list = len(points)
-        layers = len(rasters)/2        
-        points_layer = np.full((layers, len_list), False, dtype=bool)        
-        
+        layers = len(rasters) / 2
+        points_layer = np.full((layers, len_list), False, dtype=bool)
+
         return self.GISInterface.map_points_to_raster_layers(points, depths, rasters, points_layer)
 
     def interpolate_points2mesh(self, points_obj, values_dataframe, feature_id=None, method='nearest', use='griddata', function='multiquadric', epsilon=2):
-        
+
         if isinstance(points_obj, list) or isinstance(points_obj, np.ndarray):
             points = points_obj
-            values = values_dataframe    
+            values = values_dataframe
         else:
             points_dict = self.getXYpairs(points_obj, feature_id=feature_id)
-            points = []        
+            points = []
             values = []
             for key in points_dict:
-                points += [points_dict[key]] 
+                points += [points_dict[key]]
                 values += [float(values_dataframe[key])]
 
-        return interpolation.Interpolator(self.mesh_type, np.array(points), np.array(values), self.model_mesh_centroids, method=method, use=use, function=function, epsilon=epsilon)    
+        return interpolation.Interpolator(self.mesh_type, np.array(points), np.array(values), self.model_mesh_centroids, method=method, use=use, function=function, epsilon=epsilon)
 
     def interpolate_points2meshByLayer():
 
@@ -696,11 +710,11 @@ class GWModelBuilder(object):
         """
         This is a function to map the obs at different times within the bounding interval in the
         model times intervals        
-        
+
         """
         def findInterval(row, times):
-            key_time = row['datetime']            
-            lower_time = times[0] 
+            key_time = row['datetime']
+            lower_time = times[0]
             for period, time in enumerate(times):
                 if period > 0:
                     if lower_time <= key_time < time:
@@ -709,15 +723,18 @@ class GWModelBuilder(object):
             return np.nan
 
         for key in self.observations.obs_group.keys():
-            self.observations.obs_group[key]['time_series']['interval'] = self.observations.obs_group[key]['time_series'].apply(lambda row: findInterval(row, self.model_time.t['dateindex']), axis=1)
+            self.observations.obs_group[key]['time_series']['interval'] = self.observations.obs_group[key][
+                'time_series'].apply(lambda row: findInterval(row, self.model_time.t['dateindex']), axis=1)
             # remove np.nan values from the obs as they are not relevant
-            self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key]['time_series'][pd.notnull(self.observations.obs_group[key]['time_series']['interval'])]
-            self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key]['time_series'][self.observations.obs_group[key]['time_series']['value'] != 0.]
-            
+            self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
+                'time_series'][pd.notnull(self.observations.obs_group[key]['time_series']['interval'])]
+            self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
+                'time_series'][self.observations.obs_group[key]['time_series']['value'] != 0.]
+
     def updateModelParameters(self, fname):
         with open(fname, 'r') as f:
             text = f.readlines()
-            # Remove header    
+            # Remove header
             text = text[1:]
             # Read in parameters and replace values in parameters class for param
             updated = {}
@@ -727,24 +744,26 @@ class GWModelBuilder(object):
             for line in text:
                 param_name, value = line.strip('\n').split('\t')
                 value = value.lstrip()
-                    
+
                 if param_name in self.parameters.param.keys():
                     self.parameters.param[param_name]['PARVAL1'] = float(value)
                     updated[param_name] = True
                 else:
                     print 'Parameter not defined in model: ', param_name
 
-        were_updated = [key for key in updated.keys() if updated[key]==True]       
-        if len(were_updated) > 0: print 'Parameters updated for : ', were_updated
-        not_updated = [key for key in updated.keys() if updated[key]==False]       
-        if len(not_updated) > 0: print 'Parameters unchanged for : ', not_updated
+        were_updated = [key for key in updated.keys() if updated[key] == True]
+        if len(were_updated) > 0:
+            print 'Parameters updated for : ', were_updated
+        not_updated = [key for key in updated.keys() if updated[key] == False]
+        if len(not_updated) > 0:
+            print 'Parameters unchanged for : ', not_updated
 
     def add2register(self, addition):
-        
+
         self.model_register += addition
-        
+
     def writeRegister2file(self):
-        
+
         with open(self.out_data_folder + 'model_register.dat') as f:
             for item in self.model_register:
                 f.write(item)
@@ -752,7 +771,6 @@ class GWModelBuilder(object):
     def points2shapefile(self, points_array, shapefile_name):
         """ Needs writing ... """
         self.GISInterface.points2shapefile(points_array, shapefile_name)
-
 
     def get_uppermost_active(self):
         # Not required at the moment
@@ -779,36 +797,38 @@ class GWModelBuilder(object):
 
         target_attr = self.target_attr
         packaged_model = {k: self.__dict__[k] for k in self.__dict__ if k in target_attr}
-        
+
         # Hack to fix up model boundary which contains a gdal object as well:
         packaged_model['model_boundary'] = packaged_model['model_boundary'][0:4]
 
         self.save_obj(packaged_model, self.out_data_folder_grid + self.name + '_packaged')
 
-    ###########################################################################   
-   
+    ###########################################################################
+
     def __exit__(self):
         self.writeRegister2file()
         self.save_mapped_dictionaries()
+
 
 class GeneralModelDataStructure(object):
     """
     This class describes a general model structure to be used for 
     setting up the groundwater models. The class is made up of numpy
     arrays that describe the properties and forcing to be applied to the model
-    
-    """    
-    
+
+    """
+
     def __init__(self, node_type=None, layers=None, nodes=None):
-        
-        self.node_type = node_type # cell-centred or vertex-centred
+
+        self.node_type = node_type  # cell-centred or vertex-centred
         self.layers = layers
         self.nodes = nodes
- 
+
+
 class ModelTime(object):
     """
     Class to set the temporal aspects of the model
-    
+
     within the dictionary "t", the following items are found:
     'start_time': start time of model simulation
     'end_time': end time of model simulation
@@ -817,21 +837,21 @@ class ModelTime(object):
     'intervals': list of length of time of each time period in the model, stored as datetime object Timedelta
     'steps': number of steps in which model stresses can change
     """
-    
+
     def __init__(self):
         self.t = {}
         self.t['steady_state'] = True
-        
+
     def set_temporal_components(self, steady_state=True, start_time=None, end_time=None, time_step=None, date_index=None):
         self.t['steady_state'] = steady_state
         if steady_state == True:
             return
-        
+
         self.t['start_time'] = start_time
         self.t['end_time'] = end_time
         self.t['time_step'] = time_step
         self.t['duration'] = self.t['end_time'] - self.t['start_time']
-        
+
         date_index = pd.date_range(start=start_time, end=end_time, freq=time_step)
         self.t['dateindex'] = date_index
 
@@ -841,10 +861,11 @@ class ModelTime(object):
             if index > 0:
                 intervals += [time - old_time]
                 old_time = time
-                
+
         self.t['intervals'] = intervals
         self.t['steps'] = len(self.t['intervals'])
-       
+
+
 class ModelBoundaries(object):
     """
     Class to build boundary conditions with.
@@ -866,55 +887,59 @@ class ModelBoundaries(object):
 
     def __init__(self):
         self.bc = {}
-        #self.bc_locale_types = ['point', 'layer', 'domain']        
-        self.bc_types = ['river', 'wells', 'recharge', 'rainfall', 'head', 'drain', 'channel', 'general head']
-        
+        #self.bc_locale_types = ['point', 'layer', 'domain']
+        self.bc_types = ['river', 'wells', 'recharge', 'rainfall',
+                         'head', 'drain', 'channel', 'general head']
+
     def create_model_boundary_condition(self, bc_name, bc_type, bc_static=True, bc_parameter=None):
-        #if bc_locale_type not in self.bc_locale_types:        
-        #    print 'bc_locale_type not recognised, use one of: ', self.bc_locale_types            
+        # if bc_locale_type not in self.bc_locale_types:
+        #    print 'bc_locale_type not recognised, use one of: ', self.bc_locale_types
         #    sys.exit(1)
-        #end if
-        if bc_type not in self.bc_types:        
-            print 'bc_type not recognised, use one of: ', self.bc_types            
+        # end if
+        if bc_type not in self.bc_types:
+            print 'bc_type not recognised, use one of: ', self.bc_types
             sys.exit(1)
 
         self.bc[bc_name] = {}
         self.bc[bc_name]['bc_type'] = bc_type
-        self.bc[bc_name]['bc_static'] = bc_static    
+        self.bc[bc_name]['bc_static'] = bc_static
 
     def assign_boundary_array(self, bc_name, bc_array):
         if bc_name in self.bc:
             self.bc[bc_name]['bc_array'] = bc_array
         else:
             print 'No boundary condition with name: ', bc_name
-            sys.exit(1)            
+            sys.exit(1)
+
 
 class ModelProperties(object):
     """
     This class is used to set all of the parameters which can then be easily 
     accessed for modification for model pertubations
     """
+
     def __init__(self):
         self.properties = {}
-        self.prop_types = ['Kh', 'Kv', 'SS', 'Sy']        
-        
+        self.prop_types = ['Kh', 'Kv', 'SS', 'Sy']
+
     def assign_model_properties(self, prop_type, value):
-        if prop_type in self.prop_types:        
+        if prop_type in self.prop_types:
             self.properties[prop_type] = value
         else:
             print prop_type + ' not in ' + self.prop_types
             sys.exit('Property type not recognised')
+
 
 class ModelParameters(object):
     """
     This class is used to set all of the parameters which can then be easily 
     accessed for modification for model pertubations
     """
+
     def __init__(self):
         self.param = {}
-        
-        
-    # 'PARTRANS', 'PARCHGLIM', 'PARVAL1', 'PARLBND', 'PARUBND', 'PARGP', 'SCALE', 'OFFSET' 
+
+    # 'PARTRANS', 'PARCHGLIM', 'PARVAL1', 'PARLBND', 'PARUBND', 'PARGP', 'SCALE', 'OFFSET'
     def create_model_parameter(self, name, value=None):
         self.param[name] = {}
         self.param[name]['PARVAL1'] = value
@@ -937,8 +962,8 @@ class ModelParameters(object):
 
     def create_model_parameter_set(self, name, values):
         for i in range(len(values)):
-            self.param[name+str(i)] = {}
-            self.param[name+str(i)]['PARVAL1'] = values[i]
+            self.param[name + str(i)] = {}
+            self.param[name + str(i)]['PARVAL1'] = values[i]
 
     def create_model_parameter_set_pilot_points(self, name, values, points):
         """
@@ -948,15 +973,16 @@ class ModelParameters(object):
         :param points: location of each pilot point         
         """
         for i in range(len(values)):
-            self.param[name+str(i)] = {}
-            self.param[name+str(i)]['PARVAL1'] = values[i]
-            self.param[name+str(i)]['point'] = values[i]
+            self.param[name + str(i)] = {}
+            self.param[name + str(i)]['PARVAL1'] = values[i]
+            self.param[name + str(i)]['point'] = values[i]
 
     def assign_to_model_parameter(self):
-        pass        
+        pass
 
     def define_parameter2value_relationship(self):
         pass
+
 
 class ModelObservations(object):
     """
@@ -964,11 +990,12 @@ class ModelObservations(object):
     that are not being used to force the model and for which there are model 
     outputs that correspond to the observation, e.g. head
     """
+
     def __init__(self):
         self.obs_group = {}
         self.obs = {}
-        self.obID = 0        
-        
+        self.obID = 0
+
     def set_as_observations(self, name, time_series, locations, domain=None, obs_type=None, units=None):
         """
         Function to set observations from pandas dataframes for times series
@@ -979,48 +1006,50 @@ class ModelObservations(object):
         Each time series should be of the pandas dataframe format where the 
         first column is an identifier for the data, the second column is datetime and 
         the next column is the value of interest
-        
+
         For observation dataframes with multiple identifiers there should be an
         equal number of locations with x, y and z        
-        
-        """        
-        self.obs_types = ['head', 'stage', 'discharge', 'concentration']        
-        
+
+        """
+        self.obs_types = ['head', 'stage', 'discharge', 'concentration']
+
         self.obs_group[name] = {}
         # check time series meets the standard format of columns = ['name', 'datetime', 'value']
         self.obs_group[name]['time_series'] = time_series
         self.obs_group[name]['time_series']['active'] = True
         self.obs_group[name]['locations'] = locations
-        self.obs_group[name]['domain'] = domain        
+        self.obs_group[name]['domain'] = domain
         self.obs_group[name]['obs_type'] = obs_type
-        self.obs_group[name]['units'] = units        
+        self.obs_group[name]['units'] = units
 
     def collate_observations(self):
         for name in self.obs_group.keys():
             self.obs_group[name]['time_series']['obs_map'] = 'null'
             for ob in self.obs_group[name]['time_series'].iterrows():
-                if ob[1]['active'] == True:                
+                if ob[1]['active'] == True:
                     self.obs['ob' + str(self.obID)] = ob[1]['value']
                     #self.obs_group[name]['time_series']['obs_map'][ob[0]] = 'ob' + str(self.obID)
-                    self.obs_group[name]['time_series'].set_value(ob[0], 'obs_map', 'ob' + str(self.obID))
+                    self.obs_group[name]['time_series'].set_value(
+                        ob[0], 'obs_map', 'ob' + str(self.obID))
                     self.obID += 1
 
     def check_obs(self):
-        obs_nodes = []        
+        obs_nodes = []
         for ob in self.observations.obs.keys():
             obs_nodes += self.observations.obs[ob]
 
-    
+
 class ModelInitialConditions(object):
     """ 
     This class is used to store all of the initial conditions for different model
     domains
     """
+
     def __init__(self):
         self.ic_data = {}
-        
+
     def set_as_initial_condition(self, name, ic_data):
-                
+
         self.ic_data[name] = ic_data
         return self.ic_data
 
@@ -1030,12 +1059,14 @@ class ModelFeature(object):
     This class defines typical features that might be represented in
     a GW model, the definition of which is assigned to particular arrays
     which can then be passed to the appropriate groundwater model.
-    
-    """    
+
+    """
+
     def __init__(self, feature_type, feature_name, static=True):
-        
-        feature_types = ['Aquifer', 'River', 'Channel', 'Lake', 'Wetland', 'Wells', 'Rainfall', 'Evaporation', 'Recharge']        
-        if feature_type in feature_types:        
+
+        feature_types = ['Aquifer', 'River', 'Channel', 'Lake',
+                         'Wetland', 'Wells', 'Rainfall', 'Evaporation', 'Recharge']
+        if feature_type in feature_types:
             self.feature_type = feature_type
         else:
             print 'Feature type ', feature_type, ' not recognised'
@@ -1043,7 +1074,7 @@ class ModelFeature(object):
         self.feature_name = feature_name
         self.static = static
 
-    
+
 class ModelBuilderType(object):
 
     """
@@ -1060,28 +1091,30 @@ class ModelBuilderType(object):
         self.time = ['s', 'h', 'd', 'w', 'y']
         self.mass = ['mg', 'g', 'kg']
 
+
 class ArrayOrdering(object):
     """
     This class describes the array ordering conventions for MODFLOW and HGS
     in structured mesh.
-    
+
     For the horizontal plane:
 
     UL  y increasing        
-         
+
         |
         |
         |
         |________
     BL           x increasing
-    
+
     """
+
     def __init__(self):
         self.layering_orders = ['TopToBottom', 'BottomToTop']
         self.array_ordering = [
-                               'UL_RowColumn',  # UL= Upper Left as in MODFLOW
-                               'BL_RowColumn'   # BL = Bottom Left as in HGS
-                              ]
+            'UL_RowColumn',  # UL= Upper Left as in MODFLOW
+            'BL_RowColumn'   # BL = Bottom Left as in HGS
+        ]
 
     def SetModflowArrays(self):
         self.layer_order = self.layering_orders[0]
