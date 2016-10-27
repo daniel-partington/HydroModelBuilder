@@ -444,7 +444,7 @@ class GWModelBuilder(object):
         """ 
         Function to remove cells that are surrounded by non-active cells in the horizontal plane
         
-        e.g. if cells with positive integer is surrounded in above, below and to each side, then reassign to -1.
+        e.g. if cell with positive integer is surrounded in above, below and to each side, then reassign to -1.
         
         """        
             
@@ -578,10 +578,10 @@ class GWModelBuilder(object):
                     for key in self.centroid2mesh2Dindex:
                         dist = pointsdist(centroid, key)
                         if dist < dist_min:
-                            dist_min = dist                        
+                            dist_min = dist
                             closest_key = key
                             if dist_min < self.gridHeight/2.0:
-                                break    
+                                break
                     #print 'Closest key is: ', closest_key
                     grid_loc = self.centroid2mesh2Dindex[closest_key]
                 
@@ -592,8 +592,8 @@ class GWModelBuilder(object):
 
         self.gridded_data_register += [point_name]
 
-    def map_points_to_3Dmesh(self, points, identifier=None):    
-                
+    def map_points_to_3Dmesh(self, points, identifier=None):
+
         model_mesh_points = np.array(self.centroid2mesh3Dindex.keys())
         
         if type(points) == list:
@@ -635,7 +635,6 @@ class GWModelBuilder(object):
                     [k,j,i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
                     if self.model_mesh3D[1][k][j][i] == -1:
                         # This next line needs to be rewritten, however, works for now                    
-                        #self.observations.obs_group[key]['time_series']['active'][self.observations.obs_group[key]['time_series']['name'] == obs_loc] = False
                         self.observations.obs_group[key]['time_series'].loc[self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
                     #end if
                 #end for
