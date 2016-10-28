@@ -647,8 +647,6 @@ class GWModelBuilder(object):
                 for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
                     [k, j, i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
                     if self.model_mesh3D[1][k][j][i] == -1:
-                        # This next line needs to be rewritten, however, works for now
-                        #self.observations.obs_group[key]['time_series']['active'][self.observations.obs_group[key]['time_series']['name'] == obs_loc] = False
                         self.observations.obs_group[key]['time_series'].loc[
                             self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
                     # end if
@@ -676,7 +674,7 @@ class GWModelBuilder(object):
         points must be a list made up of point lists or points shapefile object
         """
 
-        return self.GISInterface.points_value_from_raster(points, raster_obj)
+        return self.GISInterface.point_values_from_raster(points, raster_obj)
 
     def map_points_to_raster_layers(self, points, depths, rasters):
 
@@ -722,14 +720,18 @@ class GWModelBuilder(object):
                 lower_time = time
             return np.nan
 
-        for key in self.observations.obs_group.keys():
-            self.observations.obs_group[key]['time_series']['interval'] = self.observations.obs_group[key][
-                'time_series'].apply(lambda row: findInterval(row, self.model_time.t['dateindex']), axis=1)
-            # remove np.nan values from the obs as they are not relevant
-            self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
-                'time_series'][pd.notnull(self.observations.obs_group[key]['time_series']['interval'])]
-            self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
-                'time_series'][self.observations.obs_group[key]['time_series']['value'] != 0.]
+        if self.model_time.t['steady_state']:
+            for key in self.observations.obs_group.keys():
+                self.observations.obs_group[key]['time_series']['interval'] = 0                        
+        else:
+            for key in self.observations.obs_group.keys():
+                self.observations.obs_group[key]['time_series']['interval'] = self.observations.obs_group[key][
+                    'time_series'].apply(lambda row: findInterval(row, self.model_time.t['dateindex']), axis=1)
+                # remove np.nan values from the obs as they are not relevant
+                self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
+                    'time_series'][pd.notnull(self.observations.obs_group[key]['time_series']['interval'])]
+                self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
+                    'time_series'][self.observations.obs_group[key]['time_series']['value'] != 0.]
 
     def updateModelParameters(self, fname):
         with open(fname, 'r') as f:
@@ -1028,7 +1030,6 @@ class ModelObservations(object):
             for ob in self.obs_group[name]['time_series'].iterrows():
                 if ob[1]['active'] == True:
                     self.obs['ob' + str(self.obID)] = ob[1]['value']
-                    #self.obs_group[name]['time_series']['obs_map'][ob[0]] = 'ob' + str(self.obID)
                     self.obs_group[name]['time_series'].set_value(
                         ob[0], 'obs_map', 'ob' + str(self.obID))
                     self.obID += 1
