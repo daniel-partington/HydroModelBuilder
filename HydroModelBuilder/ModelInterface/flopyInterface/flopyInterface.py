@@ -51,13 +51,6 @@ class ModflowModel(object):
         # Initial data:
         self.strt = self.model_data.initial_conditions.ic_data["Head"] #self.model_data.model_mesh3D[0][1:] + 20.         
         
-#        self.hk = self.model_data.model_mesh3D[1].astype(float)
-#        self.hk[self.hk > 0] = 10.0
-#        self.hk[self.hk == -1] = 1.
-#        self.vka = 1.0 
-#        self.sy = 0.01 
-#        self.ss = 1.0E-4        
-
         self.hk = self.model_data.properties.properties['Kh']
         self.hk[self.hk == -1] = 1.
         self.vka = self.model_data.properties.properties['Kv']
@@ -70,7 +63,6 @@ class ModflowModel(object):
         #End For
 
         #self.flowpy_params['model_dir'] = os.path.join(data_folder, "MF_IO", name)
-
 
     #End init()
 
@@ -292,6 +284,7 @@ class ModflowModel(object):
             if self.model_data.boundaries.bc[boundary]['bc_type'] == 'recharge':
                 for key in self.model_data.boundaries.bc[boundary]['bc_array'].keys():
                     self.crch[key] = np.ones_like(self.model_data.boundaries.bc[boundary]['bc_array'][key])               
+                    self.crch[key] = self.crch[key] * 100.0
                     self.crch[key][ibound[0]==0] = 0.0
             #if self.model_data.boundaries.bc[boundary]['bc_type'] == 'river':
             #    self.createRIVpackage(self.model_data.boundaries.bc[boundary]['bc_array'])
@@ -299,7 +292,7 @@ class ModflowModel(object):
             if self.model_data.boundaries.bc[boundary]['bc_type'] == 'wells':
                 for key in self.model_data.boundaries.bc[boundary]['bc_array'].keys():
                     for well in self.model_data.boundaries.bc[boundary]['bc_array'][key]:
-                        ssm_data[key].append((well[0], well[1], well[2], 1.0, itype['WEL']))
+                        ssm_data[key].append((well[0], well[1], well[2], 100.0, itype['WEL']))
                         
             #if self.model_data.boundaries.bc[boundary]['bc_type'] == 'drain':
             #    self.model_data.boundaries.bc[boundary]['bc_array']
@@ -308,7 +301,7 @@ class ModflowModel(object):
                 self.model_data.boundaries.bc[boundary]['bc_array']
                 for key in self.model_data.boundaries.bc[boundary]['bc_array'].keys():
                     for ghb in self.model_data.boundaries.bc[boundary]['bc_array'][key]:
-                        ssm_data[key].append((ghb[0], ghb[1], ghb[2], 1.0, itype['GHB']))
+                        ssm_data[key].append((ghb[0], ghb[1], ghb[2], 0.0, itype['GHB']))
 
         river_exists = False
         for boundary in self.model_data.boundaries.bc:
@@ -329,7 +322,7 @@ class ModflowModel(object):
             
             for key in river.keys():
                 for riv in river[key]:
-                    ssm_data[key].append((riv[0], riv[1], riv[2], 1.0, itype['RIV']))
+                    ssm_data[key].append((riv[0], riv[1], riv[2], 100.0, itype['RIV']))
 
         self.ssm = flopy.mt3d.Mt3dSsm(self.mt, stress_period_data=ssm_data, crch=self.crch)
 
@@ -452,11 +445,18 @@ class ModflowModel(object):
                 elif obs_type == 'stage':
                     #stage = self.importStage()
                     pass
+                elif obs_type == 'discharge':
+                    pass
+                #elif obs_type == 'concentration':
+                #    # Check if model outputs have already been imported and if not import                
+                #   if not head:
+                #        concobj = self.importConcs()
+                #        conc = concobj.get_alldata() #(totim=times[0])
                 #end if
+                
                 obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
                 obs_df = obs_df[obs_df['active'] == True]
                 sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']        
-
 
                 for observation in obs_df.index:
                     interval = obs_df['interval'].loc[observation]
@@ -533,6 +533,8 @@ class ModflowModel(object):
                     sim_head = np.mean(sim_heads)
                     f.write('%f\n' %sim_head)
 
+                    
+                    
     def getObservation(self, obs, interval, obs_set):
         # Set model output arrays to None to initialise        
         head = None
@@ -568,12 +570,6 @@ class ModflowModel(object):
             idx = obs_df[obs_df['name'] == observation].index.tolist()[0]            
             obs = obs_df.get_value(idx, 'value')
             sim = simulated[sim_map_dict[observation][0]][sim_map_dict[observation][1]][sim_map_dict[observation][2]]
-            # The following commented block should no longer be required as these
-            # conditions should no longer arise due to prefiltering of observations.
-#            if sim == np.float32(-999.99):
-#                continue
-#            if sim == np.float32(1E+30): 
-#                continue
 
             self.comparison += [[obs, sim]] 
             self.comp_zone += self.model_data.model_mesh3D[1][sim_map_dict[observation][0]][sim_map_dict[observation][1]][sim_map_dict[observation][2]]/np.max(self.model_data.model_mesh3D[1])
@@ -600,8 +596,6 @@ class ModflowModel(object):
             if np.isnan(sim):
                 print sim, obs, zone                
                 continue
-            #if abs(obs-sim) > 70.:
-            #    continue
             self.obs_sim_zone += [[obs, sim, zone, x, y]]
         
     
@@ -889,7 +883,7 @@ class ModflowModel(object):
         fig = plt.figure(figsize=(width * multiplier, height * multiplier))
 
         vmin = 0.0
-        vmax = 1.0
+        vmax = 100.0
 
         ax = fig.add_subplot(2, 4, 1, aspect='equal')
 
