@@ -307,8 +307,6 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
     #for i in range(mesh.shape[0]):
     #    plt.figure()
     #    plt.imshow(mesh[i], interpolation='none')        
-
-
         
     grid_info = [ncol, nrow, delc, delr, x0, y0]
     array2Vtk.build_vtk_from_array(grid_info, np.fliplr(mesh), ["z_elev"], [np.fliplr(mesh)], ["zone", "thickness"], [np.fliplr(zone_matrix), np.fliplr(thickness)], out_path, vtk_out)
