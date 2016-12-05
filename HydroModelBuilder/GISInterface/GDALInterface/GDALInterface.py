@@ -186,7 +186,7 @@ class GDALInterface(GISInterface):
                                              gridWidth=gridWidth)
 
             self.model_mesh = fishnet.create_fishnet(structured_mesh, self.model_boundary[
-                                                     4], copy_dest=self.out_data_folder)
+                                                     4], copy_dest=self.model_data_folder)
         # End if
         return self.model_mesh
 
