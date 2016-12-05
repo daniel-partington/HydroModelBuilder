@@ -25,6 +25,7 @@ class GWModelManager(object):
             'units',
             'data_folder',
             'out_data_folder',
+            'model_data_folder',
             'data_format',
             'array_ordering',
             'boundaries',
@@ -150,6 +151,8 @@ class GWModelManager(object):
                                                     data_folder=packaged_model['data_folder'],
                                                     out_data_folder=packaged_model[
                                                         'out_data_folder'],
+                                                    model_data_folder=packaged_model[
+                                                        'model_data_folder'],
                                                     GISInterface=None,
                                                     data_format=packaged_model['data_format'],
                                                     target_attr=self.target_attr)
