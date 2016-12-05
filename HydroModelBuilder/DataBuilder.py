@@ -91,8 +91,6 @@ class DataBuilder(object):
         if target_attr is None:
             self.target_attr = [
                 'name',
-                'model_type',
-                'mesh_type',
                 'units',
                 'data_folder',
                 'out_data_folder',
@@ -101,27 +99,12 @@ class DataBuilder(object):
                 'boundaries',
                 'properties',
                 'parameters',
-                'observations',
                 'initial_conditions',
                 'out_data_folder_grid',
                 'model_boundary',
                 'boundary_poly_file',
                 'boundary_data_file',
-                'model_time',
-                'model_mesh_centroids',
-                'mesh2centroid2Dindex',
-                'model_mesh3D',
-                'model_mesh3D_centroids',
-                'model_layers',
-                'model_features',
-                'polyline_mapped',
-                'points_mapped',
-                'model_register',
                 'base_data_register',
-                'gridded_data_register',
-                # Some necessary parameters for now which should be replaced later
-                'gridHeight',
-                'gridWidth'
             ]
         else:
             self.target_attr = target_attr
@@ -355,7 +338,6 @@ class DataBuilder(object):
 
         return self.GISInterface.point_values_from_raster(points, raster_obj)
 
-    ### MESH SPECIFIC FUNCTIONS ###
     def map_points_to_raster_layers(self, points, depths, rasters):
 
         # create boolean array
@@ -407,7 +389,7 @@ class ModelBuilderType(object):
 
     """
     This class contains all the types that are allowed for different
-    class attributes in GWModelBuilder.
+    class attributes in ModelBuilder.
     """
 
     def __init__(self):
