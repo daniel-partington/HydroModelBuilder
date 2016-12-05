@@ -21,7 +21,7 @@ class GWModelBuilder(object):
     """
 
     def __init__(self, name=None, model_type=None, mesh_type=None,
-                 units=None, data_folder=None, out_data_folder=None,
+                 units=None, data_folder=None, out_data_folder=None, model_data_folder=None,
                  GISInterface=None, data_format='binary', target_attr=None, **kwargs):
         """
         :param name: Model name.
@@ -79,6 +79,7 @@ class GWModelBuilder(object):
         # End if
         self.data_folder = data_folder
         self.out_data_folder = out_data_folder
+        self.model_data_folder = model_data_folder
         self.GISInterface = GISInterface
         self.data_format = data_format
 
@@ -130,6 +131,7 @@ class GWModelBuilder(object):
                 'units',
                 'data_folder',
                 'out_data_folder',
+                'model_data_folder',
                 'data_format',
                 'array_ordering',
                 'boundaries',
@@ -263,8 +265,15 @@ class GWModelBuilder(object):
             sys.exit(1)
         # end if
 
-    def flush(self):
-        folder = self.out_data_folder
+    def flush(self, mode=None):
+        if mode == 'data':
+            folder = self.out_data_folder
+        elif mode == 'model':
+            folder = self.model_data_folder
+        else:
+            print 'Expected mode to be either "data" or "model" but got: ', mode
+            sys.exit(1)
+            
         if folder == None:
             print 'No folder set, so no flushing'
             sys.exit(1)
@@ -402,7 +411,7 @@ class GWModelBuilder(object):
 
         self.gridHeight = gridHeight
         self.gridWidth = gridWidth
-        self.out_data_folder_grid = self.out_data_folder + \
+        self.out_data_folder_grid = self.model_data_folder + \
             'structured_model_grid_%im' % int(gridHeight) + os.path.sep  # '\\'
         self.updateGISinterface()
         self.model_mesh = self.GISInterface.define_structured_mesh(gridHeight, gridWidth)
@@ -446,7 +455,7 @@ class GWModelBuilder(object):
         # Build 3D centroids array:
         self.build_centroids_array3D()
 
-    def removeIsolatedCells(self, passes=1):
+    def reclassIsolatedCells(self, passes=1):
         """
         Function to remove cells that are surrounded by non-active cells in the horizontal plane
 
