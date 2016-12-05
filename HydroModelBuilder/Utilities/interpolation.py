@@ -19,8 +19,8 @@ def GridData(points, values, xi, method='nearest'):
     """    
     
     if method in ['linear', 'cubic']:
-        z0 = griddata(points, values, xi, method='nearest')
         z1 = griddata(points, values, xi, method=method)
+        z0 = griddata(points, values, xi, method='nearest')
         z2 = z1
         z2[np.isnan(z1)] = z0[np.isnan(z1)]
     else:

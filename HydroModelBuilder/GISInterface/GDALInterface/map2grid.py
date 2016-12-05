@@ -157,7 +157,7 @@ if __name__ == "__main__":
     srs = poly_obj.GetSpatialRef()
 
     # Open the mesh object
-    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_20000m\structured_model_grid_20000m.shp", 0)
+    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
 
 
     mapped_list = shp2grid(ds, ds2, shp_type='points', feature_id = "OLD ID")
@@ -177,7 +177,7 @@ if __name__ == "__main__":
     srs = poly_obj.GetSpatialRef()
 
     # Open the mesh object
-    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_20000m\structured_model_grid_20000m.shp", 0)
+    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
 
 
     mapped_list = shp2grid(ds, ds2, shp_type='poly')

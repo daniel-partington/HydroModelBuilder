@@ -52,7 +52,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
     
         Input:
             data:    numpy array of any dimension
-            invalid: a binary array of same shape as 'data'. True cells set where data
+            invalid: a logical array of same shape as 'data'. True cells set where data
                      value should be replaced.
                      If None (default), use: invalid  = np.isnan(data)
     
@@ -174,8 +174,8 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
             if j>0:
                 test= mesh[j/2-1]-mesh[j/2] < 0
-                if np.any(test == True):
-                    print 'Error when processing layer test2', i/2
+                #if np.any(test == True):
+                #    print 'Error when processing layer test2', i/2
 
 
             zone_matrix[j/2][merge_up_locations] = i/2+1    
@@ -196,8 +196,8 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             mesh[j/2+1][merge_up_locations] = proposed_heights
 
             test= mesh[j/2]-mesh[j/2+1] < 0
-            if np.any(test == True):
-                print 'Error when processing layer test3', i/2
+            #if np.any(test == True):
+            #    print 'Error when processing layer test3', i/2
 
            
             # After modifying the layer, update cumulative active for modified layer
@@ -220,12 +220,33 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
         mesh[i/2+1][level_test] = raster_set[hu_raster_files[i+1]][3][level_test]
         
-        test= mesh[i/2]-mesh[i/2+1] < 0
-        if np.any(test == True):
-            print 'Error when processing layer ', i/2
-
     #End for
-        
+
+
+    
+    # Use the fill function to clean up the inactive parts of the mesh to assist
+    # with the rendering
+    
+    for index, raster in enumerate(hu_raster_files):
+        if index%2 == 1: continue
+        if index/2 == 0:
+            mesh[index/2] = fill(mesh[index/2], invalid=np.ma.masked_array(zone_matrix[index/2],zone_matrix[index/2] == -1).mask)
+        elif index < len(hu_raster_files):
+            mesh[index/2] = fill(mesh[index/2], invalid=np.ma.masked_array(zone_matrix[index/2],zone_matrix[index/2] == -1).mask |
+                                                        np.ma.masked_array(zone_matrix[index/2-1],zone_matrix[index/2-1] == -1).mask)
+            
+        if index/2 == len(hu_raster_files)/2-1:
+            mesh[index/2+1] = fill(mesh[index/2+1], invalid=np.ma.masked_array(zone_matrix[index/2],zone_matrix[index/2] == -1).mask)
+
+            
+    # Check that all layers are not intersecting
+    for index, raster in enumerate(hu_raster_files):
+        if index%2 == 1: continue
+        test= mesh[index/2]-mesh[index/2+1] <= 1
+        if np.any(test == True):
+            print 'Error when processing layer ', index/2
+            
+    # Calculate the thickness of each layer on the final mesh
     for index, raster in enumerate(hu_raster_files):
         # Only work on even index
         if index%2 == 1: continue
@@ -233,6 +254,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
         thickness[index/2] = mesh[index/2]-mesh[index/2+1]        
     # End for
 
+    
     tester2 = True
     if tester2 == True:
         raster_thickness = {}
