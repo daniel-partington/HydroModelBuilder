@@ -47,6 +47,9 @@ class GDALInterface(GISInterface):
 
         pass
 
+    def _load_shapefile(self, shapefile_name, shapefile_path=None):
+        pass
+    
     def set_model_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None):
         """
         Function to set the model boundary using a shapefile, assuming polygon type:

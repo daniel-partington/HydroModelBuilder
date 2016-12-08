@@ -18,11 +18,12 @@ def create_fishnet(structured_mesh, spatialRef, copy_dest = None):
     ymax = structured_mesh.ymax
     gridHeight = structured_mesh.gridHeight
     gridWidth = structured_mesh.gridWidth
-    if copy_dest == None:
-        outputGridfn = 'structured_model_grid_%im.shp' %int(gridHeight)
-    else:
+    
+    outputGridfn = 'structured_model_grid_%im.shp' %int(gridHeight)
+    outputGridfnPrj = 'structured_model_grid_%im.prj' %int(gridHeight)
+
+    if copy_dest != None:
         outputGridDir = copy_dest + 'structured_model_grid_%im' %int(gridHeight) + '\\'         
-        outputGridfn = 'structured_model_grid_%im.shp' %int(gridHeight)
 
     # convert sys.argv to float
     xmin = float(xmin)
@@ -100,6 +101,10 @@ def create_fishnet(structured_mesh, spatialRef, copy_dest = None):
     # Close DataSources
     #outDataSource = None #.Destroy()
 
+    spatialRef.MorphToESRI()
+    with open(outputGridfnPrj, 'w') as f:
+        f.write(spatialRef.ExportToWkt())
+    
     # Change back to previous working directory
     os.chdir(cwd) 
 

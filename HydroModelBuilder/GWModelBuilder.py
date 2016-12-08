@@ -1,7 +1,7 @@
 import sys
 import os
 import shutil
-import pickle
+import cPickle as pickle
 import datetime
 
 import numpy as np
@@ -609,6 +609,34 @@ class GWModelBuilder(object):
 
         self.gridded_data_register += [point_name]
 
+    def map_points_to_2Dmesh(self, points, identifier=None):
+
+        model_mesh_points = np.array(self.centroid2mesh2Dindex.keys())
+
+        if type(points) == list:
+            points = np.array(points)
+        # end if
+
+        def do_kdtree(model_mesh_points, points):
+            mytree = spatial.cKDTree(model_mesh_points)
+            dist, indexes = mytree.query(points)
+            return indexes
+
+        closest = do_kdtree(model_mesh_points, points)
+        point2mesh_map = {}
+
+        for index, point in enumerate(points):
+            if identifier[0]:
+                point2mesh_map[identifier[index]] = self.centroid2mesh2Dindex[
+                    tuple(model_mesh_points[closest[index]])]
+            else:
+                point2mesh_map[point] = self.centroid2mesh32index[
+                    tuple(model_mesh_points[closest[index]])]
+            # end if
+        # end for
+
+        return point2mesh_map
+
     def map_points_to_3Dmesh(self, points, identifier=None):
 
         model_mesh_points = np.array(self.centroid2mesh3Dindex.keys())
@@ -646,20 +674,36 @@ class GWModelBuilder(object):
 
         if method == 'nearest':
             for key in self.observations.obs_group:
-                points = [list(x) for x in self.observations.obs_group[
-                    key]['locations'].to_records(index=False)]
-                self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_3Dmesh(
-                    points, identifier=self.observations.obs_group[key]['locations'].index)
+                if self.observations.obs_group[key]['domain'] == 'porous':
+                    points = [list(x) for x in self.observations.obs_group[
+                        key]['locations'].to_records(index=False)]
+                    self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_3Dmesh(
+                        points, identifier=self.observations.obs_group[key]['locations'].index)
+    
+                    # Check that 'mapped_observations' are in active cells and if not then set
+                    # the observation to inactive
+                    for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
+                        [k, j, i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
+                        if self.model_mesh3D[1][k][j][i] == -1:
+                            self.observations.obs_group[key]['time_series'].loc[
+                                self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
 
-                # Check that 'mapped_observations' are in active cells and if not then set
-                # the observation to inactive
-                for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
-                    [k, j, i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
-                    if self.model_mesh3D[1][k][j][i] == -1:
-                        self.observations.obs_group[key]['time_series'].loc[
-                            self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
-                    # end if
-                # end for
+                elif self.observations.obs_group[key]['domain'] == 'surface':
+                    points = [list(x) for x in self.observations.obs_group[
+                        key]['locations'].to_records(index=False)]
+                    self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_2Dmesh(
+                        points, identifier=self.observations.obs_group[key]['locations'].index)
+    
+                    # Check that 'mapped_observations' are in active cells and if not then set
+                    # the observation to inactive
+                    for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
+                        [j, i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
+                        if self.model_mesh3D[1][0][j][i] == -1:
+                            self.observations.obs_group[key]['time_series'].loc[
+                                self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
+                        # end if
+                    # end for
+                #end if
             # end for
         # end if
 

@@ -192,8 +192,8 @@ class ModflowModel(object):
             #if self.model_data.boundaries.bc[boundary]['bc_type'] == 'river':
             #    self.createRIVpackage(self.model_data.boundaries.bc[boundary]['bc_array'])
                 
-            if self.model_data.boundaries.bc[boundary]['bc_type'] == 'wells':
-                self.createWELpackage(self.model_data.boundaries.bc[boundary]['bc_array'])
+            #if self.model_data.boundaries.bc[boundary]['bc_type'] == 'wells':
+            #    self.createWELpackage(self.model_data.boundaries.bc[boundary]['bc_array'])
 
             if self.model_data.boundaries.bc[boundary]['bc_type'] == 'drain':
                 self.createDRNpackage(self.model_data.boundaries.bc[boundary]['bc_array'])
@@ -202,10 +202,12 @@ class ModflowModel(object):
                 self.createGHBpackage(self.model_data.boundaries.bc[boundary]['bc_array'])
 
         river_exists = False
+        wells_exist = False
         for boundary in self.model_data.boundaries.bc:
             if self.model_data.boundaries.bc[boundary]['bc_type'] == 'river':
                 river_exists = True
-                break
+            elif self.model_data.boundaries.bc[boundary]['bc_type'] == 'wells':
+                wells_exist = True
         
         if river_exists:
             river = {}
@@ -217,11 +219,22 @@ class ModflowModel(object):
                 if self.model_data.boundaries.bc[boundary]['bc_type'] == 'channel':
                     time_key = self.model_data.boundaries.bc[boundary]['bc_array'].keys()[0]
                     river[0] += self.model_data.boundaries.bc[boundary]['bc_array'][time_key]
-            
+ 
             self.createRIVpackage(river)
 
-            # IF transport then
-            self.createLMTpackage()
+        elif wells_exist:
+            wel = {}
+            wel[0] = []
+            for boundary in self.model_data.boundaries.bc:
+                if self.model_data.boundaries.bc[boundary]['bc_type'] == 'wells':
+                    time_key = self.model_data.boundaries.bc[boundary]['bc_array'].keys()[0]
+                    wel[0] += self.model_data.boundaries.bc[boundary]['bc_array'][time_key]
+
+            self.createWELpackage(wel)
+            
+            
+        # IF transport then
+        self.createLMTpackage()
             
         self.finaliseModel()
     #End buildMODFLOW        
@@ -273,6 +286,32 @@ class ModflowModel(object):
                 else:
                     riv_exchange[per] += [[riv_flux[0][l][r][c], (l,r,c)]]
 
+        return riv_exchange
+
+    def getRiverFluxNodes(self, nodes):
+        cbbobj = self.importCbb()
+        riv_flux = cbbobj.get_data(text='RIVER LEAKAGE', full3D=True)            
+        times = cbbobj.get_times()
+        if type(times) == str:
+            str_pers = 1
+        else:
+            str_pers = len(times)
+        #end if
+        river = nodes
+
+        riv_exchange = {}
+        for per in range(str_pers):
+            riv_exchange[per] = []
+            for cell in river:
+                (l, r, c) = (0, cell[0], cell[1])            
+                if str_pers > 1:                
+                    riv_exchange[per] += [[riv_flux[per][l][r][c], (l,r,c)]]
+                else:
+                    riv_exchange[per] += [[riv_flux[0][l][r][c], (l,r,c)]]
+
+                                          
+        riv_exchange = np.array([x[0] for x in riv_exchange[0] if type(x[0]) == np.float32]).sum()
+                                          
         return riv_exchange
 
     def getAverageDepthToGW(self, mask=None):
@@ -1633,9 +1672,6 @@ class MT3DModel(object):
     def __init__(self):
         pass
 
-    ###########################################################################
-    # MT3D part which should be split into it's own class
-    ###########################################################################
     
     def createBTNpackage(self):
         #Add the BTN package to the model
@@ -2006,7 +2042,6 @@ class MT3DModel(object):
     #End MT3DModel
         
 
-#Ordinarily, the script and the Class definition would be in separate files
 if __name__ == '__main__':
     pass
 
