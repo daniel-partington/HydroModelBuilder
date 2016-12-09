@@ -259,7 +259,11 @@ class GWModelBuilder(object):
     def load_obj(self, filename):
         if filename[-4:] == '.pkl':
             with open(filename, 'rb') as f:
-                return pickle.load(f)
+                print f
+                print filename
+                p = pickle.load(f)
+                return p
+                
         else:
             print 'File type not recognised as "pkl"'
             sys.exit(1)
