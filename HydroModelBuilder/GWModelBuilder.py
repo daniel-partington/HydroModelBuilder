@@ -232,9 +232,9 @@ class GWModelBuilder(object):
         # end if
 
     def load_array(self, array_file):
-        if array_file[-3:] == 'txt':
+        if array_file.endswith('txt'):
             return np.loadtxt(array_file)
-        elif array_file[-3:] == 'npy' or array_file[-3:] == 'npz':
+        elif array_file.endswith('npy') or array_file.endswith('npz'):
             return np.load(array_file)
         else:
             print 'File type not recognised as "txt", "npy" or "npz" \n'
@@ -245,7 +245,7 @@ class GWModelBuilder(object):
         df.to_hdf(filename + '.h5', 'table')
 
     def load_dataframe(self, filename):
-        if filename[-3:] == '.h5':
+        if filename.endswith('.h5'):
             return pd.read_hdf(filename, 'table')
         else:
             print 'File type not recognised as "h5"'
@@ -257,7 +257,7 @@ class GWModelBuilder(object):
             pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
     def load_obj(self, filename):
-        if filename[-4:] == '.pkl':
+        if filename.endswith('.pkl'):
             with open(filename, 'rb') as f:
                 print f
                 print filename
