@@ -222,7 +222,7 @@ class ModflowModel(object):
  
             self.createRIVpackage(river)
 
-        elif wells_exist:
+        if wells_exist:
             wel = {}
             wel[0] = []
             for boundary in self.model_data.boundaries.bc:
