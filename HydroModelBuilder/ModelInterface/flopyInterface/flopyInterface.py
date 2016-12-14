@@ -1736,10 +1736,12 @@ class MT3DModel(object):
         ibound = self.model_data.model_mesh3D[1]        
         ibound[ibound == -1] = 0
         
+        self.crch = {}
+        for per in range(self.nper):
+            self.crch[per] = []
+        #end for
+    
         for boundary in self.model_data.boundaries.bc:
-            self.crch = {}
-            for per in range(self.nper):
-                self.crch[per] = []
             if self.model_data.boundaries.bc[boundary]['bc_type'] == 'recharge':
                 for key in self.model_data.boundaries.bc[boundary]['bc_array'].keys():
                     self.crch[key] = np.ones_like(self.model_data.boundaries.bc[boundary]['bc_array'][key])               
