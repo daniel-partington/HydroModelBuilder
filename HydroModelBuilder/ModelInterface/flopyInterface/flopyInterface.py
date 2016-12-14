@@ -237,8 +237,8 @@ class ModflowModel(object):
             raise Exception('MODFLOW did not terminate normally.')
         #End if
     #End runMODFLOW()
-    
-    
+
+
     #**************************************************************************
     #**************************************************************************
     #**************************************************************************
@@ -249,7 +249,7 @@ class ModflowModel(object):
 
 
     def checkCovergence(self, path=None, name=None):
-        converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP", # Clear statement of model fail in list file 
+        converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP", # Clear statement of model fail in list file
                                  " PERCENT DISCREPANCY =         200.00", # Convergence but extreme discrepancy in results
                                  " NaN " # Something big went wrong but somehow convergence was reached?
                                  ]
@@ -258,9 +258,9 @@ class ModflowModel(object):
                 list_file = f.read()
             for converge_fail in converge_fail_options:
                 if converge_fail in list_file:
-                    print "*** Convergence failure ***"            
-                    print os.getcwd()            
-                    import datetime                
+                    print "*** Convergence failure ***"
+                    print os.getcwd()
+                    import datetime
                     now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
                     with open(os.path.join(self.data_folder, "converge_fail_%s.txt" %now), 'w') as fail:
                         fail.write("Model did not converge, @ %s" %datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
@@ -274,9 +274,9 @@ class ModflowModel(object):
                 list_file = f.read()
             for converge_fail in converge_fail_options:
                 if converge_fail in list_file:
-                    print "*** Convergence failure ***"            
-                    print os.getcwd()            
-                    import datetime                
+                    print "*** Convergence failure ***"
+                    print os.getcwd()
+                    import datetime
                     now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
                     with open(os.path.join(self.data_folder, "converge_fail_%s.txt" %now), 'w') as fail:
                         fail.write("Model did not converge, @ %s" %datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
@@ -572,8 +572,8 @@ class ModflowModel(object):
                 print sim, obs, zone
                 continue
             self.obs_sim_zone += [[obs, sim, zone, x, y]]
-        
-    
+
+
     def importHeads(self, path=None, name=None):
         if path:
             headobj = bf.HeadFile(path + name +'.hds') #, precision='double')
@@ -1748,9 +1748,9 @@ class MT3DModel(object):
                 for key in bc_array.keys():
                     self.crch[key] = np.ones_like(bc_array[key])
                     self.crch[key] = self.crch[key] * 100.0
-                    self.crch[key][ibound[0]==0] = 0.0
+                    self.crch[key][ibound[0] == 0] = 0.0
 
-            #if self.model_data.boundaries.bc[boundary]['bc_type'] == 'river':
+            # if self.model_data.boundaries.bc[boundary]['bc_type'] == 'river':
             #    self.createRIVpackage(self.model_data.boundaries.bc[boundary]['bc_array'])
 
             if bc_type == 'wells':
@@ -1758,7 +1758,7 @@ class MT3DModel(object):
                     for well in bc_array[key]:
                         ssm_data[key].append((well[0], well[1], well[2], 100.0, itype['WEL']))
 
-            #if self.model_data.boundaries.bc[boundary]['bc_type'] == 'drain':
+            # if self.model_data.boundaries.bc[boundary]['bc_type'] == 'drain':
             #    self.model_data.boundaries.bc[boundary]['bc_array']
 
             if bc_type == 'general head':
