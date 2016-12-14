@@ -252,6 +252,51 @@ class ModflowModel(object):
     #End runMODFLOW()
     
     
+    #**************************************************************************
+    #**************************************************************************
+    #**************************************************************************
+    #**** CHECKING SUCCESS OF MODEL RUN ***************************************
+    #**************************************************************************
+    #**************************************************************************
+    #**************************************************************************
+
+
+    def checkCovergence(self, path=None, name=None):
+        converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP", # Clear statement of model fail in list file 
+                                 " PERCENT DISCREPANCY =         200.00", # Convergence but extreme discrepancy in results
+                                 " NaN " # Something big went wrong but somehow convergence was reached?
+                                 ]
+        if path:
+            with open(os.path.join(path,name) + '.list', 'r') as f:
+                list_file = f.read()
+            for converge_fail in converge_fail_options:
+                if converge_fail in list_file:
+                    print "*** Convergence failure ***"            
+                    print os.getcwd()            
+                    import datetime                
+                    now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
+                    with open(os.path.join(self.data_folder, "converge_fail_%s.txt" %now), 'w') as fail:
+                        fail.write("Model did not converge, @ %s" %datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                    return False
+                #end if
+            #end for
+            return True
+
+        else:
+            with open(self.data_folder + self.name + '.list', 'r') as f:
+                list_file = f.read()
+            for converge_fail in converge_fail_options:
+                if converge_fail in list_file:
+                    print "*** Convergence failure ***"            
+                    print os.getcwd()            
+                    import datetime                
+                    now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
+                    with open(os.path.join(self.data_folder, "converge_fail_%s.txt" %now), 'w') as fail:
+                        fail.write("Model did not converge, @ %s" %datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                    return False
+                #end if
+            #end for
+            return True
 
 
     #**************************************************************************
@@ -541,40 +586,6 @@ class ModflowModel(object):
             self.obs_sim_zone += [[obs, sim, zone, x, y]]
         
     
-    def checkCovergence(self, path=None, name=None):
-        converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP", # Clear statement of model fail in list file 
-                                 " PERCENT DISCREPANCY =         200.00", # Convergence but extreme discrepancy in results
-                                 " NaN " # Something big went wrong but somehow convergence was reached?
-                                 ]
-        if path:
-            with open(os.path.join(path,name) + '.list', 'r') as f:
-                list_file = f.read()
-            for converge_fail in converge_fail_options:
-                if converge_fail in list_file:
-                    print "*** Convergence failure ***"            
-                    print os.getcwd()            
-                    import datetime                
-                    now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
-                    with open(os.path.join(self.data_folder, "converge_fail_%s.txt" %now), 'w') as fail:
-                        fail.write("Model did not converge, @ %s" %datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-                    return False
-                else:
-                    return True
-        else:
-            with open(self.data_folder + self.name + '.list', 'r') as f:
-                list_file = f.read()
-            for converge_fail in converge_fail_options:
-                if converge_fail in list_file:
-                    print "*** Convergence failure ***"            
-                    print os.getcwd()            
-                    import datetime                
-                    now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
-                    with open(os.path.join(self.data_folder, "converge_fail_%s.txt" %now), 'w') as fail:
-                        fail.write("Model did not converge, @ %s" %datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-                    return False
-                else:
-                    return True
-
     def importHeads(self, path=None, name=None):
         if path:
             headobj = bf.HeadFile(path + name +'.hds') #, precision='double')
