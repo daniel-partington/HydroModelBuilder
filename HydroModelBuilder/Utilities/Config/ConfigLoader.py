@@ -108,7 +108,7 @@ class ConfigLoader(object):
                               Defaults to None.
         """
         if user_env_name is None:
-            user_env_name = subprocess.check_output("whoami").replace("\r\n", "")
+            user_env_name = subprocess.check_output("whoami").strip()
 
         self.settings = self.model_config[project_name]["environment"][user_env_name]
         self.model_config = self.model_config[project_name]["environment"][user_env_name]
@@ -132,7 +132,7 @@ class ConfigLoader(object):
 
         :param params: List, list of parameters to drill down
                        e.g. ["models", "Climate", "path"] will get value(s) for
-                            CONFIG.settings["data"]["Climate"]["path"]
+                            CONFIG.settings["models"]["Climate"]["path"]
 
         :returns: object, value for specified parameter
         """
