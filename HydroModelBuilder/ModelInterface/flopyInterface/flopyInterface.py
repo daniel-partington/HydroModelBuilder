@@ -36,7 +36,7 @@ class ModflowModel(object):
         
         if self.model_data.model_time.t['steady_state'] == True:
             self.nper = 1
-            self.perlen = 40000 * 365 #8260000#65 #000000 
+            self.perlen = 1 #8260000#65 #000000 
             self.nstp = 1 #0
             self.steady = True #False # False #True #False#True #False
             #self.start_datetime = self.model_data.model_time.t['start_time']
@@ -315,6 +315,7 @@ class ModflowModel(object):
             str_pers = 1
         else:
             str_pers = len(times)
+        
         if self.model_data.boundaries.bc[name]['bc_type'] == 'river':
             time_key = self.model_data.boundaries.bc[name]['bc_array'].keys()[0]
             river = self.model_data.boundaries.bc[name]['bc_array'][time_key]
@@ -368,23 +369,7 @@ class ModflowModel(object):
         if mask is None:
             return np.mean(self.top - head[0])
         else:
-            return np.mean(self.top[mask] - head[0][mask])
-        
-    def ConcsByZone(self, concs):
-        
-        self.model_data.model_mesh3D[1]
-
-        concs_zoned = [np.full(self.model_data.model_mesh3D[1].shape[1:3], np.nan)] * int(np.max(self.model_data.model_mesh3D[1]))
-        
-        for zone in range(int(np.max(self.model_data.model_mesh3D[1]))):
-            temp_concs = np.array([np.full(self.model_data.model_mesh3D[1].shape[1:3], np.nan)] * self.model_data.model_mesh3D[1].shape[0])
-            # for each layer in mesh get the heads from zone and average:
-            for layer in range(self.model_data.model_mesh3D[1].shape[0]):
-                temp_concs[layer][self.model_data.model_mesh3D[1][layer] == float(zone+1)] = concs[layer][self.model_data.model_mesh3D[1][layer] == float(zone+1)]
-            masked_temp_concs = np.ma.masked_array(temp_concs, np.isnan(temp_concs))
-            concs_zoned[zone] = np.mean(masked_temp_concs, axis=0) 
-        #end for
-        return concs_zoned
+            return np.mean(self.top[mask] - head[0][mask])        
 
     def HeadsByZone(self, heads):
         
@@ -1680,8 +1665,8 @@ class ModflowModel(object):
 
 class MT3DModel(object):
     
-    def __init__(self):
-        pass
+    def __init__(self, mf_model):
+        self.mf_model = mf_model
 
     
     def createBTNpackage(self):
@@ -1798,11 +1783,33 @@ class MT3DModel(object):
         #End if
     #End runMT3D()    
 
+
+class MT3DPostProcess(object):
+    
+    def __init__(self, mf_model):
+        self.mf_model = mf_model
+
+
     def importConcs(self):
         self.concobj = bf.UcnFile(self.data_folder + 'MT3D001.UCN')
         return self.concobj
    
+    def ConcsByZone(self, concs):
+        
+        self.model_data.model_mesh3D[1]
 
+        concs_zoned = [np.full(self.model_data.model_mesh3D[1].shape[1:3], np.nan)] * int(np.max(self.model_data.model_mesh3D[1]))
+        
+        for zone in range(int(np.max(self.model_data.model_mesh3D[1]))):
+            temp_concs = np.array([np.full(self.model_data.model_mesh3D[1].shape[1:3], np.nan)] * self.model_data.model_mesh3D[1].shape[0])
+            # for each layer in mesh get the heads from zone and average:
+            for layer in range(self.model_data.model_mesh3D[1].shape[0]):
+                temp_concs[layer][self.model_data.model_mesh3D[1][layer] == float(zone+1)] = concs[layer][self.model_data.model_mesh3D[1][layer] == float(zone+1)]
+            masked_temp_concs = np.ma.masked_array(temp_concs, np.isnan(temp_concs))
+            concs_zoned[zone] = np.mean(masked_temp_concs, axis=0) 
+        #end for
+        return concs_zoned        
+        
     def viewConcsByZone(self, nper='all'):
 
         # Create the headfile object
