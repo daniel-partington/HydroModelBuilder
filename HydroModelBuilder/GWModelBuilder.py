@@ -693,20 +693,27 @@ class GWModelBuilder(object):
                                 self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
 
                 elif self.observations.obs_group[key]['domain'] == 'surface':
-                    points = [list(x) for x in self.observations.obs_group[
-                        key]['locations'].to_records(index=False)]
-                    self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_2Dmesh(
-                        points, identifier=self.observations.obs_group[key]['locations'].index)
-    
-                    # Check that 'mapped_observations' are in active cells and if not then set
-                    # the observation to inactive
-                    for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
-                        [j, i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
-                        if self.model_mesh3D[1][0][j][i] == -1:
-                            self.observations.obs_group[key]['time_series'].loc[
-                                self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
-                        # end if
-                    # end for
+                    if self.observations.obs_group[key]['real']:
+                        points = [list(x) for x in self.observations.obs_group[
+                            key]['locations'].to_records(index=False)]
+                        self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_2Dmesh(
+                            points, identifier=self.observations.obs_group[key]['locations'].index)
+        
+                        # Check that 'mapped_observations' are in active cells and if not then set
+                        # the observation to inactive
+                        for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
+                            [j, i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
+                            if self.model_mesh3D[1][0][j][i] == -1:
+                                self.observations.obs_group[key]['time_series'].loc[
+                                    self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
+                            # end if
+                        # end for
+                    else:
+                        self.observations.obs_group[key]['mapped_observations'] = {}
+                        for index, loc in enumerate(self.observations.obs_group[key]['locations']):
+                            self.observations.obs_group[key]['mapped_observations'][index] = loc
+                        #end for
+                    #end if
                 #end if
             # end for
         # end if
@@ -761,21 +768,24 @@ class GWModelBuilder(object):
 
         pass
 
+    @staticmethod
+    def _findInterval(row, times):
+        key_time = row['datetime']
+        lower_time = times[0]
+        for period, time in enumerate(times):
+            if period > 0:
+                if lower_time <= key_time < time:
+                    return period - 1
+            lower_time = time
+        return np.nan
+
+
     def map_obs2model_times(self):
         """
         This is a function to map the obs at different times within the bounding interval in the
         model times intervals        
 
         """
-        def findInterval(row, times):
-            key_time = row['datetime']
-            lower_time = times[0]
-            for period, time in enumerate(times):
-                if period > 0:
-                    if lower_time <= key_time < time:
-                        return period - 1
-                lower_time = time
-            return np.nan
 
         if self.model_time.t['steady_state']:
             for key in self.observations.obs_group.keys():
@@ -783,7 +793,7 @@ class GWModelBuilder(object):
         else:
             for key in self.observations.obs_group.keys():
                 self.observations.obs_group[key]['time_series']['interval'] = self.observations.obs_group[key][
-                    'time_series'].apply(lambda row: findInterval(row, self.model_time.t['dateindex']), axis=1)
+                    'time_series'].apply(lambda row: self._findInterval(row, self.model_time.t['dateindex']), axis=1)
                 # remove np.nan values from the obs as they are not relevant
                 self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
                     'time_series'][pd.notnull(self.observations.obs_group[key]['time_series']['interval'])]
@@ -911,9 +921,12 @@ class ModelTime(object):
         self.t['time_step'] = time_step
         self.t['duration'] = self.t['end_time'] - self.t['start_time']
 
-        date_index = pd.date_range(start=start_time, end=end_time, freq=time_step)
-        self.t['dateindex'] = date_index
-
+        if date_index is None:
+            date_index = pd.date_range(start=start_time, end=end_time, freq=time_step)
+            self.t['dateindex'] = date_index
+        else:
+            self.t['dateindex'] = date_index
+            
         intervals = []
         old_time = date_index[0]
         for index, time in enumerate(date_index):
@@ -1055,7 +1068,8 @@ class ModelObservations(object):
         self.obs = {}
         self.obID = 0
 
-    def set_as_observations(self, name, time_series, locations, domain=None, obs_type=None, units=None):
+    def set_as_observations(self, name, time_series, locations, domain=None, 
+                            obs_type=None, units=None, weights=None, real=True):
         """
         Function to set observations from pandas dataframes for times series
 
@@ -1080,6 +1094,8 @@ class ModelObservations(object):
         self.obs_group[name]['domain'] = domain
         self.obs_group[name]['obs_type'] = obs_type
         self.obs_group[name]['units'] = units
+        self.obs_group[name]['weights'] = weights
+        self.obs_group[name]['real'] = real
 
     def collate_observations(self):
         for name in self.obs_group.keys():
