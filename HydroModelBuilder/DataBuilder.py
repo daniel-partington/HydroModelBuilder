@@ -116,13 +116,10 @@ class DataBuilder(object):
         # End For
 
         # Set all key word arguments as attributes
-        if self.GISInterface == None:
-            print 'No GIS interface defined'
-        else:
+        if self.GISInterface is not None:
             for key, value in self.__dict__.items():
                 if type(value) is not object:
                     setattr(self.GISInterface, key, value)
-                    #setattr(self.ModelInterface, key, value)
                 # End if
             # End for
         # end if
@@ -154,7 +151,7 @@ class DataBuilder(object):
         # end if
 
     ###########################################################################
-    # START GENERIC FUNCTIONS WHICH SHOULD BE IMPORTED    
+    # START GENERIC FUNCTIONS WHICH SHOULD BE IMPORTED
     ###########################################################################
 
     def check_for_existing(self, f):
@@ -235,7 +232,7 @@ class DataBuilder(object):
         # End for
 
     ###########################################################################
-    # END GENERIC FUNCTIONS WHICH SHOULD BE IMPORTED    
+    # END GENERIC FUNCTIONS WHICH SHOULD BE IMPORTED
     ###########################################################################
 
     def set_model_boundary_from_corners(self, xmin, xmax, ymin, ymax):
@@ -259,7 +256,7 @@ class DataBuilder(object):
         """
         Function to set the model boundary from a polygonal shapefile
         Assumes that there is only one polygon in the shapefile!
-        
+
         :param shapefile_name: Name of the shapefile including extension (String) [required]
         :param shapefile_path: Path for the shapefile is not current working directory (String) [optional]
         """
@@ -270,17 +267,17 @@ class DataBuilder(object):
     def set_data_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None, buffer_dist=None):
         """
         Function to set the data boundary from a polygonal shapefile which also
-        allows use of a buffer distance around the polygon so that if the same 
+        allows use of a buffer distance around the polygon so that if the same
         shapefile that is used to set the model is used, the data boundary can
         encompass a wider reaching area.
 
         The data boundary allows for filtering of large spatial data sets to only
-        include data within the data boundary. This is useful whereby the data 
+        include data within the data boundary. This is useful whereby the data
         within a specified model area as well as within some distance outside of
         the model area can be used to inform the model.
-        
+
         Assumes that there is only one polygon in the shapefile!
-        
+
         :param shapefile_name: Name of the shapefile including extension (String) [required]
         :param shapefile_path: Path for the shapefile is not current working directory (String) [optional]
         :param buffer_dist: Buffer distance around polygon to expand coverage (Float) [optional]
@@ -296,8 +293,8 @@ class DataBuilder(object):
         Function to read in rasters for use elsewhere
         """
         return self.GISInterface.read_rasters(files, path=path)
-        
-        
+
+
     def create_basement_bottom(self, hu_raster_path, surface_raster_file, basement_top_raster_file, basement_bot_raster_file, output_path, raster_driver='GTiff'):
         """
         Utility to build a bottom basement array where it doesn't exist based on top of bedrock, surface elevation and a thickness function
@@ -363,9 +360,9 @@ class DataBuilder(object):
         self.GISInterface.points2shapefile(points_array, shapefile_name)
 
     def package_data(self):
-        """ 
-        Option to save all important attributes of DataBuilder class to 
-        allow quick loading of data that may have required transforms and 
+        """
+        Option to save all important attributes of DataBuilder class to
+        allow quick loading of data that may have required transforms and
         processing in its orignial state.
 
         This will include GIS type objects ... maybe
@@ -409,7 +406,7 @@ class ArrayOrdering(object):
 
     For the horizontal plane:
 
-    UL  y increasing        
+    UL  y increasing
 
         |
         |

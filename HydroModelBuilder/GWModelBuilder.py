@@ -169,13 +169,10 @@ class GWModelBuilder(object):
         # End For
 
         # Set all key word arguments as attributes
-        if self.GISInterface == None:
-            print 'No GIS interface defined'
-        else:
+        if self.GISInterface is not None:
             for key, value in self.__dict__.items():
                 if type(value) is not object:
                     setattr(self.GISInterface, key, value)
-                    #setattr(self.ModelInterface, key, value)
                 # End if
             # End for
         # end if
@@ -263,7 +260,7 @@ class GWModelBuilder(object):
                 print filename
                 p = pickle.load(f)
                 return p
-                
+
         else:
             print 'File type not recognised as "pkl"'
             sys.exit(1)
@@ -277,7 +274,7 @@ class GWModelBuilder(object):
         else:
             print 'Expected mode to be either "data" or "model" but got: ', mode
             sys.exit(1)
-            
+
         if folder == None:
             print 'No folder set, so no flushing'
             sys.exit(1)
@@ -672,7 +669,7 @@ class GWModelBuilder(object):
     def map_obs_loc2mesh3D(self, method='nearest'):
         """
         This is a function to map the obs locations to the nearest node in the
-        mesh        
+        mesh
 
         """
 
@@ -683,7 +680,7 @@ class GWModelBuilder(object):
                         key]['locations'].to_records(index=False)]
                     self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_3Dmesh(
                         points, identifier=self.observations.obs_group[key]['locations'].index)
-    
+
                     # Check that 'mapped_observations' are in active cells and if not then set
                     # the observation to inactive
                     for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
@@ -783,13 +780,13 @@ class GWModelBuilder(object):
     def map_obs2model_times(self):
         """
         This is a function to map the obs at different times within the bounding interval in the
-        model times intervals        
+        model times intervals
 
         """
 
         if self.model_time.t['steady_state']:
             for key in self.observations.obs_group.keys():
-                self.observations.obs_group[key]['time_series']['interval'] = 0                        
+                self.observations.obs_group[key]['time_series']['interval'] = 0
         else:
             for key in self.observations.obs_group.keys():
                 self.observations.obs_group[key]['time_series']['interval'] = self.observations.obs_group[key][
@@ -846,9 +843,9 @@ class GWModelBuilder(object):
         pass
 
     def package_data(self):
-        """ 
-        Option to save all important attributes of GWModelBuilder class to 
-        allow quick loading of data that may have required transforms and 
+        """
+        Option to save all important attributes of GWModelBuilder class to
+        allow quick loading of data that may have required transforms and
         processing in its orignial state.
 
         This will include GIS type objects
@@ -856,8 +853,8 @@ class GWModelBuilder(object):
         pass
 
     def package_model(self):
-        """ 
-        Option to save all important attributes of model class to allow quick 
+        """
+        Option to save all important attributes of model class to allow quick
         loading and manipulation of model without separate data and grid generation
         building scripts
 
@@ -881,7 +878,7 @@ class GWModelBuilder(object):
 
 class GeneralModelDataStructure(object):
     """
-    This class describes a general model structure to be used for 
+    This class describes a general model structure to be used for
     setting up the groundwater models. The class is made up of numpy
     arrays that describe the properties and forcing to be applied to the model
 
@@ -953,7 +950,7 @@ class ModelBoundaries(object):
         a. static
         b. dynamic
 
-    Returns a numpy array which for a point will be a location tuple (x, y, z) 
+    Returns a numpy array which for a point will be a location tuple (x, y, z)
     and bc value/s for static, and bc value/s time series for dynamic.
     """
 
@@ -986,7 +983,7 @@ class ModelBoundaries(object):
 
 class ModelProperties(object):
     """
-    This class is used to set all of the parameters which can then be easily 
+    This class is used to set all of the parameters which can then be easily
     accessed for modification for model pertubations
     """
 
@@ -1004,7 +1001,7 @@ class ModelProperties(object):
 
 class ModelParameters(object):
     """
-    This class is used to set all of the parameters which can then be easily 
+    This class is used to set all of the parameters which can then be easily
     accessed for modification for model pertubations
     """
 
@@ -1041,8 +1038,8 @@ class ModelParameters(object):
         """
         Create pilot points parameter set
         :param name: parameter set of pilot points name.
-        :param values: values for each pilot point 
-        :param points: location of each pilot point         
+        :param values: values for each pilot point
+        :param points: location of each pilot point
         """
         for i in range(len(values)):
             self.param[name + str(i)] = {}
@@ -1059,7 +1056,7 @@ class ModelParameters(object):
 class ModelObservations(object):
     """
     This class is used to store all of the obervations relevant to the model
-    that are not being used to force the model and for which there are model 
+    that are not being used to force the model and for which there are model
     outputs that correspond to the observation, e.g. head
     """
 
@@ -1073,15 +1070,15 @@ class ModelObservations(object):
         """
         Function to set observations from pandas dataframes for times series
 
-        Observations might be: stream stage, stream discharge, stream EC, 
+        Observations might be: stream stage, stream discharge, stream EC,
         groundwater head, groundwater EC etc.
 
-        Each time series should be of the pandas dataframe format where the 
-        first column is an identifier for the data, the second column is datetime and 
+        Each time series should be of the pandas dataframe format where the
+        first column is an identifier for the data, the second column is datetime and
         the next column is the value of interest
 
         For observation dataframes with multiple identifiers there should be an
-        equal number of locations with x, y and z        
+        equal number of locations with x, y and z
 
         """
         self.obs_types = ['head', 'stage', 'discharge', 'concentration']
@@ -1114,7 +1111,7 @@ class ModelObservations(object):
 
 
 class ModelInitialConditions(object):
-    """ 
+    """
     This class is used to store all of the initial conditions for different model
     domains
     """
@@ -1173,7 +1170,7 @@ class ArrayOrdering(object):
 
     For the horizontal plane:
 
-    UL  y increasing        
+    UL  y increasing
 
         |
         |
