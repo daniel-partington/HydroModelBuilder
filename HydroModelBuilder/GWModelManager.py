@@ -136,9 +136,10 @@ class GWModelManager(object):
             directory = self.GW_build[model_name].out_data_folder_grid
         params = self.GW_build[model_name].parameters.param
         obs = self.GW_build[model_name].observations.obs
+        obs_grp = self.GW_build[model_name].observations.obs_group
         print self.GW_build[model_name]
         self.PEST = PESTInterface(name=name, directory=directory, csv_copy=csv_copy,
-                                  excel_copy=excel_copy, params=params, obs=obs, models_ID=models_ID)
+                                  excel_copy=excel_copy, params=params, obs=obs, obs_grp=obs_grp, models_ID=models_ID)
 
     def load_GW_model(self, GW_model, out_data_folder=None):
         packaged_model = self.load_obj(GW_model)
