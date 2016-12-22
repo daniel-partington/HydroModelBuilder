@@ -13,7 +13,7 @@ import pandas as pd
 
 class PESTInterface(object):
 
-    def __init__(self, name=None, directory=None, csv_copy=False, excel_copy=False, params=None, obs=None, models_ID=None):
+    def __init__(self, name=None, directory=None, csv_copy=False, excel_copy=False, params=None, obs=None, obs_grp=None, models_ID=None):
         self.PEST_data = {}
         if name == None:
             self.name = 'default' 
@@ -38,6 +38,12 @@ class PESTInterface(object):
         else:
             self.obs = {}
         #end if
+
+        if obs_grp:
+            self.obs_grp = obs_grp
+        else:
+            self.obs_grp = {}
+        #end if
             
         #self.obs = obs
         
@@ -49,7 +55,7 @@ class PESTInterface(object):
         
         #self.PEST_data['PESTpgp'] = {}
         #self.PESTpgp()
-        self.PEST_data['PESTobs'] = self.PESTobs(obs=self.obs)
+        self.PEST_data['PESTobs'] = self.PESTobs(obs=self.obs, obs_grp=self.obs_grp)
         
     def PESTcon(self):
         """
@@ -102,7 +108,7 @@ class PESTInterface(object):
         NUMCOM, JACFILE and MESSFILE (optional) = the manner in which PEST can obtain derivatives 
           directly from the model, typically set as 1,0,0 [3 * integer]       
         
-        OBSREFEF (optional) = "obsrefref" or "noobsrefref" for observation re-referncing [string]
+        OBSREFEF (optional) = "obsrefref" or "noobsrefref" for observation re-referencing [string]
         
         *** 5th line ***
         RLAMBDA1 = initial Marquardt lambda [real]
@@ -232,16 +238,33 @@ class PESTInterface(object):
         #end if
         self.PEST_data['PESTpgp'] = PESTpgp
         
-    def PESTobs(self, obs=None):
-        header = ['OBSNME', 'OBSVAL', 'WEIGHT', 'OBGNME', 'model']
+    def PESTobs(self, obs=None, obs_grp=None):
+        
+        for index, key in enumerate(obs_grp.keys()):
+            obs_grp_ts = obs_grp[key]['time_series'].copy()
+            # Filter out null observations that were out of date range or 
+            # didn't map to the model mesh
+            obs_grp_ts = obs_grp_ts[obs_grp_ts['obs_map'] != 'null']
+            obs_grp_ts['OBGNME'] = key
+            obs_grp_ts['WEIGHT'] = obs_grp[key]['weights']
+            obs_grp_ts['model'] = self.models_ID[0]
+            obs_grp_ts.rename(columns={'obs_map':'OBSNME', 'value':'OBSVAL'}, inplace=True)            
+            obs_grp_ts = obs_grp_ts[['OBGNME', 'OBSVAL','OBSNME','WEIGHT','model']]
+            if index == 0:
+                PESTobs = obs_grp_ts
+            else:
+                PESTobs = PESTobs.append(obs_grp_ts)
+            #end if 
 
-        num_obs = len(obs.keys())
-        PESTobs = pd.DataFrame(columns=header, index=self.obs.keys())
-        PESTobs['OBSNME'] = obs.keys()
-        PESTobs['OBSVAL'] = obs.values()
-        PESTobs['WEIGHT'] = [1.0] * num_obs
-        PESTobs['OBGNME'] = ['default'] * num_obs
-        PESTobs['model'] = [self.models_ID[0]] * num_obs
+#        header = ['OBSNME', 'OBSVAL', 'WEIGHT', 'OBGNME', 'model']
+#        num_obs = len(obs.keys())
+#        PESTobs = pd.DataFrame(columns=header, index=self.obs.keys())
+#        PESTobs['OBSNME'] = obs.keys()
+#        PESTobs['OBSVAL'] = obs.values()
+#        PESTobs['WEIGHT'] = [1.0] * num_obs
+#        PESTobs['OBGNME'] = [key] * num_obs
+#        PESTobs['model'] = [self.models_ID[0]] * num_obs
+
    
         if self.csv_copy:
             self._createCSVcopyFromDataFrame(PESTobs, 'PESTobs')
@@ -253,11 +276,11 @@ class PESTInterface(object):
         if os.path.exists(fname):
             print fname + ' file exists already'
         else:
-            df.to_csv(self.directory + os.path.sep + name + '.csv', index=False)        
+            df.to_csv(os.path.join(self.directory, name + '.csv'), index=False)        
         #end if
    
     def writePESTdict2csv(self):
-        with open(self.directory + os.path.sep + self.name +'.csv', 'w') as f:
+        with open(os.path.join(self.directory, self.name + '.csv'), 'w') as f:
             w = csv.DictWriter(f, self.PEST_data.keys())
             w.writeheader()
             w.writerow(self.PEST_data)
@@ -416,19 +439,25 @@ class PESTInterface(object):
 
         OUTFLE = {}
         INSFLE = {}        
-        for model in models_ID:
+
+        os.chdir(self.directory)
+
+        for obs_gp in self.PEST_data['PESTobs']['OBGNME'].unique():
+        #for model in models_ID:
+            model = models_ID[0]
             # Find model folder
-            #model_folder = self.directory + os.path.sep + model
-            model_folder = '..' + os.path.sep + model
+            #model_folder = self.directory + os.path.sep + 'model_' + model
+            model_folder = '.' + os.path.sep + 'model_' + model
             if not os.path.isdir(model_folder):
                 sys.exit('Model folder not found for model %s' %(model))
             #end if
             
-            # Model observation file (must be create by post-processing of model outputs)
-            OUTFLE[model] = '.' + os.path.sep + model + r'\observations_' + model + '.txt'
+            # Model observation file (must be created by post-processing of model outputs)
+
+            OUTFLE[obs_gp] = '.' + os.path.sep + 'model_' + model + r'\observations_' + obs_gp + '.txt'
             
             # Corresponding instruction file for PEST to know how to read it
-            INSFLE[model] = 'observations_' + model + '.ins'
+            INSFLE[obs_gp] = 'observations_' + obs_gp + '.ins'
         #end for
         
         
@@ -449,47 +478,49 @@ class PESTInterface(object):
             f.write('pcf\n')
             
             # Control data
+            control_data = self.PEST_data['PESTcon']['control_data']
             f.write('* control data\n')
-            f.write('%s %s\n' %(self.PEST_data['PESTcon']['control_data']['RSTFLE'], self.PEST_data['PESTcon']['control_data']['PESTMODE']))
+            f.write('%s %s\n' %(control_data['RSTFLE'], control_data['PESTMODE']))
             f.write('%d %d %d %d %d\n' % (NPAR, NOBS, NPARGP, NPRIOR, NOBSGP))
-            f.write('%d %d %s %s\n' %(NTPLFILE, NINSFLE, self.PEST_data['PESTcon']['control_data']['PRECIS'], 
-                                      self.PEST_data['PESTcon']['control_data']['DPOINT']))
+            f.write('%d %d %s %s\n' %(NTPLFILE, NINSFLE, control_data['PRECIS'], 
+                                      control_data['DPOINT']))
             f.write('%g %g %g %g %d %d %s %s\n' %(
-                    self.PEST_data['PESTcon']['control_data']['RLAMBDA1'],
-                    self.PEST_data['PESTcon']['control_data']['RLAMFAC'],
-                    self.PEST_data['PESTcon']['control_data']['PHIRATSUF'],
-                    self.PEST_data['PESTcon']['control_data']['PHIREDLAM'],
-                    self.PEST_data['PESTcon']['control_data']['NUMLAM'],
-                    self.PEST_data['PESTcon']['control_data']['JACUPDATE'],
-                    self.PEST_data['PESTcon']['control_data']['LAMFORGIVE'],
-                    self.PEST_data['PESTcon']['control_data']['DERFORGIVE']))
+                    control_data['RLAMBDA1'],
+                    control_data['RLAMFAC'],
+                    control_data['PHIRATSUF'],
+                    control_data['PHIREDLAM'],
+                    control_data['NUMLAM'],
+                    control_data['JACUPDATE'],
+                    control_data['LAMFORGIVE'],
+                    control_data['DERFORGIVE']))
             f.write('%g %g %g\n' %(
-                    self.PEST_data['PESTcon']['control_data']['RELPARMAX'],
-                    self.PEST_data['PESTcon']['control_data']['FACPARMAX'],
-                    self.PEST_data['PESTcon']['control_data']['FACORIG']))
+                    control_data['RELPARMAX'],
+                    control_data['FACPARMAX'],
+                    control_data['FACORIG']))
             f.write('%g %g %s\n' %(
-                    self.PEST_data['PESTcon']['control_data']['PHIREDSHW'],
-                    self.PEST_data['PESTcon']['control_data']['NOPTSWITCH'],
-                    self.PEST_data['PESTcon']['control_data']['BOUNDSCALE']))
+                    control_data['PHIREDSHW'],
+                    control_data['NOPTSWITCH'],
+                    control_data['BOUNDSCALE']))
             f.write('%d %g %d %d %g %d\n' %(
-                    self.PEST_data['PESTcon']['control_data']['NOPTMAX'],
-                    self.PEST_data['PESTcon']['control_data']['PHIREDSTP'],
-                    self.PEST_data['PESTcon']['control_data']['NPHISTP'],
-                    self.PEST_data['PESTcon']['control_data']['NPHINORED'],
-                    self.PEST_data['PESTcon']['control_data']['RELPARSTP'],
-                    self.PEST_data['PESTcon']['control_data']['NRELPAR']))
+                    control_data['NOPTMAX'],
+                    control_data['PHIREDSTP'],
+                    control_data['NPHISTP'],
+                    control_data['NPHINORED'],
+                    control_data['RELPARSTP'],
+                    control_data['NRELPAR']))
             f.write('%d %d %d\n' %(
-                    self.PEST_data['PESTcon']['control_data']['ICOV'],
-                    self.PEST_data['PESTcon']['control_data']['ICOR'],
-                    self.PEST_data['PESTcon']['control_data']['IEIG']))
+                    control_data['ICOV'],
+                    control_data['ICOR'],
+                    control_data['IEIG']))
             
             # SVD
+            svd = self.PEST_data['PESTcon']['singular_value_decomposition']
             f.write('* singular value decomposition\n')
-            f.write('%d\n' %(self.PEST_data['PESTcon']['singular_value_decomposition']['SVDMODE']))
-            self.PEST_data['PESTcon']['singular_value_decomposition']['MAXSING'] = len(self.PEST_data['PESTpar'].index)
-            f.write('%d %g\n' %(self.PEST_data['PESTcon']['singular_value_decomposition']['MAXSING'], 
-                                self.PEST_data['PESTcon']['singular_value_decomposition']['EIGTHRESH']))
-            f.write('%d\n' %self.PEST_data['PESTcon']['singular_value_decomposition']['EIGWRITE'])
+            f.write('%d\n' %(svd['SVDMODE']))
+            svd['MAXSING'] = len(self.PEST_data['PESTpar'].index)
+            f.write('%d %g\n' %(svd['MAXSING'], 
+                                svd['EIGTHRESH']))
+            f.write('%d\n' %svd['EIGWRITE'])
             # Parameter groups
             f.write('* parameter groups\n')
             for row in self.PEST_data['PESTpgp'].iterrows():
@@ -529,8 +560,10 @@ class PESTInterface(object):
             # Model input/output
             f.write('* model input/output\n')
             f.write('%s\t%s\n' %(TEMPFLE, INFLE))
-            for model in models_ID:
-               f.write('%s\t%s\n' %(INSFLE[model], OUTFLE[model]))
+            for obs_gp in self.PEST_data['PESTobs']['OBGNME'].unique():
+            #for model in models_ID:
+               f.write('%s\t%s\n' %(INSFLE[obs_gp], OUTFLE[obs_gp]))
+               #f.write('%s\t%s\n' %(INSFLE[model], OUTFLE[model]))
             #end for
             
             # PRIOR rules
@@ -548,22 +581,23 @@ class PESTInterface(object):
 #            end
             
             # Predictive analysis
+            predictive_analysis = self.PEST_data['PESTcon']['predictive_analysis']
             f.write('* predictive analysis\n')
-            f.write('%d\n' %(self.PEST_data['PESTcon']['predictive_analysis']['NPREDMAXMIN']))
-            f.write('%g %g %g\n' %(self.PEST_data['PESTcon']['predictive_analysis']['PD0'], 
-                                   self.PEST_data['PESTcon']['predictive_analysis']['PD1'], 
-                                   self.PEST_data['PESTcon']['predictive_analysis']['PD2']))
-            f.write('%g %g %g %g %d\n' %(self.PEST_data['PESTcon']['predictive_analysis']['ABSPREDLAM'],
-                                         self.PEST_data['PESTcon']['predictive_analysis']['RELPREDLAM'],
-                                         self.PEST_data['PESTcon']['predictive_analysis']['INITSCHFAC'],
-                                         self.PEST_data['PESTcon']['predictive_analysis']['MULSCHFAC'],
-                                         self.PEST_data['PESTcon']['predictive_analysis']['NSEARCH']))
-            f.write('%g %g\n' %(self.PEST_data['PESTcon']['predictive_analysis']['ABSPREDSWH'],
-                                self.PEST_data['PESTcon']['predictive_analysis']['RELPREDSWH']))
-            f.write('%d %g %g %d\n' %(self.PEST_data['PESTcon']['predictive_analysis']['NPREDNORED'],
-                                      self.PEST_data['PESTcon']['predictive_analysis']['ABSPREDSTP'],
-                                      self.PEST_data['PESTcon']['predictive_analysis']['RELPREDSTP'],
-                                      self.PEST_data['PESTcon']['predictive_analysis']['NPREDSTP']))
+            f.write('%d\n' %(predictive_analysis['NPREDMAXMIN']))
+            f.write('%g %g %g\n' %(predictive_analysis['PD0'], 
+                                   predictive_analysis['PD1'], 
+                                   predictive_analysis['PD2']))
+            f.write('%g %g %g %g %d\n' %(predictive_analysis['ABSPREDLAM'],
+                                         predictive_analysis['RELPREDLAM'],
+                                         predictive_analysis['INITSCHFAC'],
+                                         predictive_analysis['MULSCHFAC'],
+                                         predictive_analysis['NSEARCH']))
+            f.write('%g %g\n' %(predictive_analysis['ABSPREDSWH'],
+                                predictive_analysis['RELPREDSWH']))
+            f.write('%d %g %g %d\n' %(predictive_analysis['NPREDNORED'],
+                                      predictive_analysis['ABSPREDSTP'],
+                                      predictive_analysis['RELPREDSTP'],
+                                      predictive_analysis['NPREDSTP']))
         # end with
         
         
@@ -584,15 +618,21 @@ class PESTInterface(object):
         
         # Generate PEST instruction file
         
-        for model in models_ID: # n in range(1:length(INSFLE)):
-            used_observations = []
-            for row in self.PEST_data['PESTobs'].iterrows():
-                if row[1]['model'] == model:
-                    used_observations += [row[0]]
-            #end for
-            PESTobs_filtered = self.PEST_data['PESTobs'].loc[used_observations]
+        for obs_gp in self.PEST_data['PESTobs']['OBGNME'].unique():
+        #for model in models_ID: # n in range(1:length(INSFLE)):
+            #used_observations = []
             
-            with open(PEST_folder + os.path.sep + INSFLE[model],'w') as f:
+            #for row in self.PEST_data['PESTobs'].iterrows():
+            #    if row[1]['model'] == model:
+            #        used_observations += [row[0]]
+            #end for
+            
+            #PESTobs_filtered = self.PEST_data['PESTobs'].loc[used_observations]
+            obs_pd = self.PEST_data['PESTobs']
+            PESTobs_filtered = obs_pd[obs_pd['OBGNME'] == obs_gp]           
+
+            #with open(PEST_folder + os.path.sep + INSFLE[model],'w') as f:
+            with open(PEST_folder + os.path.sep + INSFLE[obs_gp],'w') as f:
                 f.write('pif %%\n')
                 for row in PESTobs_filtered.iterrows(): #i in range(1:size(PESTobs_n,1))
                     f.write('l1 !%s!\n' %(row[1]['OBSNME']))
