@@ -231,9 +231,9 @@ class ModflowModel(object):
         self.mf.check()
     #End checkMODFLOW
 
-    def runMODFLOW(self):
+    def runMODFLOW(self, silent=False):
 
-        success, buff = self.mf.run_model()
+        success, buff = self.mf.run_model(silent=silent)
         if not success:
             raise Exception('MODFLOW did not terminate normally.')
         #End if
