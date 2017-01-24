@@ -52,8 +52,8 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
     
         Input:
             data:    numpy array of any dimension
-            invalid: a logical array of same shape as 'data'. True cells set where data
-                     value should be replaced.
+            invalid: a logical array of same shape as 'data'. True cells set 
+                     where data value should be replaced.
                      If None (default), use: invalid  = np.isnan(data)
     
         Output: 
@@ -78,9 +78,10 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
         a = None
     #end for
   
-      # Determine required number of layers based on 
+    # Determine required number of layers based on 
     layers = len(hu_raster_files)/2
     
+    # For a regular grid:
     mesh = np.zeros((layers+1, 
                      len(raster_set[hu_raster_files[0]][0]), 
                      len(raster_set[hu_raster_files[0]][0][0])))
@@ -281,15 +282,15 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
                     
         for i in range(thickness.shape[0]):
             fig = plt.figure()
-            ax = fig.add_subplot(1, 3, 1, aspect='equal')        
+            fig.add_subplot(1, 3, 1, aspect='equal')        
             plt.imshow(mesh_zone_thickness[i], interpolation='none')
             plt.title('Thickness in mesh: ' + hu_raster_files[i*2])
             plt.colorbar()
-            ax = fig.add_subplot(1, 3, 2, aspect='equal')        
+            fig.add_subplot(1, 3, 2, aspect='equal')        
             plt.imshow(raster_thickness[i], interpolation='none')        
             plt.title('Thickness in raster')
             plt.colorbar()
-            ax = fig.add_subplot(1, 3, 3, aspect='equal')        
+            fig.add_subplot(1, 3, 3, aspect='equal')        
             plt.imshow(mesh_zone_thickness[i] - raster_thickness[i], interpolation='none')        
             plt.title('Difference in thickness')
             plt.colorbar()
@@ -306,15 +307,15 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
         for i in range(thickness.shape[0]):
             fig = plt.figure()
-            ax = fig.add_subplot(1, 3, 1, aspect='equal')        
+            fig.add_subplot(1, 3, 1, aspect='equal')        
             plt.imshow(thickness2[i], interpolation='none')
             plt.title('Thickness in active cells: ', hu_raster_files[i*2][0:5])
             plt.colorbar()
-            ax = fig.add_subplot(1, 3, 2, aspect='equal')        
+            fig.add_subplot(1, 3, 2, aspect='equal')        
             plt.imshow(thick_zero[i], interpolation='none')        
             plt.title('Areas where thickness is 0')
             plt.colorbar()
-            ax = fig.add_subplot(1, 3, 3, aspect='equal')        
+            fig.add_subplot(1, 3, 3, aspect='equal')        
             plt.imshow(zone_matrix[i], interpolation='none')        
             plt.title('Zonal delineation')
             plt.colorbar()
@@ -336,7 +337,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
     #mesh = np.flipud(mesh)
     #zone_matrix = np.flipud(zone_matrix)
 
-    return mesh, zone_matrix
+    return mesh, zone_matrix, grid_info
 
 
 if __name__ == "__main__":
