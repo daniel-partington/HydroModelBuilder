@@ -14,6 +14,7 @@ Contains functions for generating files:
 '''
 import os
 import subprocess
+import time
 
 import numpy as np
 
@@ -75,8 +76,9 @@ class PilotPoints(object):
         points_dict = {}
         points_zone_dict = {}
         points_val_dict = {}
-    
+
         zone_mask2D = self._zone_array2layers(mesh_array[1])
+        self.zone_array = mesh_array[1]
         # For each zone find the extent through cycling through the layers and 
         # creating a mask.
     
@@ -114,7 +116,7 @@ class PilotPoints(object):
                         elif col_points == skip_n:
                             col_points = 0
                             continue
-    
+
                     if zone_mask2D[index][row][col]:
                         if skip_active_n != 0:
                             points_active += 1
@@ -170,11 +172,27 @@ class PilotPoints(object):
     
     def write_pilot_points_file(self, pilot_points, pp_zones, initial_values,
                                 points_fname='points.pts'):
+        '''
+        Function to write the pilot point files containing name, easting, 
+        northing, zone and value for each pilot point
+        '''
         with open(os.path.join(self.output_directory, points_fname), 'w') as f:
             for index, point in enumerate(pilot_points):
                 f.write('pp{0} {1} {2} {3} {4} \n'.format(index, point[0], 
                         point[1], pp_zones[index] + 1, initial_values[index]))
-            
+
+    def update_pilot_points_file_by_zone(self, new_values, zone,
+                                points_fname='points.pts'):
+        '''
+        Function to write the pilot point files containing name, easting, 
+        northing, zone and value for each pilot point
+        '''
+        with open(os.path.join(self.output_directory, points_fname), 'w') as f:
+            for index, point in enumerate(self.points_dict[zone]):
+                f.write('pp{0} {1} {2} {3} {4} \n'.format(index, point[0], 
+                        point[1], self.points_zone_dict[zone][index] + 1, new_values[index]))
+                
+                
     def write_zone_file(self, zone_array, zone_fname='zone.inf'):
         '''
         Function to write the zone array file for use in ppk2fac based on an 
@@ -236,8 +254,6 @@ class PilotPoints(object):
         Write the instructions to be used with executing ppk2fac 
         to allow batch execution
         '''
-        #layer = 0
-        #zones = len(np.unique(mesh_array[1][layer])) - 1
         zones = len(np.unique(mesh_array[1])) - 1
         with open(os.path.join(self.output_directory, instruct_fname), 'w') as f:
             f.write('{} \n'.format(grid_spec_fname)) 
@@ -340,19 +356,20 @@ class PilotPoints(object):
         '''
         
         import pyemu
-        pyemu.utils.fac2real(os.path.join(self.output_directory, pp_fname), 
-                             os.path.join(self.output_directory, factors_fname), 
+        
+        pyemu.utils.fac2real(str(os.path.join(self.output_directory, pp_fname)), 
+                             str(os.path.join(self.output_directory, factors_fname)), 
                              out_file=os.path.join(self.output_directory, out_fname), 
                              upper_lim=upper_lim, lower_lim=lower_lim)
-           
-    def create_mesh3D_array_from_values(self, zone_array, values_dir='', out_dir=''):
+
+    def _create_mesh3D_array_from_values(self, zone_array, values_dir='', out_dir=''):
         '''
         Function to read in all of the different values arrays for each layer and
         construct the 3D array pertaining to pilot point values as defined by their 
         zones
         '''
         val_array = np.zeros_like(zone_array)
-        zones = [x + 1 for x in range(len(np.unique(mesh_array[1])) - 1)]
+        zones = [x + 1 for x in range(len(np.unique(zone_array)) - 1)]
                  
         for index, zone in enumerate(zones):
             fname = os.path.join(self.output_directory, 'values{}.ref'.format(index))
@@ -363,12 +380,12 @@ class PilotPoints(object):
                     vals += [float(x) for x in line.strip('\n').split()]
             
             vals = np.array(vals)
-            vals = np.reshape(vals, mesh_array[0][0].shape)
+            vals = np.reshape(vals, zone_array[0].shape)
             for layer in range(zone_array.shape[0]):
                 val_array[layer][zone_array[layer]==[zone]] = vals[zone_array[layer]==[zone]]
 
-        self.val_array            
-        return val_array
+        self.val_array = val_array           
+        #return val_array
         
     def save_mesh3D_array(self, filename='val_array', data_format='binary'):
         '''
@@ -383,7 +400,7 @@ class PilotPoints(object):
             print 'Data format not recognised, use "binary" or "ascii"'
         # end if
 
-    def setup_pilot_points_by_zones(self, zones, search_radius):
+    def setup_pilot_points_by_zones(self, mesh_array, zones, search_radius):
         '''
         Function to set up pilot points files, zone files, ppk2fac instructions,
         and to run ppk2fac to create the factors files required for fac2real.
@@ -395,7 +412,9 @@ class PilotPoints(object):
                                          self.points_zone_dict[zone], 
                                          self.points_val_dict[zone], 
                                          points_fname='points{}.pts'.format(zone))
-    
+
+            self.num_ppoints_by_zone[zone] = len(self.points_dict[zone])            
+
             self.write_zone_file(self.zone_mask2D, 
                                  zone_fname='zone{}.inf'.format(zone))
     
@@ -412,6 +431,9 @@ class PilotPoints(object):
                                    min_pilot_points=1, 
                                    max_pilot_points=50)
             
+            #if os.path.exists(os.path.join(self.output_directory, 'factors{}.dat'.format(zone))):
+            #    os.remove(os.path.join(self.output_directory, 'factors{}.dat'.format(zone)))
+                
             self.run_ppk2fac(self.ppk2fac_exe, 
                              instruct_fname='ppk2fac{}.in'.format(zone))
             self.write_fac2real_instruct('factors{}.dat'.format(zone),
@@ -425,12 +447,29 @@ class PilotPoints(object):
         number of zones.
         
         This should only be used after running setup_pilot_points_by_zones
-        '''        
+        '''      
         for zone in range(zones):
+            count = 0
+            while not os.path.exists(os.path.join(self.output_directory, "factors{}.dat".format(zone))):
+                print('Factors file not found ...waiting 1 more second')
+                count += 1
+                time.sleep(1)
+                if count == 5:
+                    break
             self.run_pyfac2real(pp_fname="points{}.pts".format(zone),
                               factors_fname="factors{}.dat".format(zone), 
                               out_fname="values{}.ref".format(zone),
                               upper_lim=1.0e+6, lower_lim=1.0e-6)        
+
+            
+        self._create_mesh3D_array_from_values(self.zone_array, values_dir=self.output_directory, 
+                                              out_dir=self.output_directory)
+
+    def update_pilot_points_files_by_zones(self, zones, new_values_dict):
+        
+        for zone in range(zones):
+            self.update_pilot_points_file_by_zone(new_values_dict[zone], zone,
+                                points_fname='points{}.pts'.format(zone))
         
 # End class PilotPoints
         
@@ -450,7 +489,7 @@ if __name__ == "__main__":
 
     from HydroModelBuilder.GWModelManager import GWModelManager
 
-    resolution = 1000
+    resolution = 5000
     zone_map = {1: 'qa', 2: 'utb', 3: 'utqa', 4: 'utam', 5: 'utaf', 6: 'lta', 
                 7: 'bse'}
     HGU_map = {'bse':'Bedrock', 'utb':'Newer Volcanics Basalts', 
@@ -474,10 +513,10 @@ if __name__ == "__main__":
     # skip function.
     
     pp = PilotPoints(output_directory=model_folder)
-    
+
     a = pp.generate_points_from_mesh(mesh_array, cell_centers, 
-            skip=[0, 0, 6, 0, 6, 6, 6, 6], 
-            skip_active=[49, 20, 0, 34, 0, 0, 0],
+                   skip=[0,  0, 3, 0, 2, 3, 3], 
+            skip_active=[3, 20, 0, 4, 0, 0, 0],
             zone_prop_dict={0:30.0, 1:2.0, 2:2.0, 3:50.0, 4:45.0, 5:30.0, 6:10.0},
             add_noise=True
             )
@@ -489,40 +528,21 @@ if __name__ == "__main__":
                       vartype=2, bearing=0.0, a=20000.0, anisotropy=1.0)
 
     search_radius = [30000, 20000, 20000, 20000, 20000, 20000, 20000]
-    
-    for zone in range(zones):
-        pp.write_pilot_points_file(a[0][zone], a[1][zone], a[2][zone], 
-                                points_fname='points{}.pts'.format(zone))
 
-        pp.write_zone_file(a[3], zone_fname='zone{}.inf'.format(zone)) #mesh_array[1])
+    pp.setup_pilot_points_by_zones(mesh_array, zones, search_radius)    
 
-        pp.write_ppk2fac_instruct(mesh_array, 'grid.spc',
-                               'points{}.pts'.format(zone), 
-                               zone_fname='zone{}.inf'.format(zone),
-                               instruct_fname = 'ppk2fac{}.in'.format(zone),
-                               struct_fname='struct.dat', 
-                               factor_fname='factors{}.dat'.format(zone), 
-                               sd_fname='sd{}.ref'.format(zone), 
-                               reg_fname='reg{}.dat'.format(zone),
-                               min_allowable_points_separation=0.0, kriging='o', 
-                               search_radius=search_radius[zone], 
-                               min_pilot_points=1, 
-                               max_pilot_points=50)
-        
-        pp.run_ppk2fac(pp.ppk2fac_exe, instruct_fname='ppk2fac{}.in'.format(zone))
-        pp.write_fac2real_instruct('factors{}.dat'.format(zone),
-                                'points{}.pts'.format(zone), 
-                                1E-6, 1E6, 'values{}.ref'.format(zone),
-                                instruct_fname='fac2real{}.in'.format(zone))
+    pp.run_pyfac2real_by_zones(zones)
+#    for zone in range(zones):
+#        print('There are {0} points in zone: {1}'.format(pp.num_ppoints_by_zone[zone], zone))
+#        
+##        run_fac2real(fac2real_exe, instruct_fname='fac2real{}.in'.format(zone))
+#        pp.run_pyfac2real(pp_fname="points{}.pts".format(zone),
+#                          factors_fname="factors{}.dat".format(zone), 
+#                          out_fname="values{}.ref".format(zone),
+#                          upper_lim=1.0e+6, lower_lim=1.0e-6)
 
-    for zone in range(zones):
-#        run_fac2real(fac2real_exe, instruct_fname='fac2real{}.in'.format(zone))
-        pp.run_pyfac2real(pp_fname="points{}.pts".format(zone),
-                          factors_fname="factors{}.dat".format(zone), 
-                          out_fname="values{}.ref".format(zone),
-                          upper_lim=1.0e+6, lower_lim=1.0e-6)
 
-    hk = pp.create_mesh3D_array_from_values(mesh_array[1])    
+    hk = pp.val_array
 
     nrow, ncol = mesh_array[1][0].shape[0], mesh_array[1][0].shape[1]    
     delc, delr = [resolution]*2
