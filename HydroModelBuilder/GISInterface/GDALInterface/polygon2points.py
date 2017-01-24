@@ -18,8 +18,9 @@ def poly2points(polygon_obj, to_fname="points.shp", density=10, working_director
     # Create the destination data source
     x_res = int((x_max - x_min) / pixel_size)
     y_res = int((y_max - y_min) / pixel_size)
-    target_ds = gdal.GetDriverByName('GTiff').Create(working_directory + os.path.sep + 'temp.tif', x_res, y_res, gdal.GDT_Byte)
+    target_ds = gdal.GetDriverByName('MEM').Create('', x_res, y_res, gdal.GDT_Byte)
     target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+    geotransform= target_ds.GetGeoTransform()
     band = target_ds.GetRasterBand(1)
     band.SetNoDataValue(255)
     
@@ -29,16 +30,12 @@ def poly2points(polygon_obj, to_fname="points.shp", density=10, working_director
     # Read as array
     array = band.ReadAsArray()
     
-    raster = gdal.Open(working_directory + os.path.sep + 'temp.tif')
-    geotransform = raster.GetGeoTransform()
-    
     # Convert array to point coordinates
     count = 0
     roadList = np.where(array == 1)
     multipoint = ogr.Geometry(ogr.wkbMultiPoint)
     for indexY in roadList[0]:
         indexX = roadList[1][count]
-        geotransform = raster.GetGeoTransform()
         originX = geotransform[0]
         originY = geotransform[3]
         pixelWidth = geotransform[1]
@@ -61,11 +58,10 @@ def poly2points(polygon_obj, to_fname="points.shp", density=10, working_director
     outFeature.SetGeometry(multipoint)
     outLayer.CreateFeature(outFeature)
     
-    raster =None
     target_ds = None
     # Remove temporary files
-    while os.path.exists(working_directory + os.path.sep + 'temp.tif'):
-        os.remove(working_directory + os.path.sep + 'temp.tif')
+    #while os.path.exists(working_directory + os.path.sep + 'temp.tif'):
+    #    os.remove(working_directory + os.path.sep + 'temp.tif')
 
     spatialRef.MorphToESRI()
     with open(to_fname[:-4]+'.prj', 'w') as f:
@@ -76,13 +72,29 @@ def poly2points(polygon_obj, to_fname="points.shp", density=10, working_director
             
 if __name__ == "__main__":
 
-    polygon_fn = r"C:\Workspace\part0075\MDB modelling\testbox\01_steady_state\GW_model_area_model.shp"
-    direc = r"C:\Workspace\part0075\MDB modelling\testbox\01_steady_state\\"    
-    to_fname = "points.shp"     
+    polygon_fn = r"C:\Workspace\part0075\MDB modelling\testbox\data_build\GW_model_area_model_buffer_20000.shp"
+    direc = r"C:\Workspace\part0075\MDB modelling\testbox\data_build"    
+    to_fname = "pilot_points.shp"     
     # Define pixel_size which equals distance betweens points
-    pixel_size = 5000
+    pixel_size = 10000
     
     # Open the data source and read in the extent
     source_ds = ogr.Open(polygon_fn)
     poly2points(source_ds, to_fname, density=pixel_size, working_directory=direc)    
     source_ds = None
+    
+    from geopandas import read_file
+    import matplotlib.pyplot as plt
+    
+    gw_model_poly = read_file(os.path.join(direc, "GW_model_area_model.shp"))
+    pilot_points = read_file(os.path.join(direc, "pilot_points.shp"))
+    
+    fig = plt.figure(figsize=(8,10))
+    ax = fig.add_subplot(1, 1, 1, aspect='equal')
+    
+    gw_model_poly.plot(ax=ax, alpha=0.2)
+    
+    pilot_points_xy = pilot_points['geometry'][0].wkt[12:-1].split(",")
+    pilot_points_xy = [(float(x.strip(" ").split(" ")[0]), float(x.strip(" ").split(" ")[1])) for x in pilot_points_xy]
+    #pilot_points.plot(markersize=5, ax=ax)
+    plt.scatter([x[0] for x in pilot_points_xy], [x[1] for x in pilot_points_xy])
