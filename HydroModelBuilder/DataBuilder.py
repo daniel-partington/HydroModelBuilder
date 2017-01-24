@@ -2,7 +2,7 @@
 import sys
 import os
 import shutil
-import pickle
+import cPickle as pickle
 
 # additions
 import numpy as np

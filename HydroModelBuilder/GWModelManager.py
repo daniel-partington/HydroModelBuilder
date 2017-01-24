@@ -1,5 +1,6 @@
 import sys
-import pickle
+
+import cPickle as pickle
 
 from HydroModelBuilder.GWModelBuilder import GWModelBuilder
 
