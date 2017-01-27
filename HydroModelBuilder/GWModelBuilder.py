@@ -458,7 +458,7 @@ class GWModelBuilder(object):
         # Build 3D centroids array:
         self.build_centroids_array3D()
 
-    def reclassIsolatedCells(self, passes=1):
+    def reclassIsolatedCells(self, passes=1, assimilate=False):
         """
         Function to remove cells that are surrounded by non-active cells in the horizontal plane
 
@@ -479,32 +479,33 @@ class GWModelBuilder(object):
 
                         target_zone = self.model_mesh3D[1][k]
                         # Assimilate cell if surrounded by four of the same
-                        if (((j > 0) and (target_zone[j - 1][i] != cell_zone)) and       # North
-                           ((j < row - 1) and (target_zone[j + 1][i] != cell_zone)) and  # South
-                           ((i < col - 1) and (target_zone[j][i + 1] != cell_zone)) and  # East
-                           ((i > 0) and (target_zone[j][i - 1] != cell_zone)) and       # West
-                           ((j > 0) and (i < col - 1) and (target_zone[j - 1][i + 1] != cell_zone)) and   # North-East
-                           ((j < row - 1) and (i < col - 1) and (target_zone[j + 1][i + 1] != cell_zone)) and  # South-East
-                           ((j > 0) and (i > 0) and (target_zone[j - 1][i - 1] != cell_zone)) and  # North-West
-                           ((j < row - 1) and (i > 0) and (target_zone[j + 1][i - 1] != cell_zone))):          # South-West
-     
-                            neighbours = []
-                            if j > 0:
-                                neighbours += [target_zone[j - 1][i]]
-                            if j < row - 1:
-                                neighbours += [target_zone[j + 1][i]] 
-                            if i < col - 1:
-                                neighbours += [target_zone[j][i + 1]]
-                            if i > 0:
-                                neighbours += [target_zone[j][i - 1]]
-                            #end if
-                            from itertools import groupby as g
-                            def most_common_oneliner(L):
-                                return max(g(sorted(L)), key=lambda(x, v):(len(list(v)),-L.index(x)))[0]
-                            
-                            most_common = most_common_oneliner(neighbours) 
-                            if most_common != -1:
-                                target_zone[j][i] = most_common_oneliner(neighbours)
+                        if assimilate:
+                            if (((j > 0) and (target_zone[j - 1][i] != cell_zone)) and       # North
+                               ((j < row - 1) and (target_zone[j + 1][i] != cell_zone)) and  # South
+                               ((i < col - 1) and (target_zone[j][i + 1] != cell_zone)) and  # East
+                               ((i > 0) and (target_zone[j][i - 1] != cell_zone)) and       # West
+                               ((j > 0) and (i < col - 1) and (target_zone[j - 1][i + 1] != cell_zone)) and   # North-East
+                               ((j < row - 1) and (i < col - 1) and (target_zone[j + 1][i + 1] != cell_zone)) and  # South-East
+                               ((j > 0) and (i > 0) and (target_zone[j - 1][i - 1] != cell_zone)) and  # North-West
+                               ((j < row - 1) and (i > 0) and (target_zone[j + 1][i - 1] != cell_zone))):          # South-West
+         
+                                neighbours = []
+                                if j > 0:
+                                    neighbours += [target_zone[j - 1][i]]
+                                if j < row - 1:
+                                    neighbours += [target_zone[j + 1][i]] 
+                                if i < col - 1:
+                                    neighbours += [target_zone[j][i + 1]]
+                                if i > 0:
+                                    neighbours += [target_zone[j][i - 1]]
+                                #end if
+                                from itertools import groupby as g
+                                def most_common_oneliner(L):
+                                    return max(g(sorted(L)), key=lambda(x, v):(len(list(v)),-L.index(x)))[0]
+                                
+                                most_common = most_common_oneliner(neighbours) 
+                                if most_common != -1:
+                                    target_zone[j][i] = most_common_oneliner(neighbours)
 
                         # Check North, South, East, West zones
                         # If any condition is true, then continue on
@@ -843,7 +844,7 @@ class GWModelBuilder(object):
                 self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
                     'time_series'][self.observations.obs_group[key]['time_series']['value'] != 0.]
 
-    def updateModelParameters(self, fname):
+    def updateModelParameters(self, fname, verbose=True):
         with open(fname, 'r') as f:
             text = f.readlines()
             # Remove header
@@ -861,14 +862,16 @@ class GWModelBuilder(object):
                     self.parameters.param[param_name]['PARVAL1'] = float(value)
                     updated[param_name] = True
                 else:
-                    print 'Parameter not defined in model: ', param_name
+                    if verbose:
+                        print 'Parameter not defined in model: ', param_name
 
-        were_updated = [key for key in updated.keys() if updated[key] == True]
-        if len(were_updated) > 0:
-            print 'Parameters updated for : ', were_updated
-        not_updated = [key for key in updated.keys() if updated[key] == False]
-        if len(not_updated) > 0:
-            print 'Parameters unchanged for : ', not_updated
+        if verbose:
+            were_updated = [key for key in updated.keys() if updated[key] == True]
+            if len(were_updated) > 0:
+                print 'Parameters updated for : ', were_updated
+            not_updated = [key for key in updated.keys() if updated[key] == False]
+            if len(not_updated) > 0:
+                print 'Parameters unchanged for : ', not_updated
 
     def create_pilot_points(self, name):
         self.pilot_points[name] = pilotpoints.PilotPoints(output_directory=self.out_data_folder_grid)
