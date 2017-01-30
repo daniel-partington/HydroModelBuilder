@@ -173,7 +173,7 @@ class ModflowModel(object):
         self.mf.write_input()
     # end finaliseModel
 
-    def buildMODFLOW(self, transport=False):
+    def buildMODFLOW(self, transport=False, write=True):
 
         self.mf = flopy.modflow.Modflow(self.name, exe_name=self.executable,
                                         model_ws=self.data_folder, version='mfnwt')
@@ -225,8 +225,10 @@ class ModflowModel(object):
         # IF transport then
         if transport == True:
             self.createLMTpackage()
-        
-        self.finaliseModel()
+       
+        if write == True:    
+            self.finaliseModel()
+            
     #End buildMODFLOW()
 
     def checkMODFLOW(self):
