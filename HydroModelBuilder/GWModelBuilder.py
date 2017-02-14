@@ -214,8 +214,8 @@ class GWModelBuilder(object):
         filename_suffixes = ['_model', '_grid']
 
         for suffix in filename_suffixes:
-            if os.path.isfile(self.out_data_folder + f[:-4] +
-                              suffix + f[-4:]):
+            if os.path.isfile(os.path.join(self.out_data_folder, f[:-4] +
+                              suffix + f[-4:])):
                 print 'found processed file'
         # end for
         # if any(os.path.isfile(x) in filename for x in filename_suffixes):
@@ -414,8 +414,8 @@ class GWModelBuilder(object):
 
         self.gridHeight = gridHeight
         self.gridWidth = gridWidth
-        self.out_data_folder_grid = self.model_data_folder + \
-            'structured_model_grid_%im' % int(gridHeight) + os.path.sep  # '\\'
+        self.out_data_folder_grid = os.path.join(self.model_data_folder, 
+            'structured_model_grid_{}m'.format(int(gridHeight)))  # '\\'
         self.updateGISinterface()
         self.model_mesh = self.GISInterface.define_structured_mesh(gridHeight, gridWidth)
         self.model_mesh_centroids = self.build_centroids_array(self.gridHeight)
@@ -444,15 +444,15 @@ class GWModelBuilder(object):
         return self.GISInterface.create_basement_bottom(hu_raster_path, surface_raster_file, basement_top_raster_file, basement_bot_raster_file, output_path, raster_driver=raster_driver)
 
     def build_3D_mesh_from_rasters(self, raster_files, raster_path, minimum_thickness, maximum_thickness):
-        if os.path.isfile(self.out_data_folder_grid + 'model_mesh.npy') & os.path.isfile(self.out_data_folder_grid + 'zone_matrix.npy'):
+        if os.path.isfile(os.path.join(self.out_data_folder_grid, 'model_mesh.npy')) & os.path.isfile(os.path.join(self.out_data_folder_grid, 'zone_matrix.npy')):
             print 'Using previously generated mesh'
-            self.model_mesh3D = self.load_array(
-                self.out_data_folder_grid + 'model_mesh.npy'), self.load_array(self.out_data_folder_grid + 'zone_matrix.npy')
+            self.model_mesh3D = self.load_array(os.path.join(
+                self.out_data_folder_grid, 'model_mesh.npy')), self.load_array(os.path.join(self.out_data_folder_grid, 'zone_matrix.npy'))
         else:
             self.model_mesh3D = self.GISInterface.build_3D_mesh_from_rasters(
                 raster_files, raster_path, minimum_thickness, maximum_thickness)
-            self.save_array(self.out_data_folder_grid + 'model_mesh', self.model_mesh3D[0])
-            self.save_array(self.out_data_folder_grid + 'zone_matrix', self.model_mesh3D[1])
+            self.save_array(os.path.join(self.out_data_folder_grid, 'model_mesh'), self.model_mesh3D[0])
+            self.save_array(os.path.join(self.out_data_folder_grid, 'zone_matrix'), self.model_mesh3D[1])
         # end if
 
         # Build 3D centroids array:
@@ -551,10 +551,10 @@ class GWModelBuilder(object):
         else:
             poly_name = polyline_obj.GetDescription()
         # end if
-        if os.path.exists(self.out_data_folder_grid + poly_name + '_mapped.pkl'):
+        if os.path.exists(os.path.join(self.out_data_folder_grid, poly_name + '_mapped.pkl')):
             print "Using previously mapped points to grid object"
-            self.polyline_mapped[poly_name] = self.load_obj(
-                self.out_data_folder_grid + poly_name + '_mapped.pkl')
+            self.polyline_mapped[poly_name] = self.load_obj(os.path.join(
+                self.out_data_folder_grid, poly_name + '_mapped.pkl'))
         else:
             temp = []
             self.polyline_mapped[poly_name] = self.GISInterface.map_polyline_to_grid(polyline_obj)
@@ -585,7 +585,7 @@ class GWModelBuilder(object):
                 temp += [[grid_loc, item[0]]]
             # end for
             self.polyline_mapped[poly_name] = temp
-            self.save_obj(temp, self.out_data_folder_grid + poly_name + '_mapped')
+            self.save_obj(temp, os.path.join(self.out_data_folder_grid, poly_name + '_mapped'))
         # end if
         self.gridded_data_register += [poly_name]
 
@@ -604,10 +604,10 @@ class GWModelBuilder(object):
             point_name = points_obj.GetDescription()
         # end if
 
-        if os.path.exists(self.out_data_folder_grid + point_name + '_mapped.pkl'):
+        if os.path.exists(os.path.join(self.out_data_folder_grid, point_name + '_mapped.pkl')):
             print "Using previously mapped points to grid object"
-            self.points_mapped[point_name] = self.load_obj(
-                self.out_data_folder_grid + point_name + '_mapped.pkl')
+            self.points_mapped[point_name] = self.load_obj(os.path.join(
+                self.out_data_folder_grid, point_name + '_mapped.pkl'))
         else:
             temp = []
             self.points_mapped[point_name] = self.GISInterface.map_points_to_grid(
@@ -640,7 +640,7 @@ class GWModelBuilder(object):
                 temp += [[grid_loc, item[0]]]
 
             self.points_mapped[point_name] = temp
-            self.save_obj(temp, self.out_data_folder_grid + point_name + '_mapped')
+            self.save_obj(temp, os.path.join(self.out_data_folder_grid, point_name + '_mapped'))
 
         self.gridded_data_register += [point_name]
 
@@ -875,14 +875,22 @@ class GWModelBuilder(object):
 
     def create_pilot_points(self, name):
         self.pilot_points[name] = pilotpoints.PilotPoints(output_directory=self.out_data_folder_grid)
-            
+        
+    def save_pilot_points(self):
+        self.save_obj(self.pilot_points, os.path.join(self.out_data_folder_grid, 'pilot_points'))
+        
+    def load_pilot_points(self, fname):
+        pp = self.load_obj(fname)
+        for key in pp.keys():
+            self.pilot_points[key] = pp[key]
+        
     def add2register(self, addition):
 
         self.model_register += addition
 
     def writeRegister2file(self):
 
-        with open(self.out_data_folder + 'model_register.dat') as f:
+        with open(os.path.join(self.out_data_folder, 'model_register.dat')) as f:
             for item in self.model_register:
                 f.write(item)
 
@@ -936,7 +944,7 @@ class GWModelBuilder(object):
         # Hack to fix up model boundary which contains a gdal object as well:
         packaged_model['model_boundary'] = packaged_model['model_boundary'][0:4]
 
-        self.save_obj(packaged_model, self.out_data_folder_grid + self.name + '_packaged')
+        self.save_obj(packaged_model, os.path.join(self.out_data_folder_grid, self.name + '_packaged'))
 
     ###########################################################################
 
