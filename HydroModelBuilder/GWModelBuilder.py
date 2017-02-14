@@ -9,7 +9,7 @@ import pandas as pd
 from scipy import spatial
 
 from Utilities import interpolation
-
+from Utilities.PilotPoints import pilotpoints
 
 class GWModelBuilder(object):
     """
@@ -116,6 +116,7 @@ class GWModelBuilder(object):
         self.model_time = ModelTime()
         self.polyline_mapped = {}
         self.points_mapped = {}
+        self.pilot_points = {}
 
         # Create registers to store details of processed and imported data for
         # quick future loading
@@ -153,6 +154,7 @@ class GWModelBuilder(object):
                 'model_features',
                 'polyline_mapped',
                 'points_mapped',
+                'pilot_points',
                 'model_register',
                 'base_data_register',
                 'gridded_data_register',
@@ -467,7 +469,7 @@ class GWModelBuilder(object):
         # Build 3D centroids array:
         self.build_centroids_array3D()
 
-    def reclassIsolatedCells(self, passes=1):
+    def reclassIsolatedCells(self, passes=1, assimilate=False):
         """
         Function to remove cells that are surrounded by non-active cells in the horizontal plane
 
@@ -486,15 +488,46 @@ class GWModelBuilder(object):
                             continue
                         # End if
 
+                        target_zone = self.model_mesh3D[1][k]
+                        # Assimilate cell if surrounded by four of the same
+                        if assimilate:
+                            if (((j > 0) and (target_zone[j - 1][i] != cell_zone)) and       # North
+                               ((j < row - 1) and (target_zone[j + 1][i] != cell_zone)) and  # South
+                               ((i < col - 1) and (target_zone[j][i + 1] != cell_zone)) and  # East
+                               ((i > 0) and (target_zone[j][i - 1] != cell_zone)) and       # West
+                               ((j > 0) and (i < col - 1) and (target_zone[j - 1][i + 1] != cell_zone)) and   # North-East
+                               ((j < row - 1) and (i < col - 1) and (target_zone[j + 1][i + 1] != cell_zone)) and  # South-East
+                               ((j > 0) and (i > 0) and (target_zone[j - 1][i - 1] != cell_zone)) and  # North-West
+                               ((j < row - 1) and (i > 0) and (target_zone[j + 1][i - 1] != cell_zone))):          # South-West
+         
+                                neighbours = []
+                                if j > 0:
+                                    neighbours += [target_zone[j - 1][i]]
+                                if j < row - 1:
+                                    neighbours += [target_zone[j + 1][i]] 
+                                if i < col - 1:
+                                    neighbours += [target_zone[j][i + 1]]
+                                if i > 0:
+                                    neighbours += [target_zone[j][i - 1]]
+                                #end if
+                                from itertools import groupby as g
+                                def most_common_oneliner(L):
+                                    return max(g(sorted(L)), key=lambda(x, v):(len(list(v)),-L.index(x)))[0]
+                                
+                                most_common = most_common_oneliner(neighbours) 
+                                if most_common != -1:
+                                    target_zone[j][i] = most_common_oneliner(neighbours)
+
                         # Check North, South, East, West zones
                         # If any condition is true, then continue on
                         # Otherwise, set the cell to -1
-                        target_zone = self.model_mesh3D[1][k]
                         if (((j > 0) and (target_zone[j - 1][i] != -1)) or       # North
                             ((j < row - 1) and (target_zone[j + 1][i] != -1)) or  # South
                             ((i < col - 1) and (target_zone[j][i + 1] != -1)) or  # East
                                 ((i > 0) and (target_zone[j][i - 1] != -1))):         # West
                             continue
+                        # End if
+
                         # End if
 
                         #  Check neighbours
@@ -509,6 +542,7 @@ class GWModelBuilder(object):
 
                         # None of the above conditions were true
                         target_zone[j][i] = -1
+                        
                     # End for
                 # End for
             # End for
@@ -623,7 +657,13 @@ class GWModelBuilder(object):
         self.gridded_data_register += [point_name]
 
     def map_points_to_2Dmesh(self, points, identifier=None):
-
+        '''
+        Function to map points to the 2D horizontal mesh (i.e. on the xy plane)
+        
+        Returns: A dict with keys of all points (or identifiers) with each 
+        corresponding entry containing the i and j reference of the nearest 
+        cell center to the given point
+        '''
         model_mesh_points = np.array(self.centroid2mesh2Dindex.keys())
 
         if type(points) == list:
@@ -643,7 +683,7 @@ class GWModelBuilder(object):
                 point2mesh_map[identifier[index]] = self.centroid2mesh2Dindex[
                     tuple(model_mesh_points[closest[index]])]
             else:
-                point2mesh_map[point] = self.centroid2mesh32index[
+                point2mesh_map[point] = self.centroid2mesh2Dindex[
                     tuple(model_mesh_points[closest[index]])]
             # end if
         # end for
@@ -651,6 +691,13 @@ class GWModelBuilder(object):
         return point2mesh_map
 
     def map_points_to_3Dmesh(self, points, identifier=None):
+        '''
+        Function to map points to the 3D mesh 
+        
+        Returns: A dict with keys of all points (or identifiers) with each 
+        corresponding entry containing the i, j and k reference of the nearest 
+        cell center to the given point
+        '''
 
         model_mesh_points = np.array(self.centroid2mesh3Dindex.keys())
 
@@ -812,7 +859,7 @@ class GWModelBuilder(object):
                 self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
                     'time_series'][self.observations.obs_group[key]['time_series']['value'] != 0.]
 
-    def updateModelParameters(self, fname):
+    def updateModelParameters(self, fname, verbose=True):
         with open(fname, 'r') as f:
             text = f.readlines()
             # Remove header
@@ -830,15 +877,20 @@ class GWModelBuilder(object):
                     self.parameters.param[param_name]['PARVAL1'] = float(value)
                     updated[param_name] = True
                 else:
-                    print 'Parameter not defined in model: ', param_name
+                    if verbose:
+                        print 'Parameter not defined in model: ', param_name
 
-        were_updated = [key for key in updated.keys() if updated[key] == True]
-        if len(were_updated) > 0:
-            print 'Parameters updated for : ', were_updated
-        not_updated = [key for key in updated.keys() if updated[key] == False]
-        if len(not_updated) > 0:
-            print 'Parameters unchanged for : ', not_updated
+        if verbose:
+            were_updated = [key for key in updated.keys() if updated[key] == True]
+            if len(were_updated) > 0:
+                print 'Parameters updated for : ', were_updated
+            not_updated = [key for key in updated.keys() if updated[key] == False]
+            if len(not_updated) > 0:
+                print 'Parameters unchanged for : ', not_updated
 
+    def create_pilot_points(self, name):
+        self.pilot_points[name] = pilotpoints.PilotPoints(output_directory=self.out_data_folder_grid)
+            
     def add2register(self, addition):
 
         self.model_register += addition
@@ -853,6 +905,23 @@ class GWModelBuilder(object):
         """ Needs writing ... """
         self.GISInterface.points2shapefile(points_array, shapefile_name)
 
+    def mesh3DToVtk(self, val_array, val_name, out_path, vtk_out):
+        '''
+        Function to write the mesh array 
+        '''
+        nrow, ncol = self.model_mesh3D[1][0].shape    
+        delc, delr = self.gridWidth, self.gridHeight
+        x0, y0 = self.model_boundary[0], self.model_boundary[3]
+        grid_info = [ncol, nrow, delc, delr, x0, y0]
+        mesh, zone_matrix = self.mesh_array[0], self.mesh_array[1]
+        from HydroModelBuilder.GISInterface.GDALInterface import array2Vtk
+        
+        array2Vtk.build_vtk_from_array(grid_info, np.fliplr(mesh), ["z_elev"], 
+                                       [np.fliplr(mesh)], ["zone", val_name], 
+                                       [np.fliplr(zone_matrix), np.fliplr(val_array)], 
+                                       out_path, vtk_out)
+
+        
     def get_uppermost_active(self):
         # Not required at the moment
         pass
@@ -1023,13 +1092,27 @@ class ModelParameters(object):
 
     def __init__(self):
         self.param = {}
+        self.param_set = {}
 
     # 'PARTRANS', 'PARCHGLIM', 'PARVAL1', 'PARLBND', 'PARUBND', 'PARGP', 'SCALE', 'OFFSET'
     def create_model_parameter(self, name, value=None):
+        '''
+        Function to create new parameter for use in PEST
+        
+        '''
+        if len(name) > 12:
+            print('Warning: PEST has a max char length of parameter names of 12')
+            print('         Parameter {0} has length {1}'.format(name, len(name)))
+        #end if
         self.param[name] = {}
         self.param[name]['PARVAL1'] = value
 
-    def parameter_options(self, param_name, PARTRANS=None, PARCHGLIM=None, PARLBND=None, PARUBND=None, PARGP=None, SCALE=None, OFFSET=None):
+    def parameter_options(self, param_name, PARTRANS=None, PARCHGLIM=None, 
+                          PARLBND=None, PARUBND=None, PARGP=None, 
+                          SCALE=None, OFFSET=None):
+        '''
+        Function to assign various paramater properties pertaining to PEST
+        '''
         if PARTRANS:
             self.param[param_name]['PARTRANS'] = PARTRANS
         if PARCHGLIM:
@@ -1045,30 +1128,38 @@ class ModelParameters(object):
         if OFFSET:
             self.param[param_name]['OFFSET'] = PARTRANS
 
-    def create_model_parameter_set(self, name, values):
-        for i in range(len(values)):
+    def create_model_parameter_set(self, name, value=None, num_parameters=1):
+        '''
+        Function to create a model parameter set to be used with pilot points
+        '''
+        if len(name) > 9:
+            print('Warning: PEST has a max char length of parameter names of 12')
+            print('         Parameter {0} has length {1}'.format(name, len(name)))
+            print('         Automatic appending of name with number may cause')
+            print('         longer than 12 char length par names')
+        #end if
+
+        for i in range(num_parameters):
             self.param[name + str(i)] = {}
-            self.param[name + str(i)]['PARVAL1'] = values[i]
-
-    def create_model_parameter_set_pilot_points(self, name, values, points):
-        """
-        Create pilot points parameter set
-        :param name: parameter set of pilot points name.
-        :param values: values for each pilot point
-        :param points: location of each pilot point
-        """
-        for i in range(len(values)):
-            self.param[name + str(i)] = {}
-            self.param[name + str(i)]['PARVAL1'] = values[i]
-            self.param[name + str(i)]['point'] = values[i]
-
-    def assign_to_model_parameter(self):
-        pass
-
-    def define_parameter2value_relationship(self):
-        pass
-
-
+            self.param[name + str(i)]['PARVAL1'] = value
+            if i == 0:
+                self.param_set[name] = [name + str(i)]
+            else:
+                self.param_set[name] += [name + str(i)]
+                
+    def parameter_options_set(self, param_set_name, PARTRANS=None, PARCHGLIM=None, 
+                          PARLBND=None, PARUBND=None, PARGP=None, 
+                          SCALE=None, OFFSET=None):
+        '''
+        Function to assign various paramater properties pertaining to PEST
+        for each of the parameters within a parameter set
+        '''
+        for param in self.param_set[param_set_name]:
+            self.parameter_options(param, 
+                                   PARTRANS=PARTRANS, PARCHGLIM=PARCHGLIM, 
+                                   PARLBND=PARLBND, PARUBND=PARUBND, 
+                                   PARGP=PARGP, SCALE=SCALE, OFFSET=OFFSET)
+        
 class ModelObservations(object):
     """
     This class is used to store all of the obervations relevant to the model

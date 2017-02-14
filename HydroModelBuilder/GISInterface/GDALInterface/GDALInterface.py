@@ -17,6 +17,7 @@ import map_raster2mesh
 import map2grid
 import point_values_from_raster
 import polygon2points
+import raster2polygon
 
 
 class GDALInterface(GISInterface):
@@ -582,6 +583,15 @@ class GDALInterface(GISInterface):
             bot = None
 
         return points_layer
+        
+    def raster2polygon(self, raster):
+        '''
+        Function to get the first band of a raster and convert it into 
+        a polygon
+        '''
+        
+        return raster2polygon.raster2polygon(raster)
+        
 
 
 class StructuredMesh(object):
