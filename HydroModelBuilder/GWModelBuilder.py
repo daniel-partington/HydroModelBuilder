@@ -1,8 +1,8 @@
-import sys
-import os
-import shutil
 import cPickle as pickle
 import datetime
+import os
+import shutil
+import sys
 
 import numpy as np
 import pandas as pd
@@ -52,7 +52,8 @@ class GWModelBuilder(object):
             #    assert os.path.isdir(data_folder) == True, "{} is an invalid path".format(data_folder)
             # End if
 
-            # assert os.path.isdir(out_data_folder) == True, "{} is an invalid path".format(out_data_folder)
+            # assert os.path.isdir(out_data_folder) == True, "{} is an invalid
+            # path".format(out_data_folder)
 
         except AssertionError as e:
             import traceback
@@ -303,6 +304,7 @@ class GWModelBuilder(object):
          (xmin,ymin)
         """
 
+        # self.model_boundary = [xmin, xmax, ymin, ymax]
         self.model_boundary[0] = xmin
         self.model_boundary[1] = xmax
         self.model_boundary[2] = ymin
@@ -392,9 +394,9 @@ class GWModelBuilder(object):
 
         if self.mesh_type == 'structured':
             if self.array_ordering.array_order == 'UL_RowColumn':
-                for lay in range(lays - 1):
-                    for row in range(rows):
-                        for col in range(cols):
+                for lay in xrange(lays - 1):
+                    for row in xrange(rows):
+                        for col in xrange(cols):
                             self.centroid2mesh3Dindex[(
                                 x[col],
                                 y[row],
@@ -412,12 +414,14 @@ class GWModelBuilder(object):
 
         self.gridHeight = gridHeight
         self.gridWidth = gridWidth
-        self.out_data_folder_grid = self.model_data_folder + \
-            'structured_model_grid_%im' % int(gridHeight) + os.path.sep  # '\\'
+        self.out_data_folder_grid = os.path.join(self.model_data_folder,
+                                                 'structured_model_grid_%im' % int(gridHeight))
+
         self.updateGISinterface()
         self.model_mesh = self.GISInterface.define_structured_mesh(gridHeight, gridWidth)
         self.model_mesh_centroids = self.build_centroids_array(self.gridHeight)
-        return self.out_data_folder_grid, self.gridHeight, self.gridWidth, self.model_mesh_centroids, self.model_mesh
+        return (self.out_data_folder_grid, self.gridHeight, self.gridWidth,
+                self.model_mesh_centroids, self.model_mesh)
 
     def read_rasters(self, files, path=None):
 
@@ -439,18 +443,25 @@ class GWModelBuilder(object):
 
         ** This perhaps would better sit in a separate utilities folder ...
         """
-        return self.GISInterface.create_basement_bottom(hu_raster_path, surface_raster_file, basement_top_raster_file, basement_bot_raster_file, output_path, raster_driver=raster_driver)
+        return self.GISInterface.create_basement_bottom(hu_raster_path, surface_raster_file,
+                                                        basement_top_raster_file,
+                                                        basement_bot_raster_file,
+                                                        output_path,
+                                                        raster_driver=raster_driver)
 
     def build_3D_mesh_from_rasters(self, raster_files, raster_path, minimum_thickness, maximum_thickness):
-        if os.path.isfile(self.out_data_folder_grid + 'model_mesh.npy') & os.path.isfile(self.out_data_folder_grid + 'zone_matrix.npy'):
+        p_j = os.path.join
+        mesh_pth = p_j(self.out_data_folder_grid, 'model_mesh')
+        zone_pth = p_j(self.out_data_folder_grid, 'zone_matrix')
+        if os.path.isfile(mesh_pth) & os.path.isfile(zone_pth):
             print 'Using previously generated mesh'
             self.model_mesh3D = self.load_array(
-                self.out_data_folder_grid + 'model_mesh.npy'), self.load_array(self.out_data_folder_grid + 'zone_matrix.npy')
+                mesh_pth + ".npy"), self.load_array(zone_pth + ".npy")
         else:
             self.model_mesh3D = self.GISInterface.build_3D_mesh_from_rasters(
                 raster_files, raster_path, minimum_thickness, maximum_thickness)
-            self.save_array(self.out_data_folder_grid + 'model_mesh', self.model_mesh3D[0])
-            self.save_array(self.out_data_folder_grid + 'zone_matrix', self.model_mesh3D[1])
+            self.save_array(mesh_pth, self.model_mesh3D[0])
+            self.save_array(zone_pth, self.model_mesh3D[1])
         # end if
 
         # Build 3D centroids array:
@@ -480,9 +491,9 @@ class GWModelBuilder(object):
                         # Otherwise, set the cell to -1
                         target_zone = self.model_mesh3D[1][k]
                         if (((j > 0) and (target_zone[j - 1][i] != -1)) or       # North
-                           ((j < row - 1) and (target_zone[j + 1][i] != -1)) or  # South
-                           ((i < col - 1) and (target_zone[j][i + 1] != -1)) or  # East
-                           ((i > 0) and (target_zone[j][i - 1] != -1))):         # West
+                            ((j < row - 1) and (target_zone[j + 1][i] != -1)) or  # South
+                            ((i < col - 1) and (target_zone[j][i + 1] != -1)) or  # East
+                                ((i > 0) and (target_zone[j][i - 1] != -1))):         # West
                             continue
                         # End if
 
@@ -517,10 +528,11 @@ class GWModelBuilder(object):
         else:
             poly_name = polyline_obj.GetDescription()
         # end if
-        if os.path.exists(self.out_data_folder_grid + poly_name + '_mapped.pkl'):
+
+        if os.path.exists(os.path.join(self.out_data_folder_grid, poly_name + '_mapped.pkl')):
             print "Using previously mapped points to grid object"
-            self.polyline_mapped[poly_name] = self.load_obj(
-                self.out_data_folder_grid + poly_name + '_mapped.pkl')
+            self.polyline_mapped[poly_name] = self.load_obj(os.path.join(self.out_data_folder_grid,
+                                                                         poly_name + '_mapped.pkl'))
         else:
             temp = []
             self.polyline_mapped[poly_name] = self.GISInterface.map_polyline_to_grid(polyline_obj)
@@ -545,13 +557,13 @@ class GWModelBuilder(object):
                             closest_key = key
                             if dist_min < self.gridHeight / 2.0:
                                 break
-                    # print 'Closest key is: ', closest_key
+
                     grid_loc = self.centroid2mesh2Dindex[closest_key]
 
                 temp += [[grid_loc, item[0]]]
             # end for
             self.polyline_mapped[poly_name] = temp
-            self.save_obj(temp, self.out_data_folder_grid + poly_name + '_mapped')
+            self.save_obj(temp, os.path.join(self.out_data_folder_grid, poly_name + '_mapped'))
         # end if
         self.gridded_data_register += [poly_name]
 
@@ -570,10 +582,10 @@ class GWModelBuilder(object):
             point_name = points_obj.GetDescription()
         # end if
 
-        if os.path.exists(self.out_data_folder_grid + point_name + '_mapped.pkl'):
+        if os.path.exists(os.path.join(self.out_data_folder_grid, point_name + '_mapped.pkl')):
             print "Using previously mapped points to grid object"
-            self.points_mapped[point_name] = self.load_obj(
-                self.out_data_folder_grid + point_name + '_mapped.pkl')
+            self.points_mapped[point_name] = self.load_obj(os.path.join(self.out_data_folder_grid,
+                                                                        point_name + '_mapped.pkl'))
         else:
             temp = []
             self.points_mapped[point_name] = self.GISInterface.map_points_to_grid(
@@ -606,7 +618,7 @@ class GWModelBuilder(object):
                 temp += [[grid_loc, item[0]]]
 
             self.points_mapped[point_name] = temp
-            self.save_obj(temp, self.out_data_folder_grid + point_name + '_mapped')
+            self.save_obj(temp, os.path.join(self.out_data_folder_grid, point_name + '_mapped'))
 
         self.gridded_data_register += [point_name]
 
@@ -695,11 +707,12 @@ class GWModelBuilder(object):
                             key]['locations'].to_records(index=False)]
                         self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_2Dmesh(
                             points, identifier=self.observations.obs_group[key]['locations'].index)
-        
+
                         # Check that 'mapped_observations' are in active cells and if not then set
                         # the observation to inactive
                         for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
-                            [j, i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
+                            [j, i] = self.observations.obs_group[
+                                key]['mapped_observations'][obs_loc]
                             if self.model_mesh3D[1][0][j][i] == -1:
                                 self.observations.obs_group[key]['time_series'].loc[
                                     self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
@@ -709,9 +722,9 @@ class GWModelBuilder(object):
                         self.observations.obs_group[key]['mapped_observations'] = {}
                         for index, loc in enumerate(self.observations.obs_group[key]['locations']):
                             self.observations.obs_group[key]['mapped_observations'][index] = loc
-                        #end for
-                    #end if
-                #end if
+                        # end for
+                    # end if
+                # end if
             # end for
         # end if
 
@@ -741,12 +754,14 @@ class GWModelBuilder(object):
 
         # create boolean array
         len_list = len(points)
-        layers = len(rasters) / 2
+        layers = len(rasters) / 2  # Intentional integer division
         points_layer = np.full((layers, len_list), False, dtype=bool)
 
         return self.GISInterface.map_points_to_raster_layers(points, depths, rasters, points_layer)
 
-    def interpolate_points2mesh(self, points_obj, values_dataframe, feature_id=None, method='nearest', use='griddata', function='multiquadric', epsilon=2):
+    def interpolate_points2mesh(self, points_obj, values_dataframe, feature_id=None,
+                                method='nearest', use='griddata',
+                                function='multiquadric', epsilon=2):
 
         if isinstance(points_obj, list) or isinstance(points_obj, np.ndarray):
             points = points_obj
@@ -759,10 +774,11 @@ class GWModelBuilder(object):
                 points += [points_dict[key]]
                 values += [float(values_dataframe[key])]
 
-        return interpolation.Interpolator(self.mesh_type, np.array(points), np.array(values), self.model_mesh_centroids, method=method, use=use, function=function, epsilon=epsilon)
+        return interpolation.Interpolator(self.mesh_type, np.array(points), np.array(values),
+                                          self.model_mesh_centroids, method=method, use=use,
+                                          function=function, epsilon=epsilon)
 
     def interpolate_points2meshByLayer():
-
         pass
 
     @staticmethod
@@ -775,7 +791,6 @@ class GWModelBuilder(object):
                     return period - 1
             lower_time = time
         return np.nan
-
 
     def map_obs2model_times(self):
         """
@@ -830,7 +845,7 @@ class GWModelBuilder(object):
 
     def writeRegister2file(self):
 
-        with open(self.out_data_folder + 'model_register.dat') as f:
+        with open(os.path.join(self.out_data_folder, 'model_register.dat')) as f:
             for item in self.model_register:
                 f.write(item)
 
@@ -867,7 +882,8 @@ class GWModelBuilder(object):
         # Hack to fix up model boundary which contains a gdal object as well:
         packaged_model['model_boundary'] = packaged_model['model_boundary'][0:4]
 
-        self.save_obj(packaged_model, self.out_data_folder_grid + self.name + '_packaged')
+        self.save_obj(packaged_model, os.path.join(self.out_data_folder_grid,
+                                                   self.name + '_packaged'))
 
     ###########################################################################
 
@@ -923,7 +939,7 @@ class ModelTime(object):
             self.t['dateindex'] = date_index
         else:
             self.t['dateindex'] = date_index
-            
+
         intervals = []
         old_time = date_index[0]
         for index, time in enumerate(date_index):
@@ -956,7 +972,7 @@ class ModelBoundaries(object):
 
     def __init__(self):
         self.bc = {}
-        #self.bc_locale_types = ['point', 'layer', 'domain']
+        # self.bc_locale_types = ['point', 'layer', 'domain']
         self.bc_types = ['river', 'wells', 'recharge', 'rainfall',
                          'head', 'drain', 'channel', 'general head']
 
@@ -1065,7 +1081,7 @@ class ModelObservations(object):
         self.obs = {}
         self.obID = 0
 
-    def set_as_observations(self, name, time_series, locations, domain=None, 
+    def set_as_observations(self, name, time_series, locations, domain=None,
                             obs_type=None, units=None, weights=None, real=True):
         """
         Function to set observations from pandas dataframes for times series
