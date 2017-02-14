@@ -26,8 +26,9 @@ class ConfigLoader(object):
                 with open(config_file) as _invalidJSON:
                     temp = jsmin(_invalidJSON.read());
                 # End with
-            except Exception:
-                sys.exit("Error reading config file. Could be due to incorrect JSON formatting")
+            except Exception as e:
+                sys.exit("Error reading config file. Could be due to incorrect JSON formatting \n{}"
+                         .format(e))
             # End try
 
             self.model_config = json.loads(temp)

@@ -37,7 +37,7 @@ class ModflowModel(object):
 
         if self.model_data.model_time.t['steady_state'] == True:
             self.nper = 1
-            self.perlen = 1 #8260000#65 #000000 
+            self.perlen = 1 #8260000#65 #000000
             self.perlen = 40000 * 365 #8260000#65 #000000
             self.nstp = 1 #0
             self.steady = True #False # False #True #False#True #False
@@ -235,7 +235,7 @@ class ModflowModel(object):
         self.mf.check()
     #End checkMODFLOW
 
-    def runMODFLOW(self, silent=False):
+    def runMODFLOW(self, silent=True):
 
         success, buff = self.mf.run_model(silent=silent)
         if not success:
@@ -307,7 +307,7 @@ class ModflowModel(object):
             str_pers = 1
         else:
             str_pers = len(times)
-        
+
         if self.model_data.boundaries.bc[name]['bc_type'] == 'river':
             time_key = self.model_data.boundaries.bc[name]['bc_array'].keys()[0]
             river = self.model_data.boundaries.bc[name]['bc_array'][time_key]
@@ -422,11 +422,11 @@ class ModflowModel(object):
                 pass
             elif obs_type == 'discharge':
                 pass
-            else: 
+            else:
                 continue
             #end if
 
-            #if self.model_data.observations.obs_group[obs_set]['real']                    
+            #if self.model_data.observations.obs_group[obs_set]['real']
 
             obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
             obs_df = obs_df[obs_df['active'] == True]
@@ -1676,7 +1676,7 @@ class ModflowModel(object):
 #End ModflowModel()
 
 class MT3DModel(object):
-    
+
     def __init__(self, mf_model):
         self.mf_model = mf_model
 
@@ -1798,7 +1798,7 @@ class MT3DModel(object):
 
 
 class MT3DPostProcess(object):
-    
+
     def __init__(self, mf_model):
         self.mf_model = mf_model
 
@@ -1806,22 +1806,22 @@ class MT3DPostProcess(object):
     def importConcs(self):
         self.concobj = bf.UcnFile(self.mf_model.data_folder + 'MT3D001.UCN')
         return self.concobj
-   
+
     def ConcsByZone(self, concs):
-        
+
         self.mf_model.model_data.model_mesh3D[1]
 
         concs_zoned = [np.full(self.mf_model.model_data.model_mesh3D[1].shape[1:3], np.nan)] * int(np.max(self.mf_model.model_data.model_mesh3D[1]))
-        
+
         for zone in range(int(np.max(self.mf_model.model_data.model_mesh3D[1]))):
             temp_concs = np.array([np.full(self.mf_model.model_data.model_mesh3D[1].shape[1:3], np.nan)] * self.mf_model.model_data.model_mesh3D[1].shape[0])
             # for each layer in mesh get the heads from zone and average:
             for layer in range(self.mf_model.model_data.model_mesh3D[1].shape[0]):
                 temp_concs[layer][self.mf_model.model_data.model_mesh3D[1][layer] == float(zone+1)] = concs[layer][self.mf_model.model_data.model_mesh3D[1][layer] == float(zone+1)]
             masked_temp_concs = np.ma.masked_array(temp_concs, np.isnan(temp_concs))
-            concs_zoned[zone] = np.mean(masked_temp_concs, axis=0) 
+            concs_zoned[zone] = np.mean(masked_temp_concs, axis=0)
         #end for
-        return concs_zoned        
+        return concs_zoned
 
     def CompareObserved(self, obs_set, simulated, nper=0):
 
@@ -1841,7 +1841,7 @@ class MT3DPostProcess(object):
                 print sim, obs, zone
                 continue
             self.obs_sim_zone += [[obs, sim, zone, x, y]]
-        
+
     def writeObservations(self):
 
         # Set model output arrays to None to initialise
@@ -1849,7 +1849,7 @@ class MT3DPostProcess(object):
         data_folder = self.mf_model.data_folder
         model_data = self.mf_model.model_data
         obs_group = self.mf_model.model_data.observations.obs_group
-        
+
         # Write observation to file
         for obs_set in model_data.observations.obs_group.keys():
             obs_type = obs_group[obs_set]['obs_type']
@@ -1944,8 +1944,8 @@ class MT3DPostProcess(object):
 #                            pass
 
                     sim_conc = np.mean(sim_conc)
-                    f.write('%f\n' %sim_conc)  
-      
+                    f.write('%f\n' %sim_conc)
+
     def compareAllObs(self):
 
         concobj = self.importConcs()
@@ -2082,7 +2082,7 @@ class MT3DPostProcess(object):
         #fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
 
         plt.show()
-        
+
     def viewConcsByZone(self, nper='all'):
 
         # Create the headfile object
