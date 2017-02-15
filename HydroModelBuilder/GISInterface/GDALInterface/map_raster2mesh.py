@@ -14,12 +14,9 @@ correct coordinate system
 """
 import os
 
-import os
-
 import matplotlib.pyplot as plt
 import numpy as np
 from osgeo import gdal, gdalconst
-import matplotlib.pyplot as plt
 from scipy import ndimage as nd
 
 import array2Vtk
@@ -39,9 +36,6 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
         print 'Processing: ', fname    
         ds = gdal.Open(fname, gdalconst.GA_ReadOnly)    
         raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(), 0.0] 
-
-        import sys
-        sys.exit()
 
         ds = gdal.Open(fname, gdalconst.GA_ReadOnly)
         raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(), 0.0]

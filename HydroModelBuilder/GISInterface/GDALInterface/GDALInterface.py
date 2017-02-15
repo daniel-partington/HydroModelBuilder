@@ -3,8 +3,12 @@ import subprocess
 import sys
 
 import numpy as np
+
 # Import the GDAL classes
 from osgeo import gdal, gdalconst, ogr, osr
+
+# Import the GIS interface
+from HydroModelBuilder.GISInterface.GISInterface import GISInterface
 
 import basement
 import create_buffer
@@ -15,7 +19,7 @@ import map_raster2mesh
 import point_values_from_raster
 import polygon2points
 import raster2polygon
-
+import reproject
 
 class GDALInterface(GISInterface):
     """
@@ -55,8 +59,8 @@ class GDALInterface(GISInterface):
 
         """
         # Check first that file hasn't been previously processed
-        new_file = base_name + "_model.shp"
         base_name = os.path.join(self.out_data_folder, shapefile_name[:-4])
+        new_file = base_name + "_model.shp"
 
         if os.path.isfile(new_file):
             print 'Using previously generated file: ' + new_file
