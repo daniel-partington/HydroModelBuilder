@@ -103,7 +103,15 @@ class ModflowModel(object):
 
     def setupNWTpackage(self):
         # Specify NWT settings
-        self.nwt = flopy.modflow.ModflowNwt(self.mf, headtol=1E-4, fluxtol=1.0E1, linmeth=2, thickfact=1E-7, maxiterout=100000, options='COMPLEX')
+        self.nwt = flopy.modflow.ModflowNwt(self.mf, 
+                                            headtol=1E-4, #1E-4
+                                            fluxtol=1.0E1, #1.0E1
+                                            linmeth=2,
+                                            iprnwt=1,
+                                            ibotav=1, 
+                                            thickfact=1E-5, #1E-7 
+                                            maxiterout=10000, #100000 
+                                            options='COMPLEX')
     #end setupNWTpackage
 
     def setupPCGpackage(self):
@@ -122,6 +130,7 @@ class ModflowModel(object):
                                             sy=self.sy,
                                             ss=self.ss,
                                             hdry=-999.9,
+                                            laywet=0,
                                             laytyp=1)
 
     # end setupUPWpackage
@@ -264,7 +273,6 @@ class ModflowModel(object):
             for converge_fail in converge_fail_options:
                 if converge_fail in list_file:
                     print "*** Convergence failure ***"
-                    print os.getcwd()
                     import datetime
                     now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
                     with open(os.path.join(self.data_folder, "converge_fail_%s.txt" %now), 'w') as fail:
@@ -275,12 +283,11 @@ class ModflowModel(object):
             return True
 
         else:
-            with open(self.data_folder + self.name + '.list', 'r') as f:
+            with open(os.path.join(self.data_folder, self.name + '.list'), 'r') as f:
                 list_file = f.read()
             for converge_fail in converge_fail_options:
                 if converge_fail in list_file:
                     print "*** Convergence failure ***"
-                    print os.getcwd()
                     import datetime
                     now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
                     with open(os.path.join(self.data_folder, "converge_fail_%s.txt" %now), 'w') as fail:
@@ -298,6 +305,12 @@ class ModflowModel(object):
     #**************************************************************************
     #**************************************************************************
     #**************************************************************************
+
+    def getFinalHeads(self, filename):
+        headobj = bf.HeadFile(filename)
+        times = headobj.get_times()
+        head = headobj.get_data(totim=times[-1])
+        return head
 
     def getRiverFlux(self, name):
         cbbobj = self.importCbb()
@@ -586,11 +599,11 @@ class ModflowModel(object):
             headobj = bf.HeadFile(path + name +'.hds') #, precision='double')
             return headobj
         else:
-            self.headobj = bf.HeadFile(self.data_folder + self.name+'.hds')
+            self.headobj = bf.HeadFile(self.data_folder + self.name + '.hds')
             return self.headobj
 
     def importCbb(self):
-        self.cbbobj = bf.CellBudgetFile(self.data_folder + self.name+'.cbc')
+        self.cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
         return self.cbbobj
 
     def waterBalance(self, plot=True):
@@ -615,6 +628,11 @@ class ModflowModel(object):
             water_balance_summary[pos] = np.sum(wb_element[wb_element > 0])
             water_balance_summary[neg] = np.sum(wb_element[wb_element < 0])
 
+            if water_balance_summary[pos] is np.ma.masked: #core.MaskedConstant():
+                water_balance_summary[pos] = 0.0
+            if water_balance_summary[neg] is np.ma.masked:
+                water_balance_summary[neg] = 0.0
+            
             water_bal_summed_titles += pos, neg
             water_bal_summed_values += water_balance_summary[pos], water_balance_summary[neg]
 
@@ -1315,11 +1333,14 @@ class ModflowModel(object):
 
         # Create the headfile object
         headobj = self.importHeads()
+        cbbobj = self.importCbb()
         times = headobj.get_times()
         head = headobj.get_data(totim=times[-1])
 
+        frf = cbbobj.get_data(text='FLOW RIGHT FACE')[0]
+        fff = cbbobj.get_data(text='FLOW FRONT FACE')[0]        
         #head_zoned = HeadsByZone(head)
-
+        
         # First step is to set up the plot
         fig = plt.figure(figsize=(20, 10))
         ax = fig.add_subplot(2, 4, 1, aspect='equal')
@@ -1335,18 +1356,25 @@ class ModflowModel(object):
 
         #linecollection = modelmap.plot_grid()
 
-        vmin = 0
-        vmax = 200
-
+        #print(np.amin(head[head != -999.99]))
+        vmin = np.round(np.amin(head[head != -999.99]))
+        vmax = 150 #np.amax(head)
+        cmap = 'jet'
+        
         ax = fig.add_subplot(2, 4, 2, aspect='equal')
         ax.set_title('Heads layer 1')
         modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         max_head = np.amax(head)
         min_head = np.amin(head)
-        #print max_head
-        #print min_head
+        print max_head
 
-        array = modelmap.plot_array(head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
+        levels = np.arange(vmin, vmax, 1)
+        
+        #array = modelmap.plot_array(head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
+        array = modelmap.contour_array(head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.9, vmin=vmin, vmax=vmax, cmap=cmap, levels=levels)
+        plt.clabel(array, inline=1, fontsize=10)        
+        #modelmap.plot_discharge(frf, fff, head=head)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
         cbar_ax2 = fig.add_axes([0.43, 0.525, 0.01, 0.42])
@@ -1355,7 +1383,9 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 3, aspect='equal')
         ax.set_title('Heads layer 2')
         modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
-        array = modelmap.plot_array(head[1], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
+        modelmap.plot_ibound()
+        #modelmap.plot_discharge(frf[1], fff[1])
+        array = modelmap.contour_array(head[1], masked_values=[-999.98999023, max_head, min_head], alpha=0.9, vmin=vmin, vmax=vmax, cmap=cmap, levels=levels)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
         cbar_ax1 = fig.add_axes([0.67, 0.525, 0.01, 0.42])
@@ -1364,7 +1394,9 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 4, aspect='equal')
         ax.set_title('Heads layer 3')
         modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
-        array = modelmap.plot_array(head[2], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
+        modelmap.plot_ibound()
+        #modelmap.plot_discharge(frf[2], fff[2])
+        array = modelmap.contour_array(head[2], masked_values=[-999.98999023, max_head, min_head], alpha=0.9, vmin=vmin, vmax=vmax, cmap=cmap, levels=levels)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
         cbar_ax5 = fig.add_axes([0.91, 0.525, 0.01, 0.42])
@@ -1373,7 +1405,9 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 5, aspect='equal')
         ax.set_title('Heads layer 4')
         modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
-        array = modelmap.plot_array(head[3], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
+        modelmap.plot_ibound()
+        #modelmap.plot_discharge(frf[3], fff[3])
+        array = modelmap.contour_array(head[3], masked_values=[-999.98999023, max_head, min_head], alpha=0.9, vmin=vmin, vmax=vmax, cmap=cmap, levels=levels)
         start, end = ax.get_xlim()
         start = start // 1000 * 1000 + 1000
         end = end // 1000 * 1000 - 1000
@@ -1386,7 +1420,9 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 6, aspect='equal')
         ax.set_title('Heads layer 5')
         modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
-        array = modelmap.plot_array(head[4], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
+        modelmap.plot_ibound()
+        #modelmap.plot_discharge(frf[4], fff[4])
+        array = modelmap.contour_array(head[4], masked_values=[-999.98999023, max_head, min_head], alpha=0.9, vmin=vmin, vmax=vmax, cmap=cmap, levels=levels)
         ax.yaxis.set_ticklabels([])
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
@@ -1397,7 +1433,9 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 7, aspect='equal')
         ax.set_title('Heads layer 6')
         modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
-        array = modelmap.plot_array(head[5], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
+        modelmap.plot_ibound()
+        #modelmap.plot_discharge(frf[5], fff[5])
+        array = modelmap.contour_array(head[5], masked_values=[-999.98999023, max_head, min_head], alpha=0.9, vmin=vmin, vmax=vmax, cmap=cmap, levels=levels)
         ax.yaxis.set_ticklabels([])
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
@@ -1407,41 +1445,41 @@ class ModflowModel(object):
 
 
 
-        self.CompareObservedHead('head', head)
-        scatterx = [h[0] for h in self.comparison]
-        scattery = [h[1] for h in self.comparison]
-
-        ax = fig.add_subplot(2, 4, 8, aspect=0.9)
-        ax.set_title('Sim vs Obs (%d points)' %(len(scatterx)))
-
-
-        plt.scatter(scatterx, scattery, c=self.comp_zone)
-
-        plt.xlabel('Observed')
-        plt.ylabel('Simulated', labelpad=-20)
-
-        scatterx = np.array(scatterx)
-        scattery = np.array(scattery)
-        sum1 = 0.
-        sum2 = 0.
-        mean = np.mean(scatterx)
-        for i in range(len(scatterx)):
-            num1 = (scatterx[i] - scattery[i])
-            num2 = (scatterx[i] - mean)
-            sum1 += num1 ** np.float64(2.)
-            sum2 += num2 ** np.float64(2.)
-
-        ME = 1 - sum1 / sum2
-
-        ax.text(150, -100, 'Model Efficiency = %4.2f' %(ME))
-
-        # For rmse
-        def rmse(simulated, observed):
-            return np.sqrt(((simulated - observed) ** 2).mean())
-
-        ax.text(150, 0, 'RMSE = %4.2f' %(rmse(scattery, scatterx)))
-
-        ax.plot(ax.get_ylim(), ax.get_ylim())
+#        self.CompareObservedHead('head', head)
+#        scatterx = [h[0] for h in self.comparison]
+#        scattery = [h[1] for h in self.comparison]
+#
+#        ax = fig.add_subplot(2, 4, 8, aspect=0.9)
+#        ax.set_title('Sim vs Obs (%d points)' %(len(scatterx)))
+#
+#
+#        plt.scatter(scatterx, scattery, c=self.comp_zone)
+#
+#        plt.xlabel('Observed')
+#        plt.ylabel('Simulated', labelpad=-20)
+#
+#        scatterx = np.array(scatterx)
+#        scattery = np.array(scattery)
+#        sum1 = 0.
+#        sum2 = 0.
+#        mean = np.mean(scatterx)
+#        for i in range(len(scatterx)):
+#            num1 = (scatterx[i] - scattery[i])
+#            num2 = (scatterx[i] - mean)
+#            sum1 += num1 ** np.float64(2.)
+#            sum2 += num2 ** np.float64(2.)
+#
+#        ME = 1 - sum1 / sum2
+#
+#        ax.text(150, -100, 'Model Efficiency = %4.2f' %(ME))
+#
+#        # For rmse
+#        def rmse(simulated, observed):
+#            return np.sqrt(((simulated - observed) ** 2).mean())
+#
+#        ax.text(150, 0, 'RMSE = %4.2f' %(rmse(scattery, scatterx)))
+#
+#        ax.plot(ax.get_ylim(), ax.get_ylim())
         #modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
         #ffrf = modelmap.plot_array(head[6], masked_values=[-999.98999023, max_head, min_head], alpha=0.5)
 
@@ -1458,6 +1496,65 @@ class ModflowModel(object):
 
     #End viewHeads
 
+    def viewHeadLayer(self, layer=0, figsize=(20, 10)):
+
+        # Create the headfile object
+        headobj = self.importHeads()
+        cbbobj = self.importCbb()
+        times = headobj.get_times()
+        head = headobj.get_data(totim=times[-1])
+
+        frf = cbbobj.get_data(text='FLOW RIGHT FACE')[0]
+        fff = cbbobj.get_data(text='FLOW FRONT FACE')[0]        
+        #head_zoned = HeadsByZone(head)
+        
+        # First step is to set up the plot
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(1, 2, 1, aspect='equal')
+        ax.set_title('ibound and bc')
+        # Next we create an instance of the ModelMap class
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
+        #linecollection = modelmap.plot_grid()
+
+        #modelmap.plot_bc('WEL')
+        modelmap.plot_bc('RIV')
+        ax.axes.xaxis.set_ticklabels([])
+
+        #linecollection = modelmap.plot_grid()
+
+        #print(np.amin(head[head != -999.99]))
+        vmin = np.round(np.amin(head[head != -999.99]))
+        vmax = 150 #np.amax(head)
+        cmap = 'jet'
+        
+        ax = fig.add_subplot(1, 2, 2, aspect='equal')
+        ax.set_title('Heads layer {}'.format(layer + 1))
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
+        max_head = np.amax(head)
+        min_head = np.amin(head)
+        print max_head
+
+        levels = np.arange(vmin, vmax, 1)
+        
+        #array = modelmap.plot_array(head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
+        modelmap.plot_bc('RIV', alpha=0.3)
+        array = modelmap.contour_array(head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.9, vmin=vmin, vmax=vmax, cmap=cmap, levels=levels)
+        #modelmap.plot_shapefile(r"C:\Workspace\part0075\MDB modelling\testbox\input_data\Waterways\Campaspe_Riv.shp")
+        plt.clabel(array, inline=True, fontsize=10)        
+        #modelmap.plot_discharge(frf, fff, head=head)
+        ax.xaxis.set_ticklabels([])
+        ax.yaxis.set_ticklabels([])
+        cbar_ax2 = fig.add_axes([0.43, 0.525, 0.01, 0.42])
+        fig.colorbar(array, cax=cbar_ax2)
+
+        fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
+
+        plt.show()
+
+    #End viewHeads    
+    
     def viewHeads2(self):
 
         import flopy.utils.binaryfile as bf
@@ -1671,7 +1768,252 @@ class ModflowModel(object):
 
     #End viewHeads2
 
+    def viewGHB(self):
 
+        import flopy.utils.binaryfile as bf
+        import pandas as pd
+        #import matplotlib.ticker as plticker
+        # Create the headfile object
+        headobj = bf.HeadFile(self.data_folder + self.name+'.hds')
+        cbbobj = bf.CellBudgetFile(self.data_folder + self.name+'.cbc')
+
+        times = headobj.get_times()
+
+        #print head
+        #print dir(cbbobj)
+
+        water_balance_components = cbbobj.textlist
+        water_balance = {}
+        water_balance_summary = {}
+        water_bal_summed_titles = []
+        water_bal_summed_values = []
+        for component in water_balance_components:
+            component_stripped = component.lstrip().rstrip()
+            if 'FLOW' in component_stripped: continue
+            water_balance[component_stripped] = cbbobj.get_data(text = component, full3D=True)[-1]
+            #print water_balance[component_stripped]
+            if np.any(water_balance[component_stripped][0]>0):
+                water_balance_summary[component_stripped+'_pos'] = np.sum(water_balance[component_stripped][0][water_balance[component_stripped][0]>0])
+            else:
+                water_balance_summary[component_stripped+'_pos'] = 0.0
+            if np.any(water_balance[component_stripped][0]<0):
+                water_balance_summary[component_stripped+'_neg'] = np.sum(water_balance[component_stripped][0][water_balance[component_stripped][0]<0])
+            else:
+                water_balance_summary[component_stripped+'_neg'] = 0.0
+
+            water_bal_summed_titles += component_stripped+'_pos', component_stripped+'_neg'
+            water_bal_summed_values += water_balance_summary[component_stripped+'_pos'], water_balance_summary[component_stripped+'_neg']
+            #print component + ':'
+            #print water_balance_summary[component_stripped+'_pos'], water_balance_summary[component_stripped+'_neg']
+
+       #riv_flux = cbbobj.get_data(text = 'RIVER LEAKAGE', full3D=True)
+        #wel_flux = cbbobj.get_data(text = 'WELLS', full3D=True)
+
+        water_bal_summed_titles += ['Error']
+        Error = sum(water_bal_summed_values)
+        water_bal_summed_values += [Error]
+        wat_bal_df = pd.DataFrame(water_bal_summed_values, water_bal_summed_titles) # pd.DataFrame.from_dict(water_balance_summary, orient='index')
+        wat_bal_df.columns = ['Flux m^3/d']
+        wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.]
+        print wat_bal_df
+
+        #x = np.linspace(self.model_data.model_boundary[0], self.model_data.model_boundary[1], self.ncol)
+        #y = np.linspace(self.model_data.model_boundary[2], self.model_data.model_boundary[3], self.nrow)
+        #levels = np.arange(-200,200,10)
+        #extent = (self.model_data.model_boundary[0] + self.delr/2., self.model_data.model_boundary[1] - self.delr/2., self.model_data.model_boundary[3] - self.delc/2., self.model_data.model_boundary[2] + self.delc/2.)
+        #extent =  (self.model_data.model_boundary[0], self.model_data.model_boundary[1], self.model_data.model_boundary[3], self.model_data.model_boundary[2])
+        # First step is to set up the plot
+        fig = plt.figure(figsize=(20, 10))
+        ax = fig.add_subplot(2, 4, 1, aspect='equal')
+        ax.set_title('ibound and bc')
+        # Next we create an instance of the ModelMap class
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
+        #linecollection = modelmap.plot_grid()
+
+        #ax = fig.add_subplot(1, 3, 2, aspect='equal')
+        #ax.set_title('Riv BC')
+        #modelmap.plot_bc(plotAll=True)
+        #modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+
+        #modelmap.plot_bc('WEL')
+        modelmap.plot_bc('RIV')
+        try:
+            modelmap.plot_bc('GHB')
+        except:
+            pass
+        ax.axes.xaxis.set_ticklabels([])
+
+        #linecollection = modelmap.plot_grid()
+
+        ax = fig.add_subplot(2, 4, 2, aspect='equal')
+        ax.set_title('Riv flux')
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        #modelmap.plot_ibound(alpha=1)
+        max_val = np.amax(water_balance['RIVER LEAKAGE'][0])
+        min_val = np.amin(water_balance['RIVER LEAKAGE'][0])
+        if max_val > abs(min_val):
+            min_val = -max_val
+        else:
+            max_val = -min_val
+        
+        array = modelmap.plot_array(water_balance['RIVER LEAKAGE'][0], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
+        ax.xaxis.set_ticklabels([])
+        ax.yaxis.set_ticklabels([])
+        cbar_ax2 = fig.add_axes([0.43, 0.525, 0.01, 0.42])
+        fig.colorbar(array, cax=cbar_ax2)
+
+        max_val = np.amax(water_balance['HEAD DEP BOUNDS'][1])
+        min_val = np.amin(water_balance['HEAD DEP BOUNDS'][1])
+        if max_val > abs(min_val):
+            min_val = -max_val
+        else:
+            max_val = -min_val
+        
+        ax = fig.add_subplot(2, 4, 3, aspect='equal')
+        ax.set_title('GHB layer 2')
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        #modelmap.plot_grid()
+        river_flux = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][1], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
+        ax.xaxis.set_ticklabels([])
+        ax.yaxis.set_ticklabels([])
+
+        cbar_ax1 = fig.add_axes([0.67, 0.525, 0.01, 0.42])
+        fig.colorbar(river_flux, cax=cbar_ax1)
+
+        # Setup params to get water balance aspect ratio looking nice
+        aspect = float(12.5715/((wat_bal_df.max()[0]-wat_bal_df.min()[0])/float(wat_bal_df.shape[1])))
+
+        ax = fig.add_subplot(2, 4, 4, aspect=aspect)
+        ax.set_title('Water Balance')
+        wat_bal_df.plot(kind='bar', ax=plt.gca())
+        ax.grid(True)
+        gridlines = ax.get_xgridlines() #+ ax.get_ygridlines()
+        for line in gridlines:
+            line.set_linestyle('-')
+
+        max_val = np.amax(water_balance['HEAD DEP BOUNDS'][2])
+        min_val = np.amin(water_balance['HEAD DEP BOUNDS'][2])
+        if max_val > abs(min_val):
+            min_val = -max_val
+        else:
+            max_val = -min_val
+            
+            
+        ax = fig.add_subplot(2, 4, 5, aspect='equal')
+        ax.set_title('GHB layer 3')
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        recharge = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][2], masked_values=[0.], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
+        #print water_balance['RECHARGE'][0]
+        #print np.mean(water_balance['RECHARGE'][0])
+        #print np.max(water_balance['RECHARGE'][0])
+        #print np.min(water_balance['RECHARGE'][0])
+
+        start, end = ax.get_xlim()
+        start = start // 1000 * 1000 + 1000
+        end = end // 1000 * 1000 - 1000
+        ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+        ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+
+        cbar_ax3 = fig.add_axes([0.19, 0.055, 0.01, 0.42])
+        fig.colorbar(recharge, cax=cbar_ax3)
+
+        
+        max_val = np.amax(water_balance['HEAD DEP BOUNDS'][3])
+        min_val = np.amin(water_balance['HEAD DEP BOUNDS'][3])
+        if max_val > abs(min_val):
+            min_val = -max_val
+        else:
+            max_val = -min_val
+        
+        ax = fig.add_subplot(2, 4, 6, aspect='equal')
+        ax.set_title('GHB layer 4')
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        elevation = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][3], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
+        ax.yaxis.set_ticklabels([])
+        ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+        ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+
+        cbar_ax4 = fig.add_axes([0.43, 0.055, 0.01, 0.42])
+        fig.colorbar(elevation, cax=cbar_ax4)
+
+        """
+        ax = fig.add_subplot(2, 4, 6, aspect='equal')
+        ax.set_title('GW Pumping')
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        pumping = modelmap.plot_array(water_balance['WELLS'][0], masked_values=[0.], alpha=0.5)
+        ax.yaxis.set_ticklabels([])
+        ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+        ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+
+        cbar_ax4 = fig.add_axes([0.43, 0.055, 0.01, 0.42])
+        fig.colorbar(pumping, cax=cbar_ax4)
+        """
+
+        """
+        ax = fig.add_subplot(2, 4, 7, aspect='equal')
+        ax.set_title('Storage change')
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        storage = modelmap.plot_array(water_balance['STORAGE'][0], masked_values=[0.], alpha=0.5)
+        ax.yaxis.set_ticklabels([])
+        ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+        ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+
+        cbar_ax5 = fig.add_axes([0.67, 0.055, 0.01, 0.42])
+        fig.colorbar(storage, cax=cbar_ax5)
+        """
+
+        max_val = np.amax(water_balance['HEAD DEP BOUNDS'][5])
+        min_val = np.amin(water_balance['HEAD DEP BOUNDS'][5])
+        if max_val > abs(min_val):
+            min_val = -max_val
+        else:
+            max_val = -min_val
+        
+        ax = fig.add_subplot(2, 4, 7, aspect='equal')
+        ax.set_title('GHB layer 5')
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        storage = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][5] , alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
+        ax.yaxis.set_ticklabels([])
+        ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+        ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+
+        cbar_ax5 = fig.add_axes([0.67, 0.055, 0.01, 0.42])
+        fig.colorbar(storage, cax=cbar_ax5)
+
+        """
+        ax = fig.add_subplot(2, 4, 8, aspect='equal')
+        ax.set_title('Flow right face')
+        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
+        ffrf = modelmap.plot_array(water_balance['FLOW RIGHT FACE'][0], masked_values=[0.], alpha=0.5)
+        ax.yaxis.set_ticklabels([])
+        ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+        ax.xaxis.set_major_formatter(plticker.FormatStrFormatter(fstring))
+
+        cbar_ax5 = fig.add_axes([0.67, 0.055, 0.01, 0.42])
+        fig.colorbar(ffrf, cax=cbar_ax5)
+        """
+
+        #plt.subplot(1, 1, 1, aspect='equal')
+        #plt.title('stress period ' + str(iplot + 1))
+        #plt.contourf(x, y, np.flipud(head[0, :, :]), cmap=plt.cm.rainbow, levels=levels, extent=extent)
+        #plt.imshow(np.flipud(head[0, :, :]), cmap=plt.cm.rainbow)#, levels=levels, extent=extent)
+        #plt.colorbar()
+
+        #cb = plt.colorbar(array, shrink=0.5)
+        fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12) #right=0.8
+
+        #fig.subplots_adjust(right=0.8)
+
+
+        #fig.tight_layout()
+        plt.show()
+        #plt.savefig('test_model.png')
+
+        #self.mf.upw.hk.plot(masked_values=[0.], colorbar=True)
+        #plt.show()
+
+    #End viewHeads2
 
 #End ModflowModel()
 
