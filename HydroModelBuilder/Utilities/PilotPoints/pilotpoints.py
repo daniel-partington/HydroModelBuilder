@@ -26,7 +26,9 @@ class PilotPoints(object):
         self.points_fname = 'points.pts'
         self.zone_fname = 'zone.inf'
         self.struct_fname = 'struct.dat'
-        self.ppk2fac_exe = os.path.join(os.getcwd(), 'ppk2fac.exe')
+        self.ppk2fac_exe = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                        'ppk2fac.exe')
+        #self.ppk2fac_exe = os.path.join(os.getcwd(), 'ppk2fac.exe')
         self.fac2real_exe = 'fac2real.exe'
         self.output_directory = os.path.join(output_directory, 'pilot_points')                                        
         if not os.path.exists(self.output_directory):
@@ -384,7 +386,8 @@ class PilotPoints(object):
             for layer in range(zone_array.shape[0]):
                 val_array[layer][zone_array[layer]==[zone]] = vals[zone_array[layer]==[zone]]
 
-        self.val_array = val_array           
+        self.val_array = val_array  
+           
         #return val_array
         
     def save_mesh3D_array(self, filename='val_array', data_format='binary'):
@@ -400,7 +403,8 @@ class PilotPoints(object):
             print 'Data format not recognised, use "binary" or "ascii"'
         # end if
 
-    def setup_pilot_points_by_zones(self, mesh_array, zones, search_radius):
+    def setup_pilot_points_by_zones(self, mesh_array, zones, search_radius, 
+                                    verbose=True):
         '''
         Function to set up pilot points files, zone files, ppk2fac instructions,
         and to run ppk2fac to create the factors files required for fac2real.
@@ -417,7 +421,7 @@ class PilotPoints(object):
 
             self.write_zone_file(self.zone_mask2D, 
                                  zone_fname='zone{}.inf'.format(zone))
-    
+
             self.write_ppk2fac_instruct(mesh_array, 'grid.spc',
                                    'points{}.pts'.format(zone), 
                                    zone_fname='zone{}.inf'.format(zone),
@@ -433,9 +437,12 @@ class PilotPoints(object):
             
             #if os.path.exists(os.path.join(self.output_directory, 'factors{}.dat'.format(zone))):
             #    os.remove(os.path.join(self.output_directory, 'factors{}.dat'.format(zone)))
-                
+
+            
+        for zone in range(zones):
             self.run_ppk2fac(self.ppk2fac_exe, 
                              instruct_fname='ppk2fac{}.in'.format(zone))
+
             self.write_fac2real_instruct('factors{}.dat'.format(zone),
                                     'points{}.pts'.format(zone), 
                                     1E-6, 1E6, 'values{}.ref'.format(zone),
@@ -489,7 +496,7 @@ if __name__ == "__main__":
 
     from HydroModelBuilder.GWModelManager import GWModelManager
 
-    resolution = 5000
+    resolution = 2000
     zone_map = {1: 'qa', 2: 'utb', 3: 'utqa', 4: 'utam', 5: 'utaf', 6: 'lta', 
                 7: 'bse'}
     HGU_map = {'bse':'Bedrock', 'utb':'Newer Volcanics Basalts', 
@@ -514,9 +521,20 @@ if __name__ == "__main__":
     
     pp = PilotPoints(output_directory=model_folder)
 
+    if resolution == 1000:
+        skip=[0, 0, 6, 0, 6, 6, 6] 
+        skip_active=[49, 20, 0, 34, 0, 0, 0]
+    elif resolution == 500:
+        skip=[0, 0, 12, 0, 12, 12, 12] 
+        skip_active=[100, 40, 0, 70, 0, 0, 0]
+    else:
+        skip=[0,  0, 3, 0, 2, 3, 3] 
+        skip_active=[3, 20, 0, 4, 0, 0, 0]
+    
+    
     a = pp.generate_points_from_mesh(mesh_array, cell_centers, 
-                   skip=[0,  0, 3, 0, 2, 3, 3], 
-            skip_active=[3, 20, 0, 4, 0, 0, 0],
+                   skip=skip, 
+            skip_active=skip_active,
             zone_prop_dict={0:30.0, 1:2.0, 2:2.0, 3:50.0, 4:45.0, 5:30.0, 6:10.0},
             add_noise=True
             )
@@ -527,7 +545,12 @@ if __name__ == "__main__":
                       transform='log',numvariogram=1, variogram=0.15, 
                       vartype=2, bearing=0.0, a=20000.0, anisotropy=1.0)
 
-    search_radius = [30000, 20000, 20000, 20000, 20000, 20000, 20000]
+    if resolution == 1000:
+        search_radius = [30000, 20000, 20000, 20000, 20000, 20000, 20000]
+    else:
+        search_radius = [30000, 20000, 20000, 20000, 20000, 20000, 20000]
+
+#    search_radius = [30000, 20000, 20000, 20000, 20000, 20000, 20000]
 
     pp.setup_pilot_points_by_zones(mesh_array, zones, search_radius)    
 
@@ -584,7 +607,9 @@ if __name__ == "__main__":
         modelmap = flopy.plot.ModelMap(model=modflow_model.mf) 
         array = modelmap.plot_array(a[3][key], masked_values=[0], alpha=0.8, cmap='gray', vmin=0, vmax=2)
         #modelmap.plot_grid()    
-        array = modelmap.plot_array(vals, masked_values=[1E6], alpha=1.0)#, 
+        array = modelmap.plot_array(hk[key], masked_values=[1E6, 0], alpha=1.0)#, 
+                                    #vmin=vmin, vmax=vmax)
+        #array = modelmap.plot_array(vals, masked_values=[1E6], alpha=1.0)#, 
                                     #vmin=vmin, vmax=vmax)
         start, end = ax.get_xlim()
         start = start // 1000 * 1000 + 1000
