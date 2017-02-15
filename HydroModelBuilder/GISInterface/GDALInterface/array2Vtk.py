@@ -1,4 +1,4 @@
-
+import os
 import numpy as np
 from pyevtk.hl import gridToVTK 
 
@@ -64,7 +64,7 @@ def build_vtk_from_array(grid_info, mesh_z, point_array_names, point_arrays, cel
         #End if
     #End for
 
-    gridToVTK(out_path + vtk_out, x, y, z, cellData = cellData, pointData = pointData)
+    gridToVTK(os.path.join(out_path, vtk_out), x, y, z, cellData = cellData, pointData = pointData)
     
 if __name__ == "__main__":
     pass    

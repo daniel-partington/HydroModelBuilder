@@ -12,10 +12,10 @@ This is only to be called once the rasters have been reprojected into the
 correct coordinate system
 
 """
+import os
 
 from osgeo import gdal, gdalconst
 import matplotlib.pyplot as plt
-
 import array2Vtk
 
 # Step 1. Load raster layers top and bottom
@@ -25,7 +25,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
     raster_zone_map = {}    
     
     for raster in hu_raster_files:
-        fname = hu_raster_path + raster # + hu_ext
+        fname = os.path.join(hu_raster_path, raster) # + hu_ext
         print 'Processing: ', fname    
         ds = gdal.Open(fname, gdalconst.GA_ReadOnly)    
         raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(), 0.0] 

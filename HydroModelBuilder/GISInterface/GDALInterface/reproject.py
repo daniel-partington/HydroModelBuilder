@@ -137,7 +137,6 @@ def reproject_layer(lyr_src,
     
     :param geom_type: Type of geometry/geometries in the layer e.g. ogr.wkbMultiPolygon
     """    
-    
     driver = ogr.GetDriverByName('ESRI Shapefile')
     
     # input SpatialReference

@@ -58,7 +58,7 @@ class GDALInterface(GISInterface):
 
         """
         # Check first that file hasn't been previously processed
-        new_file = self.out_data_folder + shapefile_name[:-4] + '_model.shp'
+        new_file = os.path.join(self.out_data_folder, shapefile_name[:-4] + '_model.shp')
 
         if os.path.isfile(new_file):
             print 'Using previously generated file: ' + new_file
@@ -75,11 +75,11 @@ class GDALInterface(GISInterface):
             srs = osr.SpatialReference(wkt=spatialRef.ExportToWkt())
 
         else:
-            driver = ogr.Open(shapefile_path + shapefile_name).GetDriver()
-            ds = driver.Open(shapefile_path + shapefile_name, 0)
+            driver = ogr.Open(os.path.join(shapefile_path, shapefile_name)).GetDriver()
+            ds = driver.Open(os.path.join(shapefile_path, shapefile_name), 0)
 
             if ds is None:
-                print 'Could not open ' + shapefile_path + shapefile_name
+                print 'Could not open ' + os.path.join(shapefile_path, shapefile_name)
                 sys.exit(1)
             # End if
 
@@ -101,7 +101,7 @@ class GDALInterface(GISInterface):
                                           geom_type=gdal.ogr.wkbPolygon,
                                           copy_dest=new_file)
 
-                ds = driver.Open(self.out_data_folder + shapefile_name[:-4] + '_model.shp', 0)
+                ds = driver.Open(os.path.join(self.out_data_folder, shapefile_name[:-4] + '_model.shp'), 0)
 
                 if ds is None:
                     print 'Could not open ' + new_file
@@ -133,7 +133,7 @@ class GDALInterface(GISInterface):
         if shapefile_path == None:
             shapefile_name = shapefile_name
         else:
-            shapefile_name = shapefile_path + shapefile_name
+            shapefile_name = os.path.join(shapefile_path, shapefile_name)
         # End if
 
         new_file = shapefile_name[0:-4] + "_buffer_" + str(buffer_dist) + ".shp"
@@ -174,9 +174,9 @@ class GDALInterface(GISInterface):
 
         """
 
-        new_file = self.out_data_folder + \
-            'structured_model_grid_%im' % int(
-                gridHeight) + '\\structured_model_grid_%im.shp' % int(gridHeight)
+        new_file = os.path.join(self.out_data_folder,
+            'structured_model_grid_{}m'.format(int(gridHeight)), 
+            'structured_model_grid_{}m.shp'.format(int(gridHeight)))
 
         if os.path.isfile(new_file):
             print 'Using previously generated file: ' + new_file
@@ -204,13 +204,13 @@ class GDALInterface(GISInterface):
         rasters = {}
 
         for raster in files:
-            if os.path.isfile(self.out_data_folder + raster + '_reproj.bil'):
-                ds = gdal.Open(self.out_data_folder + raster + '_reproj.bil', gdalconst.GA_ReadOnly)
+            if os.path.isfile(os.path.join(self.out_data_folder, raster + '_reproj.bil')):
+                ds = gdal.Open(os.path.join(self.out_data_folder, raster + '_reproj.bil'), gdalconst.GA_ReadOnly)
             else:
-                ds = gdal.Open(path + raster, gdalconst.GA_ReadOnly)
+                ds = gdal.Open(os.path.join(path, raster), gdalconst.GA_ReadOnly)
 
                 if ds is None:
-                    print 'Could not open ' + path + raster
+                    print 'Could not open ', os.path.join(path, raster)
                     sys.exit(1)
 
                 # Check raster GCS
@@ -225,7 +225,7 @@ class GDALInterface(GISInterface):
                     target_srs = self.pcs_EPSG  # projected_coordinate_system.ExportToWkt()
                     #FNULL = open(os.devnull, 'w')
                     command = 'gdalwarp -q -t_srs ' + target_srs + ' -r bilinear "' + \
-                        path + raster + '" "' + self.out_data_folder + raster + '_reproj.bil"'
+                        os.path.join(path, raster) + '" "' + os.path.join(self.out_data_folder, raster) + '_reproj.bil"'
                     print command  # -dstalpha
                     subprocess.call(command)  # , stdout=FNULL, stderr=subprocess.STDOUT)
 
@@ -239,11 +239,11 @@ class GDALInterface(GISInterface):
                     #                                raster_driver="EHdr",
                     #                                set_bounds=None)
 
-                    ds = gdal.Open(self.out_data_folder + raster +
-                                   '_reproj.bil', gdalconst.GA_ReadOnly)
+                    ds = gdal.Open(os.path.join(self.out_data_folder, raster +
+                                   '_reproj.bil'), gdalconst.GA_ReadOnly)
 
             print 'Processing: ', raster
-            rasters[raster] = [ds.ReadAsArray(), path + raster]
+            rasters[raster] = [ds.ReadAsArray(), os.path.join(path, raster)]
 
             ds = None  # close raster file
 
@@ -269,10 +269,9 @@ class GDALInterface(GISInterface):
         simplified_raster_array = {}
 
         if self.mesh_type == 'structured':
-            new_files = [self.out_data_folder_grid + raster +
-                         '_model_grid.bil' for raster in raster_files]
-            new_files_exist = [os.path.isfile(
-                self.out_data_folder_grid + raster + '_model_grid.bil') for raster in raster_files]
+            new_files = [os.path.join(self.out_data_folder_grid, raster +
+                         '_model_grid.bil') for raster in raster_files]
+            new_files_exist = [os.path.isfile(os.path.join(self.out_data_folder_grid, raster + '_model_grid.bil')) for raster in raster_files]
 
             if False not in new_files_exist:
                 for index, raster in enumerate(new_files):
@@ -316,17 +315,17 @@ class GDALInterface(GISInterface):
                     # Clip first using boundary polygon
                     #FNULL = open(os.devnull, 'w')
                     command = "gdalwarp -t_srs " + target_srs + ' -cutline "' + self.boundary_poly_file + \
-                        '" -crop_to_cutline "' + raster_path + raster + '" "' + \
-                        self.out_data_folder + raster + '_clipped.bil"'
+                        '" -crop_to_cutline "' + os.path.join(raster_path, raster) + '" "' + \
+                        os.path.join(self.out_data_folder, raster) + '_clipped.bil"'
                     print command  # -dstalpha
                     subprocess.call(command)  # , stdout=FNULL, stderr=subprocess.STDOUT)
 
                     # Use clipped raster to map active raster cells to grid
-                    ds = gdal.Open(self.out_data_folder + raster + '_clipped.bil',
+                    ds = gdal.Open(os.path.join(self.out_data_folder, raster + '_clipped.bil'),
                                    gdalconst.GA_ReadOnly)  # raster_path
 
                     if ds is None:
-                        print 'Could not open ' + raster_path + raster + '_clipped.bil'
+                        print 'Could not open ' + os.path.join(raster_path, raster + '_clipped.bil')
                         sys.exit(1)
                     # End if
                     mapped_raster = reproject.reproject_raster(
@@ -336,7 +335,7 @@ class GDALInterface(GISInterface):
                         dst_cs=self.projected_coordinate_system,
                         reproj_method=gdal.GRA_NearestNeighbour,
                         create_copy=True,
-                        copy_dest=self.out_data_folder_grid + raster + '_model_grid.bil',
+                        copy_dest=os.path.join(self.out_data_folder_grid, raster + '_model_grid.bil'),
                         raster_driver="EHdr",
                                       set_bounds=set_bounds)
                     # for bands in mapped_raster.GetBandCount:
@@ -383,10 +382,10 @@ class GDALInterface(GISInterface):
         :param path: Path of the files, which is optional, default path is working directory
         """
         driver = ogr.GetDriverByName("ESRI Shapefile")
-        ds = driver.Open(path + filename, 0)
+        ds = driver.Open(os.path.join(path, filename), 0)
         poly_obj = ds.GetLayer()
         if poly_obj == None:
-            print 'Could not open ' + path + filename
+            print 'Could not open ' + os.path.join(path, filename)
             sys.exit(1)
 
         srs = poly_obj.GetSpatialRef()
@@ -398,8 +397,8 @@ class GDALInterface(GISInterface):
                                            src_cs=srs,
                                            dst_cs=self.projected_coordinate_system,
                                            create_copy=True,
-                                           copy_dest=self.out_data_folder +
-                                           filename[:-4] + '_model.shp',
+                                           copy_dest=os.path.join(self.out_data_folder,
+                                           filename[:-4] + '_model.shp'),
                                            geom_type=ogr.wkbMultiLineString)
 
         return ds
@@ -456,7 +455,7 @@ class GDALInterface(GISInterface):
         :param path: Path of the files, which is optional, default path is working directory
         """
 
-        new_file = self.out_data_folder + filename.split('\\')[-1][:-4] + '_clipped.shp'
+        new_file = self.out_data_folder + os.path.basename(filename)[:-4] + '_clipped.shp'
 
         if os.path.isfile(new_file):
             print 'Using previously generated file: ' + new_file
@@ -472,12 +471,12 @@ class GDALInterface(GISInterface):
             #command = 'ogr2ogr -t_srs "' + target_srs + '" "'  + clipping_poly[:-4] + '_reproj.shp" "' + clipping_poly + '"'
             # subprocess.call(command)
 
-            command = 'ogr2ogr -t_srs "' + target_srs + '" "' + self.out_data_folder + \
-                filename.split('\\')[-1][:-4] + '_reproj.shp" "' + filename + '"'
+            command = 'ogr2ogr -t_srs "' + target_srs + '" "' + os.path.join(self.out_data_folder,
+                os.path.basename(filename)[:-4]) + '_reproj.shp" "' + filename + '"'
             # print command
             subprocess.call(command)
 
-            filename = self.out_data_folder + filename.split('\\')[-1][:-4] + '_reproj.shp'
+            filename = self.out_data_folder + os.path.basename(filename)[:-4] + '_reproj.shp'
             command = 'ogr2ogr -clipsrc "' + clipping_poly + '" "' + new_file + '" "' + filename + '"'
             # print command
             subprocess.call(command)
@@ -566,8 +565,8 @@ class GDALInterface(GISInterface):
             if index % 2 == 1:
                 continue
 
-            top = gdal.Open(self.out_data_folder + rasters[index])
-            bot = gdal.Open(self.out_data_folder + rasters[index + 1])
+            top = gdal.Open(os.path.join(self.out_data_folder, rasters[index]))
+            bot = gdal.Open(os.path.join(self.out_data_folder, rasters[index + 1]))
 
             top_levels = self.point_values_from_raster(points, top)
             bot_levels = self.point_values_from_raster(points, bot)
