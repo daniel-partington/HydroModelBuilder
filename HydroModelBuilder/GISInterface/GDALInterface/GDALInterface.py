@@ -192,7 +192,6 @@ class GDALInterface(GISInterface):
                                              ymax=self.model_boundary[3],
                                              gridHeight=gridHeight,
                                              gridWidth=gridWidth)
-
             self.model_mesh = fishnet.create_fishnet(structured_mesh, self.model_boundary[
                                                      4], copy_dest=self.model_data_folder)
         # End if
@@ -207,10 +206,10 @@ class GDALInterface(GISInterface):
         """
         rasters = {}
 
-        print path
-        print "============"
-        import sys
-        sys.exit()
+#        print path
+#        print "============"
+#        import sys
+#        sys.exit()
 
         for raster in files:
             rst = os.path.join(self.out_data_folder, raster + '_reproj.bil')
@@ -346,7 +345,7 @@ class GDALInterface(GISInterface):
                         dst_cs=self.projected_coordinate_system,
                         reproj_method=gdal.GRA_NearestNeighbour,
                         create_copy=True,
-                        copy_dest=os.path.join(self.out_data_folder, raster + '_model_grid.bil'),
+                        copy_dest=os.path.join(self.out_data_folder_grid, raster + '_model_grid.bil'),
                         raster_driver="EHdr",
                                       set_bounds=set_bounds)
                     # for bands in mapped_raster.GetBandCount:
