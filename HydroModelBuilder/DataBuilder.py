@@ -8,6 +8,7 @@ import cPickle as pickle
 import numpy as np
 import pandas as pd
 
+
 class DataBuilder(object):
     """
     The DataBuilder class contains a number of useful tools for collecting
@@ -17,7 +18,6 @@ class DataBuilder(object):
 
     def __init__(self, name=None, units=None, data_folder=None, out_data_folder=None,
                  GISInterface=None, data_format='binary', target_attr=None, **kwargs):
-
         """
         :param name: Dataset name.
         :param data_folder: Path to get model data from.
@@ -294,7 +294,6 @@ class DataBuilder(object):
         """
         return self.GISInterface.read_rasters(files, path=path)
 
-
     def create_basement_bottom(self, hu_raster_path, surface_raster_file, basement_top_raster_file, basement_bot_raster_file, output_path, raster_driver='GTiff'):
         """
         Utility to build a bottom basement array where it doesn't exist based on top of bedrock, surface elevation and a thickness function
@@ -343,7 +342,6 @@ class DataBuilder(object):
         points_layer = np.full((layers, len_list), False, dtype=bool)
 
         return self.GISInterface.map_points_to_raster_layers(points, depths, rasters, points_layer)
-
 
     def add2register(self, addition):
 
