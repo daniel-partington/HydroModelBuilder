@@ -792,12 +792,11 @@ class ModflowModel(object):
         for col in colours:
             for index, nam in enumerate(nams):
                 if col == nam:
-                    print 'yep'
                     rgb_ref += [rgb_all[index]]
-        print rgb_ref
 
         rgba_colors = np.zeros((len(x),4))
         # for red the first column needs to be one
+        zone = np.array(zone)
         for i in range(1,8):
             rgba_colors[:,0][zone == i] = rgb_ref[i-1][0]
             rgba_colors[:,1][zone == i] = rgb_ref[i-1][1]
@@ -2130,9 +2129,9 @@ class MT3DModel(object):
         self.finaliseMT3Dmodel()
     #End buildMT3D()
 
-    def runMT3D(self):
+    def runMT3D(self, silent=False):
 
-        success, buff = self.mt.run_model()
+        success, buff = self.mt.run_model(silent=silent)
         #if not success:
         #    raise Exception('MT3D did not terminate normally.')
         #End if
@@ -2406,11 +2405,11 @@ class MT3DPostProcess(object):
         for col in colours:
             for index, nam in enumerate(nams):
                 if col == nam:
-                    print 'yep'
                     rgb_ref += [rgb_all[index]]
-        print rgb_ref
+        #print rgb_ref
 
         rgba_colors = np.zeros((len(x),4))
+        zone = np.array(zone)
         # for red the first column needs to be one
         for i in range(1,8):
             rgba_colors[:,0][zone == i] = rgb_ref[i-1][0]
