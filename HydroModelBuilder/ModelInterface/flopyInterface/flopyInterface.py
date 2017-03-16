@@ -35,6 +35,8 @@ class ModflowModel(object):
         self.xul = self.model_data.model_boundary[0]
         self.yul = self.model_data.model_boundary[3]
 
+        self.headtol = 1E-6
+
         if self.model_data.model_time.t['steady_state'] == True:
             self.nper = 1
             self.perlen = 1  # 8260000#65 #000000
@@ -103,10 +105,10 @@ class ModflowModel(object):
 
     # End setupBASPackage()
 
-    def setupNWTpackage(self):
+    def setupNWTpackage(self, headtol):
         # Specify NWT settings
         self.nwt = flopy.modflow.ModflowNwt(self.mf,
-                                            headtol=1E-6,  # 1E-4
+                                            headtol=headtol,  # 1E-4
                                             fluxtol=1.0E1,  # 1.0E1
                                             linmeth=2,
                                             iprnwt=1,
@@ -192,7 +194,7 @@ class ModflowModel(object):
 
         self.createDiscretisation()
         self.setupBASPackage(self.nlay, self.nrow, self.ncol)
-        self.setupNWTpackage()
+        self.setupNWTpackage(self.headtol)
         self.setupUPWpackage()
         self.createOCpackage()
 
