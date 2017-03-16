@@ -465,9 +465,10 @@ class PESTInterface(object):
             model = models_ID[0]
             # Find model folder
             #model_folder = self.directory + os.path.sep + 'model_' + model
-            model_folder = '.' + os.path.sep + 'model_' + model
-            if not os.path.isdir(model_folder):
-                sys.exit('Model folder not found for model %s' %(model))
+            
+            #model_folder = '.' + os.path.sep + 'model_' + model
+            #if not os.path.isdir(model_folder):
+            #    sys.exit('Model folder not found for model %s' %(model))
             #end if
             
             # Model observation file (must be created by post-processing of model outputs)
