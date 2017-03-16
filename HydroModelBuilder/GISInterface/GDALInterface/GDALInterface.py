@@ -140,13 +140,13 @@ class GDALInterface(GISInterface):
         # End if
 
         shp_name = os.path.splitext(os.path.basename(shapefile_name))[0]
-        new_file = shp_name + "_buffer_" + str(buffer_dist) + ".shp"
+        new_file = os.path.join(shapefile_path, shp_name + "_buffer_" + str(buffer_dist) + ".shp")
         if os.path.isfile(new_file):
             print 'Using previously generated file: ' + new_file
             self.data_boundary = ogr.Open(new_file, 1)
         else:
             self.data_boundary = create_buffer.create_buffer4poly(
-                shapefile_name, buffer_distance=buffer_dist)
+                shapefile_name, buffile=new_file, buffer_distance=buffer_dist)
         # End if
         self.boundary_data_file = new_file
         return self.data_boundary, self.boundary_data_file
