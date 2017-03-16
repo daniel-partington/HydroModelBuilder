@@ -13,7 +13,9 @@ import pandas as pd
 
 class PESTInterface(object):
 
-    def __init__(self, name=None, directory=None, csv_copy=False, excel_copy=False, params=None, obs=None, obs_grp=None, models_ID=None):
+    def __init__(self, name=None, directory=None, csv_copy=False, 
+                 excel_copy=False, params=None, obs=None, obs_grp=None, 
+                 models_ID=None, predictive_analysis=False):
         self.PEST_data = {}
         if name == None:
             self.name = 'default' 
@@ -46,6 +48,8 @@ class PESTInterface(object):
         #end if
             
         #self.obs = obs
+
+        self.predictive_analysis = predictive_analysis
         
         self.models_ID = models_ID        
         
@@ -92,9 +96,9 @@ class PESTInterface(object):
         
         NOBSGP = number of observation groups [integer] (self generated)
 
-        MAXCOMPDIM (optional) = acivates compressed internal storage of the Jacobian matrix [integer]
+        MAXCOMPDIM (optional) = activates compressed internal storage of the Jacobian matrix [integer]
 
-        DERZEROLIM (optional) = theshold for considering element of the Jacobian matrix zero [float]         
+        DERZEROLIM (optional) = threshold for considering element of the Jacobian matrix zero [float]         
         
         *** 4th line ***
         NTPLFLE = number of template files [integer]
@@ -108,7 +112,7 @@ class PESTInterface(object):
         NUMCOM, JACFILE and MESSFILE (optional) = the manner in which PEST can obtain derivatives 
           directly from the model, typically set as 1,0,0 [3 * integer]       
         
-        OBSREFEF (optional) = "obsrefref" or "noobsrefref" for observation re-referencing [string]
+        OBSREREF (optional) = "obsreref" or "noobsreref" for observation re-referencing [string]
         
         *** 5th line ***
         RLAMBDA1 = initial Marquardt lambda [real]
@@ -150,7 +154,13 @@ class PESTInterface(object):
                         'NRELPAR': 3,
                         'ICOV': 0,
                         'ICOR': 0,
-                        'IEIG': 0
+                        'IEIG': 0,
+                        'IRES': 0,
+                        'JCOSAVE': 'jcosave',
+                        'VERBOSEREC': 'verboserec',
+                        'JCOSAVEITN': 'jcosaveitn',
+                        'REISAVEITN': 'reisaveitn',
+                        'PARSAVEITN': 'parsaveitn'
                         }        
                         
         singular_value_decomposition = {'SVDMODE': 1,
@@ -245,7 +255,11 @@ class PESTInterface(object):
             # Filter out null observations that were out of date range or 
             # didn't map to the model mesh
             obs_grp_ts = obs_grp_ts[obs_grp_ts['obs_map'] != 'null']
-            obs_grp_ts['OBGNME'] = key
+            if obs_grp[key]['by_zone']:
+                obs_grp_ts['OBGNME'] = obs_grp_ts['zone']
+            else:
+                obs_grp_ts['OBGNME'] = key 
+            # end if            
             obs_grp_ts['WEIGHT'] = obs_grp[key]['weights']
             obs_grp_ts['model'] = self.models_ID[0]
             obs_grp_ts.rename(columns={'obs_map':'OBSNME', 'value':'OBSVAL'}, inplace=True)            
@@ -254,7 +268,7 @@ class PESTInterface(object):
                 PESTobs = obs_grp_ts
             else:
                 PESTobs = PESTobs.append(obs_grp_ts)
-            #end if 
+            # end if 
 
 #        header = ['OBSNME', 'OBSVAL', 'WEIGHT', 'OBGNME', 'model']
 #        num_obs = len(obs.keys())
@@ -429,8 +443,12 @@ class PESTInterface(object):
         # - loads the model and updates the parameters based on parameters.txt
         # - runs the model
         # - post-processes model results and writes relevant model outputs for PEST to read
-        PESTCMD = 'run.bat'
-        
+     
+        if os.name == 'nt':
+            PESTCMD = 'run.bat'
+        if os.name == 'posix':
+            PESTCMD = './run.sh'
+            
         # Model input file
         INFLE = 'parameters.txt'
         
@@ -474,7 +492,7 @@ class PESTInterface(object):
         NINSFLE = len(INSFLE)
         
         # Open file
-        with open(PEST_folder + os.path.sep + PESTFILE,'w') as f:
+        with open(os.path.join(PEST_folder, PESTFILE),'w') as f:
             f.write('pcf\n')
             
             # Control data
@@ -508,10 +526,16 @@ class PESTInterface(object):
                     control_data['NPHINORED'],
                     control_data['RELPARSTP'],
                     control_data['NRELPAR']))
-            f.write('%d %d %d\n' %(
+            f.write('%d %d %d %d %s %s %s %s %s\n' %(
                     control_data['ICOV'],
                     control_data['ICOR'],
-                    control_data['IEIG']))
+                    control_data['IEIG'],
+                    control_data['IRES'],
+                    control_data['JCOSAVE'],
+                    control_data['VERBOSEREC'],
+                    control_data['JCOSAVEITN'],
+                    control_data['REISAVEITN'],
+                    control_data['PARSAVEITN']))
             
             # SVD
             svd = self.PEST_data['PESTcon']['singular_value_decomposition']
@@ -581,23 +605,24 @@ class PESTInterface(object):
 #            end
             
             # Predictive analysis
-            predictive_analysis = self.PEST_data['PESTcon']['predictive_analysis']
-            f.write('* predictive analysis\n')
-            f.write('%d\n' %(predictive_analysis['NPREDMAXMIN']))
-            f.write('%g %g %g\n' %(predictive_analysis['PD0'], 
-                                   predictive_analysis['PD1'], 
-                                   predictive_analysis['PD2']))
-            f.write('%g %g %g %g %d\n' %(predictive_analysis['ABSPREDLAM'],
-                                         predictive_analysis['RELPREDLAM'],
-                                         predictive_analysis['INITSCHFAC'],
-                                         predictive_analysis['MULSCHFAC'],
-                                         predictive_analysis['NSEARCH']))
-            f.write('%g %g\n' %(predictive_analysis['ABSPREDSWH'],
-                                predictive_analysis['RELPREDSWH']))
-            f.write('%d %g %g %d\n' %(predictive_analysis['NPREDNORED'],
-                                      predictive_analysis['ABSPREDSTP'],
-                                      predictive_analysis['RELPREDSTP'],
-                                      predictive_analysis['NPREDSTP']))
+            if self.predictive_analysis:
+                predictive_analysis = self.PEST_data['PESTcon']['predictive_analysis']
+                f.write('* predictive analysis\n')
+                f.write('%d\n' %(predictive_analysis['NPREDMAXMIN']))
+                f.write('%g %g %g\n' %(predictive_analysis['PD0'], 
+                                       predictive_analysis['PD1'], 
+                                       predictive_analysis['PD2']))
+                f.write('%g %g %g %g %d\n' %(predictive_analysis['ABSPREDLAM'],
+                                             predictive_analysis['RELPREDLAM'],
+                                             predictive_analysis['INITSCHFAC'],
+                                             predictive_analysis['MULSCHFAC'],
+                                             predictive_analysis['NSEARCH']))
+                f.write('%g %g\n' %(predictive_analysis['ABSPREDSWH'],
+                                    predictive_analysis['RELPREDSWH']))
+                f.write('%d %g %g %d\n' %(predictive_analysis['NPREDNORED'],
+                                          predictive_analysis['ABSPREDSTP'],
+                                          predictive_analysis['RELPREDSTP'],
+                                          predictive_analysis['NPREDSTP']))
         # end with
         
         
@@ -607,7 +632,7 @@ class PESTInterface(object):
         
         # Generate PEST template file
         
-        with open(PEST_folder + os.path.sep + TEMPFLE, 'w') as f:
+        with open(os.path.join(PEST_folder, TEMPFLE), 'w') as f:
             f.write('ptf #\n')
             f.write('PARNAME\tPARVAL\n')
             for row in self.PEST_data['PESTpar'][['PARNAME']].iterrows():
@@ -632,7 +657,7 @@ class PESTInterface(object):
             PESTobs_filtered = obs_pd[obs_pd['OBGNME'] == obs_gp]           
 
             #with open(PEST_folder + os.path.sep + INSFLE[model],'w') as f:
-            with open(PEST_folder + os.path.sep + INSFLE[obs_gp],'w') as f:
+            with open(os.path.join(PEST_folder, INSFLE[obs_gp]),'w') as f:
                 f.write('pif %%\n')
                 for row in PESTobs_filtered.iterrows(): #i in range(1:size(PESTobs_n,1))
                     f.write('l1 !%s!\n' %(row[1]['OBSNME']))
@@ -645,6 +670,12 @@ class PESTInterface(object):
         # Calculate parameter standard deviation assuming normal distribution and that lower and upper bounds are 95% intervals
         STD = []        
         for row in self.PEST_data['PESTpar'].iterrows(): #
+            # If we assume that the upper and lower bounds specified represent
+            # the lower and upper quartiles (i.e. the 25th and 75th percentiles)
+            # of the likely parameter distribution,
+            # which are + and - 2*sigma, then we can calculate the standard
+            # deviation as 1/4 ( upper - lower) = 1/4 ( mean + 2sigma - (mean - 2sigma)) 
+            # = 1/4 (4sigma) = sigma            
             if row[1]['PARTRANS'] == 'log':
                 #log_trans_params += [row[0]]
                 STD += [0.25 * (np.log10(row[1]['PARUBND']) - np.log10(row[1]['PARLBND']))]
@@ -655,9 +686,23 @@ class PESTInterface(object):
         self.PEST_data['PESTpar']['STD'] = STD
         
         UNCERTAINTYFILE = PEST_name + '.unc'
-        with open(PEST_folder + os.path.sep + UNCERTAINTYFILE, 'w') as f:
-            f.write('# Uncertainty file\n')
+        with open(os.path.join(PEST_folder, UNCERTAINTYFILE), 'w') as f:
+            f.write('# Parameter uncertainty file\n')
+            f.write('# for filling C(k) \n')
             f.write('\n')
+#            if pilot_points:
+#                for zone in zones:
+#                    f.write('START COVARIANCE_MATRIX \n')
+#                    f.write('file "points{}.mat" \n'.format(zones))
+#                    f.write('variance_multiplier 1.0 \n')
+#                    f.write('#first_parameter K1pp1 \n')
+#                    f.write('#last_parameter K1pp49 \n')
+#                    f.write('END COVARIANCE_MATRIX \n \n')
+#                # end for
+#            # end if
+#            f.write('\n')
+            
+            # Needs to be for every other parameter
             f.write('START STANDARD_DEVIATION\n')
             for row in self.PEST_data['PESTpar'].iterrows(): #i in range(1:size(PESTpar,1)):
                 if row[1]['PARTRANS'] != 'fixed':
