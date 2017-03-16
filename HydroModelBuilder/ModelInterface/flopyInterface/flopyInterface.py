@@ -106,7 +106,7 @@ class ModflowModel(object):
     def setupNWTpackage(self):
         # Specify NWT settings
         self.nwt = flopy.modflow.ModflowNwt(self.mf,
-                                            headtol=1E-4,  # 1E-4
+                                            headtol=1E-6,  # 1E-4
                                             fluxtol=1.0E1,  # 1.0E1
                                             linmeth=2,
                                             iprnwt=1,
@@ -279,6 +279,7 @@ class ModflowModel(object):
                     with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
                         fail.write("Model did not converge, @ %s" %
                                    datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                        fail.write("Error: \n {}".format(converge_fail))
                     return False
                 # end if
             # end for
@@ -295,6 +296,7 @@ class ModflowModel(object):
                     with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
                         fail.write("Model did not converge, @ %s" %
                                    datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                        fail.write("Error: \n {}".format(converge_fail))
                     return False
                 # end if
             # end for
@@ -451,7 +453,7 @@ class ModflowModel(object):
             with open(self.data_folder + os.path.sep + 'observations_' + obs_set + '.txt', 'w') as f:
 
                 for observation in obs_df.index:
-                    interval = obs_df['interval'].loc[observation]
+                    interval = int(obs_df['interval'].loc[observation])
                     name = obs_df['name'].loc[observation]
                     x = self.model_data.observations.obs_group[
                         obs_set]['locations']['Easting'].loc[name]
@@ -463,6 +465,7 @@ class ModflowModel(object):
                     north = True
                     (lay, row, col) = [sim_map_dict[name][0],
                                        sim_map_dict[name][1], sim_map_dict[name][2]]
+                    
                     sim_heads = [head[interval][lay][row][col]]
 
 #                    if x > x_cell:
@@ -705,6 +708,11 @@ class ModflowModel(object):
         # print np.min(scatterx), np.max(scatterx)
         # print np.min(scattery), np.max(scattery)
 
+        zoned_residuals = {}
+        for i in range(1, 8):
+            zoned_residuals[i] = [loc[0] - loc[1] for loc in obs_sim_zone_all if loc[2] == float(i)] 
+
+        
         # First step is to set up the plot
         width = 20
         height = 5
@@ -713,8 +721,19 @@ class ModflowModel(object):
 
         ax = fig.add_subplot(1, 3, 1)  # , aspect='equal')
         ax.set_title('Residuals')
-        ax.hist([loc[0] - loc[1] for loc in obs_sim_zone_all], bins=20, alpha=0.5)
+        comp_zone_plots = {}
+        #colours = ['b', 'c', 'sienna', 'm', 'r', 'green', 'fuchsia']
+        colours = ['r', 'orangered', 'y', 'green', 'teal', 'blue', 'fuchsia']
+        labels = ('qa', 'utb', 'utqa', 'utam', 'utaf', 'lta', 'bse')        
+        for i in range(1, 8):
+            comp_zone_plots[i] = ax.hist(zoned_residuals[i], bins=20, alpha=0.5,
+                                         color=colours[i - 1], histtype='step', label=labels[i-1])
+        #ax.hist([loc[0] - loc[1] for loc in obs_sim_zone_all], bins=20, alpha=0.5)
 
+        plt.legend(loc='upper left',
+                   ncol=4,
+                   fontsize=11)
+        
         ax = fig.add_subplot(1, 3, 2)  # , aspect=0.9)
         ax.set_title('Sim vs Obs (%d points)' % (len(scatterx)))
 
@@ -754,19 +773,25 @@ class ModflowModel(object):
 
             ME = 1 - sum1 / sum2
 
-            ax.text(150, 75, 'Model Efficiency = %4.2f' % (ME))
+            ymin, ymax = ax.get_ylim()            
+            xmin, xmax = ax.get_xlim()            
+            
+            ax.text(xmin + 0.45 * (xmax-xmin), ymin + 0.4 * (ymax-ymin), 
+                    'Model Efficiency = %4.2f' % (ME))
 
             # for PBIAS
             def pbias(simulated, observed):
                 return np.sum(simulated - observed) * 100 / np.sum(observed)
 
-            ax.text(150, 40, 'PBIAS = %4.2f%%' % (pbias(scattery, scatterx)))
+            ax.text(xmin + 0.45 * (xmax-xmin), ymin + 0.3 * (ymax-ymin),
+                    'PBIAS = %4.2f%%' % (pbias(scattery, scatterx)))
 
             # For rmse
             def rmse(simulated, observed):
                 return np.sqrt(((simulated - observed) ** 2).mean())
 
-            ax.text(150, 20, 'RMSE = %4.2f' % (rmse(scattery, scatterx)))
+            ax.text(xmin + 0.45 * (xmax-xmin), ymin + 0.2 * (ymax-ymin),
+                    'RMSE = %4.2f' % (rmse(scattery, scatterx)))
 
         ax.plot(ax.get_ylim(), ax.get_ylim())
 
@@ -780,7 +805,7 @@ class ModflowModel(object):
         y = np.array([h[4] for h in obs_sim_zone_all])
         zone = [h[2] for h in obs_sim_zone_all]
         residuals = [h[0] - h[1] for h in obs_sim_zone_all]
-        residuals = np.absolute(residuals)
+        #residuals = np.absolute(residuals)
 
         #plt.scatter(x, y, c=residual, alpha=0.5)
 
@@ -814,8 +839,11 @@ class ModflowModel(object):
         # the fourth column needs to be your alphas
         rgba_colors[:, 3] = residuals / np.max(residuals)  # alphas
 
-        plt.scatter(x, y, color=rgba_colors)
-
+        #plt.scatter(x, y, color=rgba_colors)
+        plt.scatter(x, y, c=residuals, alpha=0.5, edgecolors='none')
+        plt.colorbar()
+        
+        
         #fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
 
         plt.show()
@@ -2276,7 +2304,7 @@ class MT3DPostProcess(object):
             with open(data_folder + os.path.sep + 'observations_' + obs_set + '.txt', 'w') as f:
 
                 for observation in obs_df.index:
-                    interval = obs_df['interval'].loc[observation]
+                    interval = int(obs_df['interval'].loc[observation])
                     name = obs_df['name'].loc[observation]
                     x = obs_group[obs_set]['locations']['Easting'].loc[name]
                     y = obs_group[obs_set]['locations']['Northing'].loc[name]
