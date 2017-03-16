@@ -195,6 +195,10 @@ class PilotPoints(object):
         Function to write the pilot point files containing name, easting, 
         northing, zone and value for each pilot point
         '''
+        with open(os.path.join(self.output_directory, points_fname), 'r') as f:
+            prefix = f.readlines()[0].split()[0][:-1]    
+        
+
         with open(os.path.join(self.output_directory, points_fname), 'w') as f:
             for index, point in enumerate(self.points_dict[zone]):
                 if prefix is not None:
