@@ -313,13 +313,17 @@ class GWModelBuilder(object):
         self.model_boundary[3] = ymax
 
     def set_model_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None):
-
+        if shapefile_path is None:
+            shapefile_path = self.data_folder
+        # end if
         self.model_boundary, self.boundary_poly_file = self.GISInterface.set_model_boundary_from_polygon_shapefile(
             shapefile_name, shapefile_path)
         return self.model_boundary, self.boundary_poly_file
 
     def set_data_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None, buffer_dist=None):
-
+        if shapefile_path is None:
+            shapefile_path = self.data_folder
+        # end if
         self.data_boundary, self.boundary_data_file = self.GISInterface.set_data_boundary_from_polygon_shapefile(
             shapefile_name, shapefile_path=shapefile_path, buffer_dist=buffer_dist)
         self.updateGISinterface()
@@ -452,12 +456,12 @@ class GWModelBuilder(object):
 
     def build_3D_mesh_from_rasters(self, raster_files, raster_path, minimum_thickness, maximum_thickness):
         p_j = os.path.join
-        mesh_pth = p_j(self.out_data_folder_grid, 'model_mesh')
-        zone_pth = p_j(self.out_data_folder_grid, 'zone_matrix')
+        mesh_pth = p_j(self.out_data_folder_grid, 'model_mesh.npy')
+        zone_pth = p_j(self.out_data_folder_grid, 'zone_matrix.npy')
         if os.path.isfile(mesh_pth) & os.path.isfile(zone_pth):
             print 'Using previously generated mesh'
             self.model_mesh3D = self.load_array(
-                mesh_pth + ".npy"), self.load_array(zone_pth + ".npy")
+                mesh_pth), self.load_array(zone_pth)
         else:
             self.model_mesh3D = self.GISInterface.build_3D_mesh_from_rasters(
                 raster_files, raster_path, minimum_thickness, maximum_thickness)
@@ -724,7 +728,7 @@ class GWModelBuilder(object):
 
         return point2mesh_map
 
-    def map_obs_loc2mesh3D(self, method='nearest'):
+    def map_obs_loc2mesh3D(self, method='nearest', ignore=[-1]):
         """
         This is a function to map the obs locations to the nearest node in the
         mesh
@@ -743,10 +747,13 @@ class GWModelBuilder(object):
                     # the observation to inactive
                     for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
                         [k, j, i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
-                        if self.model_mesh3D[1][k][j][i] == -1:
+                        if self.model_mesh3D[1][k][j][i] in ignore:
                             self.observations.obs_group[key]['time_series'].loc[
                                 self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
-
+                        else:
+                            self.observations.obs_group[key]['time_series'].loc[
+                                self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'zone'] = "{}{}".format(key,int(self.model_mesh3D[1][k][j][i]))
+                            
                 elif self.observations.obs_group[key]['domain'] == 'surface':
                     if self.observations.obs_group[key]['real']:
                         points = [list(x) for x in self.observations.obs_group[
@@ -759,9 +766,12 @@ class GWModelBuilder(object):
                         for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
                             [j, i] = self.observations.obs_group[
                                 key]['mapped_observations'][obs_loc]
-                            if self.model_mesh3D[1][0][j][i] == -1:
+                            if self.model_mesh3D[1][0][j][i] in ignore:
                                 self.observations.obs_group[key]['time_series'].loc[
                                     self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
+                            else:
+                                self.observations.obs_group[key]['time_series'].loc[
+                                    self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'zone'] = "{}{}".format(key,int(self.model_mesh3D[1][k][j][i]))
                             # end if
                         # end for
                     else:
@@ -771,6 +781,9 @@ class GWModelBuilder(object):
                         # end for
                     # end if
                 # end if
+                ts = self.observations.obs_group[key]['time_series'] 
+                ts = ts[ts['active'] == True]
+                self.observations.obs_group[key]['time_series'] = ts
             # end for
         # end if
 
@@ -853,10 +866,11 @@ class GWModelBuilder(object):
                 self.observations.obs_group[key]['time_series']['interval'] = self.observations.obs_group[key][
                     'time_series'].apply(lambda row: self._findInterval(row, self.model_time.t['dateindex']), axis=1)
                 # remove np.nan values from the obs as they are not relevant
-                self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
-                    'time_series'][pd.notnull(self.observations.obs_group[key]['time_series']['interval'])]
-                self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
-                    'time_series'][self.observations.obs_group[key]['time_series']['value'] != 0.]
+                if self.observations.obs_group[key]['real']:
+                    self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
+                        'time_series'][pd.notnull(self.observations.obs_group[key]['time_series']['interval'])]
+                    self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
+                        'time_series'][self.observations.obs_group[key]['time_series']['value'] != 0.]
 
     def updateModelParameters(self, fname, verbose=True):
         with open(fname, 'r') as f:
@@ -1087,7 +1101,7 @@ class ModelProperties(object):
         if prop_type in self.prop_types:
             self.properties[prop_type] = value
         else:
-            print prop_type + ' not in ' + self.prop_types
+            print("{} not in {}".format(prop_type, self.prop_types))
             sys.exit('Property type not recognised')
 
 
@@ -1180,7 +1194,8 @@ class ModelObservations(object):
         self.obID = 0
 
     def set_as_observations(self, name, time_series, locations, domain=None,
-                            obs_type=None, units=None, weights=None, real=True):
+                            obs_type=None, units=None, weights=None, real=True,
+                            by_zone=False):
         """
         Function to set observations from pandas dataframes for times series
 
@@ -1201,6 +1216,8 @@ class ModelObservations(object):
         # check time series meets the standard format of columns = ['name', 'datetime', 'value']
         self.obs_group[name]['time_series'] = time_series
         self.obs_group[name]['time_series']['active'] = True
+        self.obs_group[name]['by_zone'] = by_zone
+        self.obs_group[name]['time_series']['zone'] = 'null'
         self.obs_group[name]['locations'] = locations
         self.obs_group[name]['domain'] = domain
         self.obs_group[name]['obs_type'] = obs_type
