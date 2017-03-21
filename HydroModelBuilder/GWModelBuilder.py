@@ -1,5 +1,4 @@
 import cPickle as pickle
-import datetime
 import os
 import shutil
 import sys
@@ -10,6 +9,7 @@ from scipy import spatial
 
 from Utilities import interpolation
 from Utilities.PilotPoints import pilotpoints
+
 
 class GWModelBuilder(object):
     """
@@ -47,13 +47,6 @@ class GWModelBuilder(object):
                 self.types.mesh_types)
             assert data_format in self.types.data_formats, "Data format must be of type: {}".format(
                 self.types.data_formats)
-
-            # if data_folder != None:
-            #    assert os.path.isdir(data_folder) == True, "{} is an invalid path".format(data_folder)
-            # End if
-
-            # assert os.path.isdir(out_data_folder) == True, "{} is an invalid
-            # path".format(out_data_folder)
 
         except AssertionError as e:
             import traceback
@@ -216,7 +209,7 @@ class GWModelBuilder(object):
 
         for suffix in filename_suffixes:
             if os.path.isfile(os.path.join(self.out_data_folder, f[:-4] +
-                              suffix + f[-4:])):
+                                           suffix + f[-4:])):
                 print 'found processed file'
         # end for
         # if any(os.path.isfile(x) in filename for x in filename_suffixes):
@@ -316,6 +309,7 @@ class GWModelBuilder(object):
         if shapefile_path is None:
             shapefile_path = self.data_folder
         # end if
+
         self.model_boundary, self.boundary_poly_file = self.GISInterface.set_model_boundary_from_polygon_shapefile(
             shapefile_name, shapefile_path)
         return self.model_boundary, self.boundary_poly_file
@@ -422,8 +416,8 @@ class GWModelBuilder(object):
 
         self.gridHeight = gridHeight
         self.gridWidth = gridWidth
-        self.out_data_folder_grid = os.path.join(self.model_data_folder, 
-            'structured_model_grid_{}m'.format(int(gridHeight)))  # '\\'
+        self.out_data_folder_grid = os.path.join(self.model_data_folder,
+                                                 'structured_model_grid_{}m'.format(gridHeight))
         self.updateGISinterface()
         self.model_mesh = self.GISInterface.define_structured_mesh(gridHeight, gridWidth)
         self.model_mesh_centroids = self.build_centroids_array(self.gridHeight)
@@ -497,29 +491,34 @@ class GWModelBuilder(object):
                         # Assimilate cell if surrounded by four of the same
                         if assimilate:
                             if (((j > 0) and (target_zone[j - 1][i] != cell_zone)) and       # North
-                               ((j < row - 1) and (target_zone[j + 1][i] != cell_zone)) and  # South
-                               ((i < col - 1) and (target_zone[j][i + 1] != cell_zone)) and  # East
-                               ((i > 0) and (target_zone[j][i - 1] != cell_zone)) and       # West
-                               ((j > 0) and (i < col - 1) and (target_zone[j - 1][i + 1] != cell_zone)) and   # North-East
-                               ((j < row - 1) and (i < col - 1) and (target_zone[j + 1][i + 1] != cell_zone)) and  # South-East
-                               ((j > 0) and (i > 0) and (target_zone[j - 1][i - 1] != cell_zone)) and  # North-West
-                               ((j < row - 1) and (i > 0) and (target_zone[j + 1][i - 1] != cell_zone))):          # South-West
-         
+                                # South
+                                ((j < row - 1) and (target_zone[j + 1][i] != cell_zone)) and
+                                ((i < col - 1) and (target_zone[j][i + 1] != cell_zone)) and  # East
+                                ((i > 0) and (target_zone[j][i - 1] != cell_zone)) and       # West
+                                # North-East
+                                ((j > 0) and (i < col - 1) and (target_zone[j - 1][i + 1] != cell_zone)) and
+                                # South-East
+                                ((j < row - 1) and (i < col - 1) and (target_zone[j + 1][i + 1] != cell_zone)) and
+                                # North-West
+                                ((j > 0) and (i > 0) and (target_zone[j - 1][i - 1] != cell_zone)) and
+                                    ((j < row - 1) and (i > 0) and (target_zone[j + 1][i - 1] != cell_zone))):          # South-West
+
                                 neighbours = []
                                 if j > 0:
                                     neighbours += [target_zone[j - 1][i]]
                                 if j < row - 1:
-                                    neighbours += [target_zone[j + 1][i]] 
+                                    neighbours += [target_zone[j + 1][i]]
                                 if i < col - 1:
                                     neighbours += [target_zone[j][i + 1]]
                                 if i > 0:
                                     neighbours += [target_zone[j][i - 1]]
-                                #end if
+                                # end if
                                 from itertools import groupby as g
+
                                 def most_common_oneliner(L):
-                                    return max(g(sorted(L)), key=lambda(x, v):(len(list(v)),-L.index(x)))[0]
-                                
-                                most_common = most_common_oneliner(neighbours) 
+                                    return max(g(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
+
+                                most_common = most_common_oneliner(neighbours)
                                 if most_common != -1:
                                     target_zone[j][i] = most_common_oneliner(neighbours)
 
@@ -547,7 +546,7 @@ class GWModelBuilder(object):
 
                         # None of the above conditions were true
                         target_zone[j][i] = -1
-                        
+
                     # End for
                 # End for
             # End for
@@ -664,9 +663,9 @@ class GWModelBuilder(object):
     def map_points_to_2Dmesh(self, points, identifier=None):
         '''
         Function to map points to the 2D horizontal mesh (i.e. on the xy plane)
-        
-        Returns: A dict with keys of all points (or identifiers) with each 
-        corresponding entry containing the i and j reference of the nearest 
+
+        Returns: A dict with keys of all points (or identifiers) with each
+        corresponding entry containing the i and j reference of the nearest
         cell center to the given point
         '''
         model_mesh_points = np.array(self.centroid2mesh2Dindex.keys())
@@ -697,10 +696,10 @@ class GWModelBuilder(object):
 
     def map_points_to_3Dmesh(self, points, identifier=None):
         '''
-        Function to map points to the 3D mesh 
-        
-        Returns: A dict with keys of all points (or identifiers) with each 
-        corresponding entry containing the i, j and k reference of the nearest 
+        Function to map points to the 3D mesh
+
+        Returns: A dict with keys of all points (or identifiers) with each
+        corresponding entry containing the i, j and k reference of the nearest
         cell center to the given point
         '''
 
@@ -754,8 +753,8 @@ class GWModelBuilder(object):
                                 self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
                         else:
                             self.observations.obs_group[key]['time_series'].loc[
-                                self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'zone'] = "{}{}".format(key,int(self.model_mesh3D[1][k][j][i]))
-                            
+                                self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'zone'] = "{}{}".format(key, int(self.model_mesh3D[1][k][j][i]))
+
                 elif self.observations.obs_group[key]['domain'] == 'surface':
                     if self.observations.obs_group[key]['real']:
                         points = [list(x) for x in self.observations.obs_group[
@@ -773,7 +772,7 @@ class GWModelBuilder(object):
                                     self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
                             else:
                                 self.observations.obs_group[key]['time_series'].loc[
-                                    self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'zone'] = "{}{}".format(key,int(self.model_mesh3D[1][k][j][i]))
+                                    self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'zone'] = "{}{}".format(key, int(self.model_mesh3D[1][k][j][i]))
                             # end if
                         # end for
                     else:
@@ -783,7 +782,7 @@ class GWModelBuilder(object):
                         # end for
                     # end if
                 # end if
-                ts = self.observations.obs_group[key]['time_series'] 
+                ts = self.observations.obs_group[key]['time_series']
                 ts = ts[ts['active'] == True]
                 self.observations.obs_group[key]['time_series'] = ts
             # end for
@@ -904,16 +903,17 @@ class GWModelBuilder(object):
                 print 'Parameters unchanged for : ', not_updated
 
     def create_pilot_points(self, name):
-        self.pilot_points[name] = pilotpoints.PilotPoints(output_directory=self.out_data_folder_grid)
-        
+        self.pilot_points[name] = pilotpoints.PilotPoints(
+            output_directory=self.out_data_folder_grid)
+
     def save_pilot_points(self):
         self.save_obj(self.pilot_points, os.path.join(self.out_data_folder_grid, 'pilot_points'))
-        
+
     def load_pilot_points(self, fname):
         pp = self.load_obj(fname)
         for key in pp.keys():
             self.pilot_points[key] = pp[key]
-        
+
     def add2register(self, addition):
 
         self.model_register += addition
@@ -930,21 +930,20 @@ class GWModelBuilder(object):
 
     def mesh3DToVtk(self, val_array, val_name, out_path, vtk_out):
         '''
-        Function to write the mesh array 
+        Function to write the mesh array
         '''
-        nrow, ncol = self.model_mesh3D[1][0].shape    
+        nrow, ncol = self.model_mesh3D[1][0].shape
         delc, delr = self.gridWidth, self.gridHeight
         x0, y0 = self.model_boundary[0], self.model_boundary[3]
         grid_info = [ncol, nrow, delc, delr, x0, y0]
         mesh, zone_matrix = self.mesh_array[0], self.mesh_array[1]
         from HydroModelBuilder.GISInterface.GDALInterface import array2Vtk
-        
-        array2Vtk.build_vtk_from_array(grid_info, np.fliplr(mesh), ["z_elev"], 
-                                       [np.fliplr(mesh)], ["zone", val_name], 
-                                       [np.fliplr(zone_matrix), np.fliplr(val_array)], 
+
+        array2Vtk.build_vtk_from_array(grid_info, np.fliplr(mesh), ["z_elev"],
+                                       [np.fliplr(mesh)], ["zone", val_name],
+                                       [np.fliplr(zone_matrix), np.fliplr(val_array)],
                                        out_path, vtk_out)
 
-        
     def get_uppermost_active(self):
         # Not required at the moment
         pass
@@ -1121,17 +1120,17 @@ class ModelParameters(object):
     def create_model_parameter(self, name, value=None):
         '''
         Function to create new parameter for use in PEST
-        
+
         '''
         if len(name) > 12:
             print('Warning: PEST has a max char length of parameter names of 12')
             print('         Parameter {0} has length {1}'.format(name, len(name)))
-        #end if
+        # end if
         self.param[name] = {}
         self.param[name]['PARVAL1'] = value
 
-    def parameter_options(self, param_name, PARTRANS=None, PARCHGLIM=None, 
-                          PARLBND=None, PARUBND=None, PARGP=None, 
+    def parameter_options(self, param_name, PARTRANS=None, PARCHGLIM=None,
+                          PARLBND=None, PARUBND=None, PARGP=None,
                           SCALE=None, OFFSET=None):
         '''
         Function to assign various paramater properties pertaining to PEST
@@ -1160,7 +1159,7 @@ class ModelParameters(object):
             print('         Parameter {0} has length {1}'.format(name, len(name)))
             print('         Automatic appending of name with number may cause')
             print('         longer than 12 char length par names')
-        #end if
+        # end if
 
         for i in range(num_parameters):
             self.param[name + str(i)] = {}
@@ -1169,20 +1168,21 @@ class ModelParameters(object):
                 self.param_set[name] = [name + str(i)]
             else:
                 self.param_set[name] += [name + str(i)]
-                
-    def parameter_options_set(self, param_set_name, PARTRANS=None, PARCHGLIM=None, 
-                          PARLBND=None, PARUBND=None, PARGP=None, 
-                          SCALE=None, OFFSET=None):
+
+    def parameter_options_set(self, param_set_name, PARTRANS=None, PARCHGLIM=None,
+                              PARLBND=None, PARUBND=None, PARGP=None,
+                              SCALE=None, OFFSET=None):
         '''
         Function to assign various paramater properties pertaining to PEST
         for each of the parameters within a parameter set
         '''
         for param in self.param_set[param_set_name]:
-            self.parameter_options(param, 
-                                   PARTRANS=PARTRANS, PARCHGLIM=PARCHGLIM, 
-                                   PARLBND=PARLBND, PARUBND=PARUBND, 
+            self.parameter_options(param,
+                                   PARTRANS=PARTRANS, PARCHGLIM=PARCHGLIM,
+                                   PARLBND=PARLBND, PARUBND=PARUBND,
                                    PARGP=PARGP, SCALE=SCALE, OFFSET=OFFSET)
-        
+
+
 class ModelObservations(object):
     """
     This class is used to store all of the obervations relevant to the model
