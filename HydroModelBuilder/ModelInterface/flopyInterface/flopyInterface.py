@@ -845,6 +845,12 @@ class ModflowModel(object):
 
         #plt.scatter(x, y, color=rgba_colors)
         plt.scatter(x, y, c=residuals, alpha=0.5, edgecolors='none')
+        start, end = ax.get_xlim()
+        start = start // 1000 * 1000 + 1000
+        end = end // 1000 * 1000 - 1000
+        ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+        ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+
         plt.colorbar()
         
         

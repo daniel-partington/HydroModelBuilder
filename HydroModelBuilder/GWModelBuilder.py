@@ -320,9 +320,11 @@ class GWModelBuilder(object):
             shapefile_name, shapefile_path)
         return self.model_boundary, self.boundary_poly_file
 
-    def set_data_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None, buffer_dist=None):
+    def set_data_boundary_from_polygon_shapefile(self, shapefile_name=None, shapefile_path=None, buffer_dist=None):
+        if shapefile_name is None:
+            shapefile_name = self.boundary_poly_file
         if shapefile_path is None:
-            shapefile_path = self.data_folder
+            shapefile_path = self.out_data_folder
         # end if
         self.data_boundary, self.boundary_data_file = self.GISInterface.set_data_boundary_from_polygon_shapefile(
             shapefile_name, shapefile_path=shapefile_path, buffer_dist=buffer_dist)

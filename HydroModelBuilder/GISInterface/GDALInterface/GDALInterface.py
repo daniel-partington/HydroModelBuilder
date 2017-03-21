@@ -468,11 +468,10 @@ class GDALInterface(GISInterface):
         :param filename: filename for the point shapefile that is to be read in.
         :param path: Path of the files, which is optional, default path is working directory
         """
-
         base = os.path.splitext(os.path.basename(filename))[0]
         new_f = base + "_clipped.shp"
         new_file = os.path.join(self.out_data_folder, new_f)
-
+        
         if os.path.isfile(new_file):
             print 'Using previously generated file: ' + new_file
             driver = ogr.GetDriverByName("ESRI Shapefile")
@@ -485,11 +484,14 @@ class GDALInterface(GISInterface):
 
             fn = os.path.join(self.out_data_folder, base) + '_reproj.shp'
             command = 'ogr2ogr -t_srs "' + target_srs + '" "' + fn + '" "' + filename + '"'
-            subprocess.call(command)
+            print(subprocess.check_output(command))
 
             command = 'ogr2ogr -clipsrc "' + clipping_poly + '" "' + new_file + '" "' + fn + '"'
-            subprocess.call(command)
-
+            try:
+                print(subprocess.check_output(command))
+            except subprocess.CalledProcessError as e:
+                print("stdout output on error:\n" + e.output)
+            
             driver = ogr.GetDriverByName("ESRI Shapefile")
             ds = driver.Open(new_file, 0)
 
