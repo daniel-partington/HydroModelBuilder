@@ -1,12 +1,13 @@
-# Code derived from: https://pcjericks.github.io/py-gdalogr-cookbook/vector_layers.html#create-fishnet-grid
+# Code derived from:
+# https://pcjericks.github.io/py-gdalogr-cookbook/vector_layers.html#create-fishnet-grid
 
 import os
-from osgeo import ogr
 from math import ceil
 
+from osgeo import ogr
 
-def create_fishnet(structured_mesh, spatialRef, copy_dest = None):
 
+def create_fishnet(structured_mesh, spatialRef, copy_dest=None):
     '''
     Function to create a fishnet for the model grid for structured meshes
     Based off of the recipe on:
@@ -18,12 +19,12 @@ def create_fishnet(structured_mesh, spatialRef, copy_dest = None):
     ymax = structured_mesh.ymax
     gridHeight = structured_mesh.gridHeight
     gridWidth = structured_mesh.gridWidth
-    
-    outputGridfn = 'structured_model_grid_%im.shp' %int(gridHeight)
-    outputGridfnPrj = 'structured_model_grid_%im.prj' %int(gridHeight)
 
-    if copy_dest != None:
-        outputGridDir = copy_dest + 'structured_model_grid_%im' %int(gridHeight) + '\\'         
+    outputGridfn = 'structured_model_grid_%im.shp' % int(gridHeight)
+    outputGridfnPrj = 'structured_model_grid_%im.prj' % int(gridHeight)
+
+    if copy_dest is not None:
+        outputGridDir = os.path.join(copy_dest, 'structured_model_grid_%im' % int(gridHeight))
 
     # convert sys.argv to float
     xmin = float(xmin)
@@ -34,15 +35,15 @@ def create_fishnet(structured_mesh, spatialRef, copy_dest = None):
     gridHeight = float(gridHeight)
 
     # get rows
-    rows = ceil((ymax-ymin)/gridHeight)
+    rows = ceil((ymax - ymin) / gridHeight)
     # get columns
-    cols = ceil((xmax-xmin)/gridWidth)
+    cols = ceil((xmax - xmin) / gridWidth)
 
     # start grid cell envelope
     ringXleftOrigin = xmin
     ringXrightOrigin = xmin + gridWidth
     ringYtopOrigin = ymax
-    ringYbottomOrigin = ymax-gridHeight
+    ringYbottomOrigin = ymax - gridHeight
 
     if not os.path.exists(outputGridDir):
         os.makedirs(outputGridDir)
@@ -50,19 +51,19 @@ def create_fishnet(structured_mesh, spatialRef, copy_dest = None):
     # Get the current working directory that was entered into coming into function
     cwd = os.getcwd()
     # Change current working directory to location where grid file will go
-    os.chdir(outputGridDir) 
+    os.chdir(outputGridDir)
 
     # create output file
     outDriver = ogr.GetDriverByName('ESRI Shapefile')
     if os.path.exists(outputGridfn):
-        outDriver.DeleteDataSource(outputGridfn)    
-        
+        outDriver.DeleteDataSource(outputGridfn)
+
     outDataSource = outDriver.CreateDataSource(outputGridfn)
-    #print dir(outDataSource)    
+    # print dir(outDataSource)
     outLayer = outDataSource.CreateLayer(outputGridfn, spatialRef, geom_type=ogr.wkbPolygon)
-    #print dir(outLayer)    
+    # print dir(outLayer)
     featureDefn = outLayer.GetLayerDefn()
-    #print dir(featureDefn)        
+    # print dir(featureDefn)
     # create grid cells
     countcols = 0
     while countcols < cols:
@@ -70,7 +71,7 @@ def create_fishnet(structured_mesh, spatialRef, copy_dest = None):
 
         # reset envelope for rows
         ringYtop = ringYtopOrigin
-        ringYbottom =ringYbottomOrigin
+        ringYbottom = ringYbottomOrigin
         countrows = 0
 
         while countrows < rows:
@@ -99,53 +100,54 @@ def create_fishnet(structured_mesh, spatialRef, copy_dest = None):
         ringXrightOrigin = ringXrightOrigin + gridWidth
 
     # Close DataSources
-    #outDataSource = None #.Destroy()
+    # outDataSource = None #.Destroy()
 
     spatialRef.MorphToESRI()
     with open(outputGridfnPrj, 'w') as f:
         f.write(spatialRef.ExportToWkt())
-    
+
     # Change back to previous working directory
-    os.chdir(cwd) 
+    os.chdir(cwd)
 
     #mesh_layer = outDataSource.GetLayer()
-    #for feature in mesh_layer:
+    # for feature in mesh_layer:
     #    grid_cell = feature.GetGeometryRef()
-    #    centroid_txt = grid_cell.Centroid().ExportToWkt()   
-    #    centroid_nums = centroid_txt.split('(')[1].split(')')[0]           
-    #    centroid = centroid_nums.split(' ')            
+    #    centroid_txt = grid_cell.Centroid().ExportToWkt()
+    #    centroid_nums = centroid_txt.split('(')[1].split(')')[0]
+    #    centroid = centroid_nums.split(' ')
     #    print centroid
     #mesh_layer = None
-    
-    return outDataSource #outputGridfn #ds
-    
+
+    return outDataSource  # outputGridfn #ds
+
 if __name__ == "__main__":
     # Main to allow standalone testing of this module
-    
+
     copy_dest = r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\\"
-    
+
     from osgeo import osr
 
     Proj_CS = osr.SpatialReference()
-    Proj_CS.ImportFromEPSG(28355) # This is just an example coordinate system
-    
-    print Proj_CS.ExportToWkt()    
-    
+    Proj_CS.ImportFromEPSG(28355)  # This is just an example coordinate system
+
+    print Proj_CS.ExportToWkt()
+
     class StructuredMesh(object):
+
         def __init__(self, xmin=None, xmax=None, ymin=None, ymax=None, gridHeight=None, gridWidth=None):
             self.xmin = xmin
             self.xmax = xmax
             self.ymin = ymin
             self.ymax = ymax
             self.gridHeight = gridHeight
-            self.gridWidth = gridWidth            
-            
-    structured_mesh = StructuredMesh(xmin='223167.454274', 
-                                     xmax='223177.454274', 
-                                     ymin='6052335.91306', 
-                                     ymax='6052345.91306', 
+            self.gridWidth = gridWidth
+
+    structured_mesh = StructuredMesh(xmin='223167.454274',
+                                     xmax='223177.454274',
+                                     ymin='6052335.91306',
+                                     ymax='6052345.91306',
                                      gridHeight='20000',
                                      gridWidth='20000')
-    
-    test = create_fishnet(structured_mesh, Proj_CS, copy_dest = copy_dest)
+
+    test = create_fishnet(structured_mesh, Proj_CS, copy_dest=copy_dest)
     test = None

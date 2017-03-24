@@ -3,12 +3,8 @@ import subprocess
 import sys
 
 import numpy as np
-
 # Import the GDAL classes
 from osgeo import gdal, gdalconst, ogr, osr
-
-# Import the GIS interface
-from HydroModelBuilder.GISInterface.GISInterface import GISInterface
 
 import basement
 import create_buffer
@@ -20,6 +16,9 @@ import point_values_from_raster
 import polygon2points
 import raster2polygon
 import reproject
+# Import the GIS interface
+from HydroModelBuilder.GISInterface.GISInterface import GISInterface
+
 
 class GDALInterface(GISInterface):
     """
@@ -58,6 +57,7 @@ class GDALInterface(GISInterface):
         1. For structured mesh this will create a rectangle that creates an envelope on the polygon
 
         """
+
         # Check first that file hasn't been previously processed
         base_name = os.path.join(self.out_data_folder, shapefile_name[:-4])
         new_file = base_name + "_model.shp"
@@ -177,10 +177,9 @@ class GDALInterface(GISInterface):
 
 
         """
-
         new_file = os.path.join(self.out_data_folder,
-            'structured_model_grid_{}m'.format(int(gridHeight)), 
-            'structured_model_grid_{}m.shp'.format(int(gridHeight)))
+                                'structured_model_grid_{}m'.format(int(gridHeight)),
+                                'structured_model_grid_{}m.shp'.format(int(gridHeight)))
 
         if os.path.isfile(new_file):
             print 'Using previously generated file: ' + new_file
@@ -192,6 +191,7 @@ class GDALInterface(GISInterface):
                                              ymax=self.model_boundary[3],
                                              gridHeight=gridHeight,
                                              gridWidth=gridWidth)
+
             self.model_mesh = fishnet.create_fishnet(structured_mesh, self.model_boundary[
                                                      4], copy_dest=self.model_data_folder)
         # End if
@@ -349,7 +349,8 @@ class GDALInterface(GISInterface):
                         dst_cs=self.projected_coordinate_system,
                         reproj_method=gdal.GRA_NearestNeighbour,
                         create_copy=True,
-                        copy_dest=os.path.join(self.out_data_folder_grid, raster + '_model_grid.bil'),
+                        copy_dest=os.path.join(self.out_data_folder_grid,
+                                               raster + '_model_grid.bil'),
                         raster_driver="EHdr",
                                       set_bounds=set_bounds)
                     # for bands in mapped_raster.GetBandCount:
@@ -475,7 +476,7 @@ class GDALInterface(GISInterface):
         base = os.path.splitext(os.path.basename(filename))[0]
         new_f = base + "_clipped.shp"
         new_file = os.path.join(self.out_data_folder, new_f)
-        
+
         if os.path.isfile(new_file):
             print 'Using previously generated file: ' + new_file
             driver = ogr.GetDriverByName("ESRI Shapefile")
@@ -495,7 +496,7 @@ class GDALInterface(GISInterface):
                 print(subprocess.check_output(command))
             except subprocess.CalledProcessError as e:
                 print("stdout output on error:\n" + e.output)
-            
+
             driver = ogr.GetDriverByName("ESRI Shapefile")
             ds = driver.Open(new_file, 0)
 
@@ -599,15 +600,14 @@ class GDALInterface(GISInterface):
             bot = None
 
         return points_layer
-        
+
     def raster2polygon(self, raster):
         '''
-        Function to get the first band of a raster and convert it into 
+        Function to get the first band of a raster and convert it into
         a polygon
         '''
-        
+
         return raster2polygon.raster2polygon(raster)
-        
 
 
 class StructuredMesh(object):
