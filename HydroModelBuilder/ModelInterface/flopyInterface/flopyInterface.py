@@ -623,7 +623,7 @@ class ModflowModel(object):
         self.cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
         return self.cbbobj
 
-    def waterBalance(self, plot=True):
+    def waterBalance(self, plot=True, nper=0):
 
         cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
 
@@ -639,7 +639,7 @@ class ModflowModel(object):
             component_stripped = component.strip()
             water_balance[component_stripped] = cbbobj.get_data(text=component, full3D=True)  # [-1]
 
-            wb_element = water_balance[component_stripped][0]
+            wb_element = water_balance[component_stripped][nper]
             pos = component_stripped + '_pos'
             neg = component_stripped + '_neg'
 
@@ -681,6 +681,59 @@ class ModflowModel(object):
             fig.subplots_adjust(left=0.1, right=0.9, bottom=0.35, top=0.95, wspace=0.1, hspace=0.12)
             plt.show()
 
+    def waterBalanceTS(self, plot=True):
+
+        cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
+
+        water_balance_components = cbbobj.textlist
+        times = cbbobj.get_times()
+        water_balance = {}
+        water_balance_summary = {}
+        water_bal_summed_titles = []
+        water_bal_summed_values = []
+        for component in water_balance_components:
+            if 'FLOW' in component:
+                continue
+
+            component_stripped = component.strip()
+            water_balance[component_stripped] = cbbobj.get_data(text=component, full3D=True)  # [-1]
+            pos = component_stripped + '_pos'
+            neg = component_stripped + '_neg'
+            
+            water_balance_summary[pos] = []           
+            water_balance_summary[neg] = []            
+
+            for nper in range(len(times)):
+                wb_element = water_balance[component_stripped][nper]
+
+                if not np.sum(wb_element[wb_element > 0]) is np.ma.masked:  # core.MaskedConstant():
+                    water_balance_summary[pos] += [np.sum(wb_element[wb_element > 0])]
+                else:
+                    water_balance_summary[pos] += [0.]
+                    
+                if not np.sum(wb_element[wb_element < 0]) is np.ma.masked:  # core.MaskedConstant():
+                    water_balance_summary[neg] += [np.sum(wb_element[wb_element < 0])]
+                else:
+                    water_balance_summary[neg] += [0.]
+
+            water_bal_summed_titles += pos, neg
+            water_bal_summed_values += np.sum(water_balance_summary[pos]), np.sum(water_balance_summary[neg])
+
+        water_bal_summed_titles += ['Error']
+        Error = sum(water_bal_summed_values)
+        water_bal_summed_values += [Error]
+
+        wat_bal_ts_df = pd.DataFrame(water_balance_summary)
+        wat_bal_ts_df = wat_bal_ts_df[[x for x in wat_bal_ts_df.sum().index if wat_bal_ts_df.sum()[x] !=0]]
+        wat_bal_ts_df['time'] = pd.to_datetime(self.start_datetime) 
+        wat_bal_ts_df['time'] = wat_bal_ts_df['time'] + pd.to_timedelta(times, unit='d')
+
+        if plot is True:
+            ax = wat_bal_ts_df.plot(x='time')
+            return wat_bal_ts_df, ax
+        else:
+            return wat_bal_ts_df
+            
     def compareAllObs(self):
 
         headobj = self.importHeads()
