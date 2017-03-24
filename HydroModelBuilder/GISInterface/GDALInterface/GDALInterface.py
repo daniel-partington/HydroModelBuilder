@@ -320,7 +320,7 @@ class GDALInterface(GISInterface):
                     print command  # -dstalpha
 
                     try:
-                        subprocess.check_output(command)
+                        subprocess.check_output(command, shell=True)
                     except subprocess.CalledProcessError as e:
                         print e
 
