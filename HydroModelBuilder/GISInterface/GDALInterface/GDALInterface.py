@@ -327,10 +327,14 @@ class GDALInterface(GISInterface):
                     # Clip first using boundary polygon
                     # FNULL = open(os.devnull, 'w')
                     command = "gdalwarp -t_srs " + target_srs + ' -cutline "' + self.boundary_poly_file + \
-                        '" -crop_to_cutline "' + raster_path + raster + '" "' + clp_file + '"'
+                        '" -crop_to_cutline "' + os.path.join(raster_path + raster) + '" "' + clp_file + '"'
                     print command  # -dstalpha
-                    subprocess.call(command)  # , stdout=FNULL, stderr=subprocess.STDOUT)
 
+                    try:
+                        subprocess.chekc_output(command)  # , stdout=FNULL, stderr=subprocess.STDOUT)
+                    except subprocess.CalledProcessError as e:
+                        print e
+    
                     # Use clipped raster to map active raster cells to grid
                     ds = gdal.Open(clp_file, gdalconst.GA_ReadOnly)  # raster_path
 
