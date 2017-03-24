@@ -308,33 +308,22 @@ class GDALInterface(GISInterface):
                 set_bounds = (xmin, xmin + cols * self.gridHeight +
                               1.0, ymax - rows * self.gridHeight, ymax)
 
-#                for feature in layer:
-#                    geom =feature.GetGeometryRef()
-#                    points_string = geom.ExportToWkt()
-#                    start = points_string.find('((') + 2
-#                    end = points_string.find('))', start)
-#                    points_array = [(float(x.split(' ')[0]), float(x.split(' ')[1])) for x in points_string[start:end].split(',')]
-#                    pixel_spacing = points_array[1][0] - points_array[0][0]
-#                    set_bounds = layer.GetExtent()
-#                    break
-
-                # target_srs = self.projected_coordinate_system.ExportToProj4()
-                # target_srs = self.projected_coordinate_system.ExportToWkt()
                 target_srs = self.pcs_EPSG
 
                 for raster in raster_files:
                     clp_file = os.path.join(self.out_data_folder, raster + '_clipped.bil')
                     # Clip first using boundary polygon
                     # FNULL = open(os.devnull, 'w')
-                    command = "gdalwarp -t_srs " + target_srs + ' -cutline "' + self.boundary_poly_file + \
-                        '" -crop_to_cutline "' + os.path.join(raster_path + raster) + '" "' + clp_file + '"'
+                    command = "gdalwarp -t_srs " + target_srs + ' -cutline "' + \
+                              self.boundary_poly_file + '" -crop_to_cutline "' + \
+                              os.path.join(raster_path + raster) + '" "' + clp_file + '"'
                     print command  # -dstalpha
 
                     try:
-                        subprocess.chekc_output(command)  # , stdout=FNULL, stderr=subprocess.STDOUT)
+                        subprocess.check_output(command)
                     except subprocess.CalledProcessError as e:
                         print e
-    
+
                     # Use clipped raster to map active raster cells to grid
                     ds = gdal.Open(clp_file, gdalconst.GA_ReadOnly)  # raster_path
 
