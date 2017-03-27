@@ -91,7 +91,7 @@ class GDALInterface(GISInterface):
             # Check spatial ref coords:
             srs = osr.SpatialReference(wkt=spatialRef.ExportToWkt())
 
-            if self.projected_coordinate_system == None:
+            if self.projected_coordinate_system is None:
                 self.projected_coordinate_system = srs
 
             elif self.projected_coordinate_system == srs:
@@ -116,7 +116,8 @@ class GDALInterface(GISInterface):
         # End if
 
         if self.mesh_type == 'structured':
-            for feature in layer:  # should only be 1 feature in the layer for the bounding polygon!!!
+            # should only be 1 feature in the layer for the bounding polygon!!!
+            for feature in layer:
                 geom = feature.GetGeometryRef()
                 xmin, xmax, ymin, ymax = geom.GetEnvelope()
                 self.model_boundary = [xmin, xmax, ymin, ymax, self.projected_coordinate_system]
@@ -131,9 +132,10 @@ class GDALInterface(GISInterface):
         self.boundary_poly_file = new_file
         return self.model_boundary, self.boundary_poly_file
 
-    def set_data_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None, buffer_dist=None):
+    def set_data_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None,
+                                                 buffer_dist=None):
 
-        if shapefile_path == None:
+        if shapefile_path is None:
             shapefile_name = shapefile_name
         else:
             shapefile_name = os.path.join(shapefile_path, shapefile_name)
@@ -234,20 +236,14 @@ class GDALInterface(GISInterface):
                     target_srs = self.pcs_EPSG  # projected_coordinate_system.ExportToWkt()
                     # FNULL = open(os.devnull, 'w')
                     command = 'gdalwarp -q -t_srs ' + target_srs + ' -r bilinear "' + \
-                        path + raster + '" "' + rst + '"'
+                        os.path.join(path, raster) + '" "' + rst + '"'
 
-                    print command  # -dstalpha
-                    subprocess.call(command)  # , stdout=FNULL, stderr=subprocess.STDOUT)
+                    print command
 
-                    # ds = reproject.reproject_raster(ds, # raster dataset
-                    #                                pixel_spacing=None,
-                    #                                src_cs=None,
-                    #                                dst_cs=self.projected_coordinate_system,
-                    #                                reproj_method=gdal.GRA_Bilinear,
-                    #                                create_copy=True,
-                    #                                copy_dest=self.out_data_folder + raster + '_reproj.bil',
-                    #                                raster_driver="EHdr",
-                    #                                set_bounds=None)
+                    try:
+                        subprocess.check_output(command, shell=True)
+                    except subprocess.CalledProcessError as e:
+                        print e
 
                     ds = gdal.Open(rst, gdalconst.GA_ReadOnly)
 
@@ -316,7 +312,7 @@ class GDALInterface(GISInterface):
                     # FNULL = open(os.devnull, 'w')
                     command = "gdalwarp -t_srs " + target_srs + ' -cutline "' + \
                               self.boundary_poly_file + '" -crop_to_cutline "' + \
-                              os.path.join(raster_path + raster) + '" "' + clp_file + '"'
+                              os.path.join(raster_path, raster) + '" "' + clp_file + '"'
                     print command  # -dstalpha
 
                     try:
@@ -364,19 +360,27 @@ class GDALInterface(GISInterface):
         """
         pass
 
-    def create_basement_bottom(self, hu_raster_path, surface_raster_file, basement_top_raster_file, basement_bot_raster_file, output_path, raster_driver=None):
+    def create_basement_bottom(self, hu_raster_path, surface_raster_file, basement_top_raster_file,
+                               basement_bot_raster_file, output_path, raster_driver=None):
         """
-        Utility to build a bottom basement array where it doesn't exist based on top of bedrock, surface elevation and a thickness function
+        Utility to build a bottom basement array where it doesn't exist based on top of bedrock,
+        surface elevation and a thickness function
 
         writes a raster file for the bottom basement array
         """
-        basement.create_basement_bottom(hu_raster_path, surface_raster_file, basement_top_raster_file,
-                                        basement_bot_raster_file, output_path, raster_driver=raster_driver)
+        basement.create_basement_bottom(hu_raster_path, surface_raster_file,
+                                        basement_top_raster_file, basement_bot_raster_file,
+                                        output_path, raster_driver=raster_driver)
 
-    def build_3D_mesh_from_rasters(self, raster_files, raster_path, minimum_thickness, maximum_thickness):
-        if self.name == None:
+    def build_3D_mesh_from_rasters(self, raster_files, raster_path, minimum_thickness,
+                                   maximum_thickness):
+        if self.name is None:
             self.name = 'Default'
-        return map_raster2mesh.map_raster_array_to_mesh(raster_path, raster_files, self.out_data_folder_grid, self.name + '_model', minimum_thickness, maximum_thickness)
+        return map_raster2mesh.map_raster_array_to_mesh(raster_path, raster_files,
+                                                        self.out_data_folder_grid,
+                                                        self.name + '_model',
+                                                        minimum_thickness,
+                                                        maximum_thickness)
 
     def read_polyline(self, filename, path=None):
         """
@@ -389,7 +393,7 @@ class GDALInterface(GISInterface):
         p_f = os.path.join(path, filename)
         ds = driver.Open(p_f, 0)
         poly_obj = ds.GetLayer()
-        if poly_obj == None:
+        if poly_obj is None:
             print 'Could not open ' + p_f
             sys.exit(1)
 
@@ -488,31 +492,6 @@ class GDALInterface(GISInterface):
 
             driver = ogr.GetDriverByName("ESRI Shapefile")
             ds = driver.Open(new_file, 0)
-
-            """
-            if ds == None:
-                print 'Could not open ' + new_file
-                sys.exit(1)
-            # end if
-
-            point_obj = ds.GetLayer()
-            if point_obj == None:
-                print 'Could not find any layers'
-                sys.exit(1)
-
-            srs = point_obj.GetSpatialRef()
-
-            if srs == self.projected_coordinate_system:
-                'No transfrom required ... continue'
-            else:
-                ds = reproject.reproject_layer(ds,
-                                               src_cs=srs,
-                                               dst_cs=self.projected_coordinate_system,
-                                               create_copy=True,
-                                               copy_dest=filename[:-4]+'_model.shp', #self.out_data_folder +
-                                               geom_type=ogr.wkbMultiLineString)
-           # End if
-           """
         # End if
 
         return ds
@@ -527,8 +506,8 @@ class GDALInterface(GISInterface):
         returns masked array highlighting cells where polylines intersects
 
         """
-        ids_and_centroids = map2grid.shp2grid(
-            points_obj, self.model_mesh, feature_id=feature_id, shp_type='points', data_folder=self.out_data_folder)
+        ids_and_centroids = map2grid.shp2grid(points_obj, self.model_mesh, feature_id=feature_id,
+                                              shp_type='points', data_folder=self.out_data_folder)
 
         return ids_and_centroids
 
