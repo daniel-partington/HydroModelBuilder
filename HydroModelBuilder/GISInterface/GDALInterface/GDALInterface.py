@@ -420,8 +420,11 @@ class GDALInterface(GISInterface):
         # " ".join("ogr2ogr", "-t_srs", smth + poly_file+'"', "-simplify", smooth_factor)
         command = "ogr2ogr -t_srs " + smth + poly_file + '" -simplify ' + smooth_factor
         print command
-        subprocess.call(command)  # , stdout=FNULL, stderr=subprocess.STDOUT)
-
+        try:
+            subprocess.check_output(command, shell=True)  # , stdout=FNULL, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            print(e)
+                                               
     def map_polyline_to_grid(self, polyline_obj):
         """
         Map the polyline object to the grid
