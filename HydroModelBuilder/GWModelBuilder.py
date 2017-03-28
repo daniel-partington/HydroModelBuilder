@@ -886,7 +886,7 @@ class GWModelBuilder(object):
             for line in text:
                 param_name, value = line.strip('\n').split('\t')
                 value = value.lstrip()
-
+                param_name = param_name.strip()
                 if param_name in self.parameters.param.keys():
                     self.parameters.param[param_name]['PARVAL1'] = float(value)
                     updated[param_name] = True
