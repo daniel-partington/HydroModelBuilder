@@ -201,9 +201,7 @@ class ModflowModel(object):
         river_exists = False
         wells_exist = False
         river = {}
-        river[0] = []
         wel = {}
-        wel[0] = []
         bc = self.model_data.boundaries.bc
         for boundary in bc:
             bc_boundary = bc[boundary]
@@ -221,13 +219,20 @@ class ModflowModel(object):
 
             if (bc_type == 'river') or (bc_type == 'channel'):
                 river_exists = True
-                time_key = bc_array.keys()[0]
-                river[0] += bc_array[time_key]
+                for key in bc_array.keys():
+                    try:
+                        river[key] += bc_array[key]
+                    except:
+                        river[key] = bc_array[key]
 
             if bc_type == 'wells':
                 wells_exist = True
-                time_key = bc_array.keys()[0]
-                wel[0] += bc_array[time_key]
+                for key in bc_array.keys():
+                    try:
+                        wel[key] += bc_array[key]
+                    except:
+                        wel[key] = bc_array[key]
+                #wel[0] += bc_array[time_key]
         # End for
 
         if river_exists:
@@ -768,7 +773,8 @@ class ModflowModel(object):
         zoned_residuals = {}
         for i in range(1, 8):
             zoned_residuals[i] = [loc[0] - loc[1] for loc in obs_sim_zone_all if loc[2] == float(i)] 
-
+        
+        residuals = [loc[0] - loc[1] for loc in obs_sim_zone_all]
         
         # First step is to set up the plot
         width = 20
@@ -782,6 +788,9 @@ class ModflowModel(object):
         #colours = ['b', 'c', 'sienna', 'm', 'r', 'green', 'fuchsia']
         colours = ['r', 'orangered', 'y', 'green', 'teal', 'blue', 'fuchsia']
         labels = ('qa', 'utb', 'utqa', 'utam', 'utaf', 'lta', 'bse')        
+        
+        ax.hist(residuals, bins=20, alpha=0.5,
+                color='black', histtype='step', label='all')        
         for i in range(1, 8):
             comp_zone_plots[i] = ax.hist(zoned_residuals[i], bins=20, alpha=0.5,
                                          color=colours[i - 1], histtype='step', label=labels[i-1])
