@@ -450,11 +450,11 @@ class GWModelBuilder(object):
                                                         output_path,
                                                         raster_driver=raster_driver)
 
-    def build_3D_mesh_from_rasters(self, raster_files, raster_path, minimum_thickness, maximum_thickness):
+    def build_3D_mesh_from_rasters(self, raster_files, raster_path, minimum_thickness, maximum_thickness, force=False):
         p_j = os.path.join
         mesh_pth = p_j(self.out_data_folder_grid, 'model_mesh.npy')
         zone_pth = p_j(self.out_data_folder_grid, 'zone_matrix.npy')
-        if os.path.isfile(mesh_pth) & os.path.isfile(zone_pth):
+        if os.path.isfile(mesh_pth) & os.path.isfile(zone_pth) & ~force:
             print 'Using previously generated mesh'
             self.model_mesh3D = self.load_array(
                 mesh_pth), self.load_array(zone_pth)

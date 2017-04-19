@@ -241,7 +241,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
     for index, raster in enumerate(hu_raster_files):
         if index % 2 == 1:
             continue
-        test = mesh[index / 2] - mesh[index / 2 + 1] <= 1
+        test = mesh[index / 2] - mesh[index / 2 + 1] <= min_height
         if np.any(test == True):
             print 'Error when processing layer ', index / 2
 
