@@ -3,10 +3,12 @@ Configuration Loader.
 """
 
 import os
-import sys
-from jsmin import jsmin
-import json
 import subprocess
+import sys
+
+import simplejson as json
+from jsmin import jsmin
+
 
 class ConfigLoader(object):
     """
@@ -24,7 +26,7 @@ class ConfigLoader(object):
             here = os.path.dirname(config_file)
             try:
                 with open(config_file) as _invalidJSON:
-                    temp = jsmin(_invalidJSON.read());
+                    temp = jsmin(_invalidJSON.read())
                 # End with
             except Exception as e:
                 sys.exit("Error reading config file. Could be due to incorrect JSON formatting \n{}"
@@ -37,13 +39,13 @@ class ConfigLoader(object):
             # Maintain previous behaviour
             # Open config file from wherever current directory is
             # here = os.path.dirname(__file__)
-            here = "" # os.path.dirname(__file__)
+            here = ""  # os.path.dirname(__file__)
             config_file = 'model_config.json'
         # End if
 
         try:
             with open(config_file) as _invalidJSON:
-                temp = jsmin(_invalidJSON.read());
+                temp = jsmin(_invalidJSON.read())
                 self.model_config = json.loads(temp)
             # End with
 
