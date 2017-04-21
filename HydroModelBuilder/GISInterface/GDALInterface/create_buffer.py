@@ -4,6 +4,7 @@ Taken from http://snipplr.com/view/66633/
 """
 import os
 import sys
+import warnings
 
 from osgeo import ogr
 
@@ -18,7 +19,12 @@ def create_buffer4poly(shpfile, buffile=None, buffer_distance=1000.0):
     if buffile == None:
         fname = os.path.splitext(os.path.basename(shpfile))[0]
         buffile = fname + "_buffer_" + str(buffer_distance) + ".shp"
-     # End if
+    # End if
+
+    # OGR fails to handle unicode characters!
+    if type(buffile) is unicode:
+        warnings.warn("unicode characters encountered - OGR sometimes fails to handle unicode")
+        buffile = str(buffile)
 
     drv = shp.GetDriver()
     drv.CopyDataSource(shp, buffile)
@@ -37,6 +43,7 @@ def create_buffer4poly(shpfile, buffile=None, buffer_distance=1000.0):
         lyr.CreateFeature(feat)
 
     buf.ExecuteSQL("REPACK " + os.path.splitext(buffile)[0])
+    buf.FlushCache()
     # buf.Destroy()
 
     return buf

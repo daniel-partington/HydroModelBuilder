@@ -428,7 +428,7 @@ class GDALInterface(GISInterface):
             subprocess.check_output(command, shell=True)  # , stdout=FNULL, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             print(e)
-                                               
+
     def map_polyline_to_grid(self, polyline_obj):
         """
         Map the polyline object to the grid
