@@ -660,6 +660,12 @@ class GWModelBuilder(object):
 
         self.gridded_data_register += [point_name]
 
+    def do_kdtree(self, model_mesh_points, points):
+        mytree = spatial.cKDTree(model_mesh_points)
+        dist, indexes = mytree.query(points)
+        return indexes
+
+
     def map_points_to_2Dmesh(self, points, identifier=None):
         '''
         Function to map points to the 2D horizontal mesh (i.e. on the xy plane)
@@ -674,12 +680,8 @@ class GWModelBuilder(object):
             points = np.array(points)
         # end if
 
-        def do_kdtree(model_mesh_points, points):
-            mytree = spatial.cKDTree(model_mesh_points)
-            dist, indexes = mytree.query(points)
-            return indexes
 
-        closest = do_kdtree(model_mesh_points, points)
+        closest = self.do_kdtree(model_mesh_points, points)
         point2mesh_map = {}
 
         for index, point in enumerate(points):
@@ -693,6 +695,12 @@ class GWModelBuilder(object):
         # end for
 
         return point2mesh_map
+
+    def find_closest_points_between_two_lists(self, list1, list2):
+        np_arr1 = np.array(list1)
+        np_arr2 = np.array(list2)
+        closest = self.do_kdtree(np_arr1, np_arr2)
+        return closest
 
     def map_points_to_3Dmesh(self, points, identifier=None):
         '''

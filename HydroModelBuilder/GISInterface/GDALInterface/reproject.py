@@ -18,6 +18,19 @@ This contains functions for reprojecting:
     b. path_dest
 """
 
+def gdal_error_handler(err_class, err_num, err_msg):
+    errtype = {
+            gdal.CE_None:'None',
+            gdal.CE_Debug:'Debug',
+            gdal.CE_Warning:'Warning',
+            gdal.CE_Failure:'Failure',
+            gdal.CE_Fatal:'Fatal'
+    }
+    err_msg = err_msg.replace('\n',' ')
+    err_class = errtype.get(err_class, 'None')
+    print 'Error Number: %s' % (err_num)
+    print 'Error Type: %s' % (err_class)
+    print 'Error Message: %s' % (err_msg)
 
 def coordinate_transform(pointX, pointY, coordTransform):
     """
@@ -205,6 +218,9 @@ def reproject_layer(lyr_src,
     return outDataSet
 
 if __name__ == "__main__":
+
+    gdal.PushErrorHandler(gdal_error_handler)
+    gdal.UseExceptions()
     # Test for raster reprojection
     dataset = r"C:\Workspace\part0075\MDB modelling\Campaspe_model\GIS\GIS_preprocessed\Hydrogeological_Unit_Layers\qa_1t_bb"
     pixel_spacing = 10000
@@ -212,7 +228,7 @@ if __name__ == "__main__":
     epsg_to = 28355
     reproj_method = gdal.GRA_Bilinear
     create_copy = True
-    copy_dest = r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\GISInterface\GDALInterface\test.tif"
+    copy_dest = r"C:\Workspace\part0075\MDB modelling\test.tif"
     raster_driver = "EHdr"  # "GTiff"
 
     ds = gdal.Open(dataset, gdalconst.GA_ReadOnly)
@@ -243,7 +259,7 @@ if __name__ == "__main__":
 
     srs = poly_obj.GetSpatialRef()
     # print srs.ExportToWkt()
-    copy_dest = r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\GISInterface\GDALInterface\test_model.shp"
+    copy_dest = r"C:\Workspace\part0075\MDB modelling\test_model.shp"
 
     ds = reproject_layer(ds,
                          src_cs=srs,
