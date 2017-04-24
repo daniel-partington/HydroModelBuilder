@@ -71,7 +71,7 @@ def create_basement_bottom(hu_raster_path, surface_raster_file, basement_top_ras
         outRaster.SetProjection(src_cs.ExportToWkt())
         outband.FlushCache()
 
-    array2raster(output_path + basement_bot_raster_file + '.tif', basetop_geotransform,
+    array2raster(os.path.join(output_path, basement_bot_raster_file + '.tif'), basetop_geotransform,
                  basetop_NODATA, src_cs, basebot_array, raster_driver)
 
 if __name__ == "__main__":
