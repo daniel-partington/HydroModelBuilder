@@ -100,7 +100,6 @@ def create_fishnet(structured_mesh, spatialRef, copy_dest=None):
         ringXrightOrigin = ringXrightOrigin + gridWidth
 
     # Close DataSources
-    # outDataSource = None #.Destroy()
 
     spatialRef.MorphToESRI()
     with open(outputGridfnPrj, 'w') as f:
@@ -118,12 +117,19 @@ def create_fishnet(structured_mesh, spatialRef, copy_dest=None):
     #    print centroid
     #mesh_layer = None
 
-    return outDataSource  # outputGridfn #ds
+    outDataSource
+    outDataSourceCopy = ogr.GetDriverByName("Memory").CopyDataSource(
+            outDataSource, "")
+
+    outDataSource = None #.Destroy()
+
+    #return outDataSource  # outputGridfn #ds
+    return outDataSourceCopy
 
 if __name__ == "__main__":
     # Main to allow standalone testing of this module
 
-    copy_dest = r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\\"
+    copy_dest = r"C:\Workspace\part0075\MDB modelling\Campaspe_data\SW\Farm\\"
 
     from osgeo import osr
 
@@ -146,8 +152,8 @@ if __name__ == "__main__":
                                      xmax='223177.454274',
                                      ymin='6052335.91306',
                                      ymax='6052345.91306',
-                                     gridHeight='20000',
-                                     gridWidth='20000')
+                                     gridHeight='1',
+                                     gridWidth='1')
 
     test = create_fishnet(structured_mesh, Proj_CS, copy_dest=copy_dest)
-    test = None
+    #test = None

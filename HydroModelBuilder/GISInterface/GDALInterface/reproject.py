@@ -215,7 +215,12 @@ def reproject_layer(lyr_src,
     prj_file.write(outSpatialRef.ExportToWkt())
     prj_file.close()
 
-    return outDataSet
+    outDataSetCopy = ogr.GetDriverByName("Memory").CopyDataSource(
+            outDataSet, "")
+
+    outDataSet = None #.Destroy()
+
+    return outDataSetCopy
 
 if __name__ == "__main__":
 

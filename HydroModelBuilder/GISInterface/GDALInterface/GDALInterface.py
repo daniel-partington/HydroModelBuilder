@@ -337,7 +337,7 @@ class GDALInterface(GISInterface):
                         copy_dest=os.path.join(self.out_data_folder_grid,
                                                raster + '_model_grid.bil'),
                         raster_driver="EHdr",
-                                      set_bounds=set_bounds)
+                        set_bounds=set_bounds)
                     # for bands in mapped_raster.GetBandCount:
                     simplified_raster_array[raster] = mapped_raster.GetRasterBand(1).ReadAsArray()
                     ds = None
