@@ -10,7 +10,7 @@ import flopy.utils.binaryfile as bf
 
 class ModflowModel(object):
 
-    def __init__(self, model_data, data_folder=None, **kwargs):
+    def __init__(self, model_data, data_folder=None, stream_representation=None, **kwargs):
         """
         :param name: model_data: Object containing all the data for the model
         """
@@ -22,6 +22,15 @@ class ModflowModel(object):
         else:
             self.data_folder = os.path.join(data_folder, 'model_' + self.name) + os.path.sep
         # end if
+
+        if stream_representation == None:
+            self.stream_representation = 'RIV'
+        elif stream_representation not in ['RIV', 'STR', 'SFR']:
+            print("stream_representation not valid, must be one of {}".format(['RIV', 'STR', 'SFR']))
+            print("setting to 'RIV'")
+            self.stream_representation = 'RIV'
+        else:
+            self.stream_representation = stream_representation
 
         self.executable = r".\MODFLOW-NWT_64.exe"
 
@@ -146,6 +155,47 @@ class ModflowModel(object):
     def createSTRpackage(self, STRvariables=None):
         self.str = flopy.modflow.ModflowStr(self.mf, ipakcb=53, stress_period_data=STRvariables)
 
+    def createSFRpackage(self, ):
+        if self.model_data.model_time.t['steady_state'] == True:
+            transroute = False
+        else:
+            transroute = True
+        print('Assuming units of model are m^3/d, change "const" if this is not true')
+        self.sfr = flopy.modflow.ModflowSfr(self.mf,
+            nstrm=2, # number of stream reaches, stream cells 
+            nss=1, # number of stream segments 
+            nsfrpar=0, # DO NOT CHANGE
+            nparseg=0, # Using reach input so set this to zero 
+            const=86400, # This is 1.0 for m^3/s and otherwise if units different
+            dleak=0.0001, # Tolerance level of stream depth used in computing leakage between each stream reach and active model cell
+            ipakcb=53, # Write leakage to cell by cell file 
+            istcb2=81, 
+            isfropt=1, 
+            # Next three only used if isfrop > 1
+            nstrail=10, # IGNORE FOR NOW  
+            isuzn=1, # IGNORE FOR NOW
+            nsfrsets=30, # IGNORE FOR NOW 
+            irtflg=1, # This can only be 1 at the moment and specifies the use of the kinematic wave (KW) equation for solving stream flow
+            numtim=1, # Number of time steps of timesteps to use within each MF-NWT timestep 
+            weight=0.75, # Time weighting factor to calculate the change in channel storage
+            flwtol=0.0001,  # flow tolerance covergence criterion for KW equation
+            reach_data=None, # rec array with as many entries as stream reaches
+            segment_data=None,
+            channel_geometry_data=None,
+            channel_flow_data=None,
+            dataset_5={0: [0,0,0]}, # This is not required unless one wants to mod printing across stress periods 
+            reachinput=True, 
+            transroute=transroute,
+            tabfiles=False, 
+            tabfiles_dict=None,
+            extension='sfr', # Leave as is which is the default
+            unit_number=None, # Leave as None and let flopy define unit_number
+            filenames=None # Leave as None as let flopy define output names
+            )
+
+    def createGagepackage(self):
+        self.gage = flopy.modflow.ModflowGage(self.mf, numgage=0, gage_data=None, filenames=None)
+
     def createDRNpackage(self, lrcsc=None):
         self.drn = flopy.modflow.ModflowDrn(self.mf, ipakcb=53, stress_period_data=lrcsc)
 
@@ -236,7 +286,16 @@ class ModflowModel(object):
         # End for
 
         if river_exists:
-            self.createRIVpackage(river)
+            if self.stream_representation == 'RIV':
+                self.createRIVpackage(river)
+            elif self.stream_representation == 'STR':
+                print("STR package not yet implemented")
+                #self.createSTRpackage()
+                #self.createGagepackage()
+            elif self.stream_representation == 'SFR':
+                self.createSFRpackage()
+                self.createGagepackage()
+            #end if
 
         if wells_exist:
             self.createWELpackage(wel)
