@@ -16,6 +16,7 @@ import point_values_from_raster
 import polygon2points
 import raster2polygon
 import reproject
+import polygon2raster
 # Import the GIS interface
 from HydroModelBuilder.GISInterface.GISInterface import GISInterface
 
@@ -25,18 +26,6 @@ class GDALInterface(GISInterface):
     The GDALInterface works within the GISInterface class to apply a range of
     common spatial tasks using the open source GDAL library.
 
-    Functions currently implemented are:
-        1. set_model_boundary_from_polygon_shapefile
-        2. set_data_boundary_from_polygon_shapefile
-        3. set_model_boundary_from_corners
-        4. define_structured_mesh
-        5. read_rasters
-        6. map_rasters_to_grid
-
-         read_polyline
-         map_polyline_to_grid
-
-         map_points_to_grid
 
     Things to fix ...
     inconsistent use of 'mesh' and 'grid', need consistent terminology. Will change
@@ -382,13 +371,19 @@ class GDALInterface(GISInterface):
                                                         minimum_thickness,
                                                         maximum_thickness)
 
-    def read_polyline(self, filename, path=None):
+    def read_poly(self, filename, path=None, poly_type='polyline'):
         """
-        Read in polyline data, e.g. for stream definition
+        Read in shapefile data, e.g. for stream definition
 
         :param filename: filename for the polyline that is to be read in.
         :param path: Path of the files, which is optional, default path is working directory
         """
+
+        if poly_type == 'polyline':
+            geom_type = ogr.wkbMultiLineString
+        if poly_type == 'polygon':
+            geom_type = ogr.wkbMultiPolygon
+
         driver = ogr.GetDriverByName("ESRI Shapefile")
         p_f = os.path.join(path, filename)
         ds = driver.Open(p_f, 0)
@@ -408,9 +403,14 @@ class GDALInterface(GISInterface):
                                            create_copy=True,
                                            copy_dest=os.path.join(self.out_data_folder, filename[
                                                                   :-4] + '_model.shp'),
-                                           geom_type=ogr.wkbMultiLineString)
+                                           geom_type=geom_type)
+        
+        ds_copy = ogr.GetDriverByName("Memory").CopyDataSource(
+            ds, ds.GetDescription())
 
-        return ds
+        ds = None
+
+        return ds_copy
 
     def smooth_poly(self, poly_file, smooth_factor=0.0001):
         # Smooth  poly shape using ogr
@@ -442,6 +442,24 @@ class GDALInterface(GISInterface):
         length_and_centroids = map2grid.shp2grid(
             polyline_obj, self.model_mesh, shp_type='poly', data_folder=self.out_data_folder)
         return length_and_centroids
+
+    def map_polygon_to_grid(self, polygon_obj, out_fname, pixel_size=None, 
+                            bounds=None, feature_name=None, field_type=ogr.OFTInteger):
+        """
+        Map the polygon object to the grid
+
+        :param polygon_obj
+        :param model_grid
+
+        returns array and dict. Array contings integers corresponding to 
+        different features from polygons. The dict contains map of array integers
+        to feature name or id
+
+        """
+        return polygon2raster.array_from_rasterize(polygon_obj, out_fname=out_fname, 
+                                            pixel_size=pixel_size, bounds=bounds, 
+                                            feature_name=feature_name, field_type=field_type)
+        
 
     def polygon2points(self, polygon_obj, to_fname=None, density=10):
 
