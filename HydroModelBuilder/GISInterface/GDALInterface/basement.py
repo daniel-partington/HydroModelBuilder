@@ -28,7 +28,7 @@ def create_basement_bottom(hu_raster_path, surface_raster_file, basement_top_ras
     basetop_proj = basetop.GetProjection()
     src_cs = osr.SpatialReference(wkt=basetop_proj)
 
-    def thickness_rule(top, bottom):
+    def thickness_rule(top, bottom, cache={}):
         # Applying the same rule as in Hocking
         # i.e. 100m thick or 10m thick if >250m and linearly vary in between
         min_thickness = 10.0
@@ -37,14 +37,19 @@ def create_basement_bottom(hu_raster_path, surface_raster_file, basement_top_ras
         lower_bound = 0.0
 
         diff = top - bottom
-        if diff < 0:
-            print 'Error, top is below bottom'
-        if diff >= upper_bound:
-            thickness = min_thickness
-        elif diff == lower_bound:
-            thickness = max_thickness
-        elif diff > lower_bound and diff < upper_bound:
-            thickness = np.interp(diff, [lower_bound, upper_bound], [min_thickness, max_thickness])
+        thickness = cache.get(diff, None)
+        if thickness is None:
+            if diff < 0:
+                print 'Error, top is below bottom'
+            if diff >= upper_bound:
+                thickness = min_thickness
+            elif diff == lower_bound:
+                thickness = max_thickness
+            elif diff > lower_bound and diff < upper_bound:
+                thickness = np.interp(diff, [lower_bound, upper_bound], [min_thickness, max_thickness])
+
+            cache[diff] = thickness
+        # End if
 
         return bottom - thickness
 
@@ -59,8 +64,7 @@ def create_basement_bottom(hu_raster_path, surface_raster_file, basement_top_ras
 
     def array2raster(newRasterfn, geoTransform, NODATA, src_cs, array, raster_driver):
 
-        cols = array.shape[1]
-        rows = array.shape[0]
+        rows, cols = array.shape[0:2]
 
         driver = gdal.GetDriverByName(raster_driver)
         outRaster = driver.Create(newRasterfn, cols, rows, 1, gdal.GDT_Float64)
