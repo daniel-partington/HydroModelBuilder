@@ -396,6 +396,10 @@ class GDALInterface(GISInterface):
         # print srs.ExportToWkt()
         if srs == self.projected_coordinate_system:
             'No transfrom required ... continue'
+
+            ds_copy = ogr.GetDriverByName("Memory").CopyDataSource(
+                ds, ds.GetDescription())
+
         else:
             ds = reproject.reproject_layer(ds,
                                            src_cs=srs,
@@ -404,11 +408,8 @@ class GDALInterface(GISInterface):
                                            copy_dest=os.path.join(self.out_data_folder, filename[
                                                                   :-4] + '_model.shp'),
                                            geom_type=geom_type)
-        
-        ds_copy = ogr.GetDriverByName("Memory").CopyDataSource(
-            ds, ds.GetDescription())
 
-        ds = None
+            ds_copy = ds
 
         return ds_copy
 
@@ -490,10 +491,10 @@ class GDALInterface(GISInterface):
         base = os.path.splitext(os.path.basename(filename))[0]
         new_f = base + "_clipped.shp"
         new_file = os.path.join(self.out_data_folder, new_f)
+        driver = ogr.GetDriverByName("ESRI Shapefile")
 
         if os.path.isfile(new_file):
             print 'Using previously generated file: ' + new_file
-            driver = ogr.GetDriverByName("ESRI Shapefile")
             ds = driver.Open(new_file, 0)
         else:
             # Clip first using boundary polygon
@@ -511,11 +512,13 @@ class GDALInterface(GISInterface):
             except subprocess.CalledProcessError as e:
                 print("stdout output on error:\n" + e.output)
 
-            driver = ogr.GetDriverByName("ESRI Shapefile")
             ds = driver.Open(new_file, 0)
         # End if
 
-        return ds
+        #ds_copy = ogr.GetDriverByName("Memory").CopyDataSource(
+        #    ds, ds.GetDescription())
+
+        return ds#_copy
 
     def map_points_to_grid(self, points_obj, feature_id=None):
         """
