@@ -14,9 +14,9 @@ import map2grid
 import map_raster2mesh
 import point_values_from_raster
 import polygon2points
+import polygon2raster
 import raster2polygon
 import reproject
-import polygon2raster
 # Import the GIS interface
 from HydroModelBuilder.GISInterface.GISInterface import GISInterface
 
@@ -386,6 +386,7 @@ class GDALInterface(GISInterface):
 
         driver = ogr.GetDriverByName("ESRI Shapefile")
         p_f = os.path.join(path, filename)
+
         ds = driver.Open(p_f, 0)
         poly_obj = ds.GetLayer()
         if poly_obj is None:
@@ -408,6 +409,9 @@ class GDALInterface(GISInterface):
                                            copy_dest=os.path.join(self.out_data_folder, filename[
                                                                   :-4] + '_model.shp'),
                                            geom_type=geom_type)
+
+        ds_copy = ogr.GetDriverByName("Memory").CopyDataSource(
+            ds, ds.GetDescription())
 
             ds_copy = ds
 
@@ -444,7 +448,7 @@ class GDALInterface(GISInterface):
             polyline_obj, self.model_mesh, shp_type='poly', data_folder=self.out_data_folder)
         return length_and_centroids
 
-    def map_polygon_to_grid(self, polygon_obj, out_fname, pixel_size=None, 
+    def map_polygon_to_grid(self, polygon_obj, out_fname, pixel_size=None,
                             bounds=None, feature_name=None, field_type=ogr.OFTInteger):
         """
         Map the polygon object to the grid
@@ -452,15 +456,14 @@ class GDALInterface(GISInterface):
         :param polygon_obj
         :param model_grid
 
-        returns array and dict. Array contings integers corresponding to 
+        returns array and dict. Array contings integers corresponding to
         different features from polygons. The dict contains map of array integers
         to feature name or id
 
         """
-        return polygon2raster.array_from_rasterize(polygon_obj, out_fname=out_fname, 
-                                            pixel_size=pixel_size, bounds=bounds, 
-                                            feature_name=feature_name, field_type=field_type)
-        
+        return polygon2raster.array_from_rasterize(polygon_obj, out_fname=out_fname,
+                                                   pixel_size=pixel_size, bounds=bounds,
+                                                   feature_name=feature_name, field_type=field_type)
 
     def polygon2points(self, polygon_obj, to_fname=None, density=10):
 
