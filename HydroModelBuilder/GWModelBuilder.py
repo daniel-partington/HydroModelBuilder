@@ -108,6 +108,7 @@ class GWModelBuilder(object):
         self.model_features = None
         self.model_time = ModelTime()
         self.polyline_mapped = {}
+        self.polygons_mapped = {}
         self.points_mapped = {}
         self.pilot_points = {}
 
@@ -146,6 +147,7 @@ class GWModelBuilder(object):
                 'model_layers',
                 'model_features',
                 'polyline_mapped',
+                'polygons_mapped',
                 'points_mapped',
                 'pilot_points',
                 'model_register',
@@ -552,14 +554,14 @@ class GWModelBuilder(object):
             # End for
         # End for
 
-    def read_polyline(self, filename, path=None):
+    def read_poly(self, filename, path=None, poly_type='polyline'):
 
-        return self.GISInterface.read_polyline(filename, path)
+        return self.GISInterface.read_poly(filename, path, poly_type=poly_type)
 
     def map_polyline_to_grid(self, polyline_obj):
 
         if type(polyline_obj) is str:
-            polyline_obj = self.read_polyline(polyline_obj)
+            polyline_obj = self.read_poly(polyline_obj)
         # end if
         if os.path.sep in polyline_obj.GetDescription():
             poly_name = polyline_obj.GetDescription().split(os.path.sep)[-1]
@@ -568,7 +570,7 @@ class GWModelBuilder(object):
         # end if
 
         if os.path.exists(os.path.join(self.out_data_folder_grid, poly_name + '_mapped.pkl')):
-            print "Using previously mapped points to grid object"
+            print "Using previously mapped polyline to grid object"
             self.polyline_mapped[poly_name] = self.load_obj(os.path.join(self.out_data_folder_grid,
                                                                          poly_name + '_mapped.pkl'))
         else:
@@ -604,6 +606,38 @@ class GWModelBuilder(object):
             self.save_obj(temp, os.path.join(self.out_data_folder_grid, poly_name + '_mapped'))
         # end if
         self.gridded_data_register += [poly_name]
+
+    def map_polygon_to_grid(self, polygon_obj, feature_name=None):
+
+        if type(polygon_obj) is str:
+            polygon_obj = self.read_poly(polygon_obj)
+        # end if
+        if os.path.sep in polygon_obj.GetDescription():
+            poly_name = polygon_obj.GetDescription().split(os.path.sep)[-1]
+        else:
+            poly_name = polygon_obj.GetDescription()
+        # end if
+
+        if os.path.exists(os.path.join(self.out_data_folder_grid, poly_name + '_mapped.pkl')):
+            print "Using previously mapped polygons to grid object"
+            self.polygons_mapped[poly_name] = self.load_obj(os.path.join(self.out_data_folder_grid,
+                                                                         poly_name + '_mapped.pkl'))
+        else: 
+            self.polygons_mapped[poly_name] = \
+                self.GISInterface.map_polygon_to_grid(polygon_obj, 
+                                                      out_fname=os.path.join( \
+                                                          self.out_data_folder_grid, poly_name + '_mapped'), 
+                                                      pixel_size=self.model_mesh_centroids[0][0][1] - self.model_mesh_centroids[0][0][0], 
+                                                      bounds=self.model_mesh.GetLayer().GetExtent(), 
+                                                      feature_name=feature_name)
+            
+            self.save_obj(self.polygons_mapped[poly_name], 
+                          os.path.join(self.out_data_folder_grid, 
+                                       poly_name + '_mapped'))
+        # end if
+        
+        self.gridded_data_register += [poly_name]
+       
 
     def read_points_data(self, filename, path=None):
 

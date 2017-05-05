@@ -47,6 +47,7 @@ class GWModelManager(object):
             'model_layers',
             'model_features',
             'polyline_mapped',
+            'polygons_mapped',
             'points_mapped',
             'pilot_points',
             'model_register',

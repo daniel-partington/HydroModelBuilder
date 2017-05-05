@@ -173,6 +173,7 @@ def reproject_layer(lyr_src,
     # create the output layer
     if os.path.exists(copy_dest):
         os.remove(copy_dest)
+
     outDataSet = driver.CreateDataSource(copy_dest)
     outLayer = outDataSet.CreateLayer("", geom_type=geom_type)
 
@@ -209,16 +210,17 @@ def reproject_layer(lyr_src,
     # close the shapefiles
     # outDataSet = None #.Destroy()
 
+    outDataSetCopy = ogr.GetDriverByName("Memory").CopyDataSource(
+            outDataSet, outDataSet.GetDescription())
+
+    outDataSet.FlushCache()
+    outDataSet.Release()
+
     # create the prj projection file
     outSpatialRef.MorphToESRI()
-    prj_file = open(copy_dest[:-4] + '.prj', 'w')
-    prj_file.write(outSpatialRef.ExportToWkt())
-    prj_file.close()
-
-    outDataSetCopy = ogr.GetDriverByName("Memory").CopyDataSource(
-            outDataSet, "")
-
-    outDataSet = None #.Destroy()
+    with  open(copy_dest[:-4] + '.prj', 'w') as prj_file:
+        prj_file.write(outSpatialRef.ExportToWkt())
+    #outDataSet = None #.Destroy()
 
     return outDataSetCopy
 
@@ -264,7 +266,7 @@ if __name__ == "__main__":
 
     srs = poly_obj.GetSpatialRef()
     # print srs.ExportToWkt()
-    copy_dest = r"C:\Workspace\part0075\MDB modelling\test_model.shp"
+    copy_dest = r"C:\Workspace\part0075\\MDB modelling/test_model.shp"
 
     ds = reproject_layer(ds,
                          src_cs=srs,
