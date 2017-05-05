@@ -207,20 +207,17 @@ def reproject_layer(lyr_src,
         inFeature.Destroy()
         inFeature = inLayer.GetNextFeature()
 
-    # close the shapefiles
-    # outDataSet = None #.Destroy()
-
     outDataSetCopy = ogr.GetDriverByName("Memory").CopyDataSource(
             outDataSet, outDataSet.GetDescription())
 
     outDataSet.FlushCache()
-    outDataSet.Release()
 
     # create the prj projection file
     outSpatialRef.MorphToESRI()
     with  open(copy_dest[:-4] + '.prj', 'w') as prj_file:
         prj_file.write(outSpatialRef.ExportToWkt())
-    #outDataSet = None #.Destroy()
+
+    outDataSet = None 
 
     return outDataSetCopy
 
@@ -266,7 +263,9 @@ if __name__ == "__main__":
 
     srs = poly_obj.GetSpatialRef()
     # print srs.ExportToWkt()
-    copy_dest = r"C:\Workspace\part0075\\MDB modelling/test_model.shp"
+    copy_file = "test_model.shp"
+    copy_path = r"C:\Workspace\part0075\\MDB modelling"
+    copy_dest = os.path.join(copy_path, copy_file)
 
     ds = reproject_layer(ds,
                          src_cs=srs,
