@@ -558,16 +558,23 @@ class GWModelBuilder(object):
 
         return self.GISInterface.read_poly(filename, path, poly_type=poly_type)
 
+    def get_poly_name_and_obj(self, poly):
+        if type(poly) is str:
+            poly = self.read_poly(poly)
+        # end if
+        if os.path.sep in poly.GetDescription():
+            poly_name = poly.GetDescription().split(os.path.sep)[-1]
+        else:
+            poly_name = poly.GetDescription()
+        # end if
+
+        poly_name = os.path.splitext(os.path.basename(poly_name))[0]
+
+        return poly_name, poly
+
     def map_polyline_to_grid(self, polyline_obj):
 
-        if type(polyline_obj) is str:
-            polyline_obj = self.read_poly(polyline_obj)
-        # end if
-        if os.path.sep in polyline_obj.GetDescription():
-            poly_name = polyline_obj.GetDescription().split(os.path.sep)[-1]
-        else:
-            poly_name = polyline_obj.GetDescription()
-        # end if
+        poly_name, polyline_obj = self.get_poly_name_and_obj(polyline_obj)
 
         if os.path.exists(os.path.join(self.out_data_folder_grid, poly_name + '_mapped.pkl')):
             print "Using previously mapped polyline to grid object"
@@ -609,35 +616,28 @@ class GWModelBuilder(object):
 
     def map_polygon_to_grid(self, polygon_obj, feature_name=None):
 
-        if type(polygon_obj) is str:
-            polygon_obj = self.read_poly(polygon_obj)
-        # end if
-        if os.path.sep in polygon_obj.GetDescription():
-            poly_name = polygon_obj.GetDescription().split(os.path.sep)[-1]
-        else:
-            poly_name = polygon_obj.GetDescription()
-        # end if
+        poly_name, polygon_obj = self.get_poly_name_and_obj(polygon_obj)
 
         if os.path.exists(os.path.join(self.out_data_folder_grid, poly_name + '_mapped.pkl')):
             print "Using previously mapped polygons to grid object"
             self.polygons_mapped[poly_name] = self.load_obj(os.path.join(self.out_data_folder_grid,
                                                                          poly_name + '_mapped.pkl'))
-        else: 
+        else:
             self.polygons_mapped[poly_name] = \
-                self.GISInterface.map_polygon_to_grid(polygon_obj, 
-                                                      out_fname=os.path.join( \
-                                                          self.out_data_folder_grid, poly_name + '_mapped'), 
-                                                      pixel_size=self.model_mesh_centroids[0][0][1] - self.model_mesh_centroids[0][0][0], 
-                                                      bounds=self.model_mesh.GetLayer().GetExtent(), 
+                self.GISInterface.map_polygon_to_grid(polygon_obj,
+                                                      out_fname=os.path.join(
+                                                          self.out_data_folder_grid, poly_name + '_mapped'),
+                                                      pixel_size=self.model_mesh_centroids[0][0][
+                                                          1] - self.model_mesh_centroids[0][0][0],
+                                                      bounds=self.model_mesh.GetLayer().GetExtent(),
                                                       feature_name=feature_name)
-            
-            self.save_obj(self.polygons_mapped[poly_name], 
-                          os.path.join(self.out_data_folder_grid, 
+
+            self.save_obj(self.polygons_mapped[poly_name],
+                          os.path.join(self.out_data_folder_grid,
                                        poly_name + '_mapped'))
         # end if
-        
+
         self.gridded_data_register += [poly_name]
-       
 
     def read_points_data(self, filename, path=None):
 
@@ -699,7 +699,6 @@ class GWModelBuilder(object):
         dist, indexes = mytree.query(points)
         return indexes
 
-
     def map_points_to_2Dmesh(self, points, identifier=None):
         '''
         Function to map points to the 2D horizontal mesh (i.e. on the xy plane)
@@ -713,7 +712,6 @@ class GWModelBuilder(object):
         if type(points) == list:
             points = np.array(points)
         # end if
-
 
         closest = self.do_kdtree(model_mesh_points, points)
         point2mesh_map = {}
