@@ -39,14 +39,16 @@ def create_basement_bottom(hu_raster_path, surface_raster_file, basement_top_ras
         diff = top - bottom
         thickness = cache.get(diff, None)
         if thickness is None:
-            if diff < 0:
-                print 'Error, top is below bottom'
-            if diff >= upper_bound:
+            if diff > lower_bound and diff < upper_bound:
+                thickness = np.interp(diff,
+                                      [lower_bound, upper_bound],
+                                      [min_thickness, max_thickness])
+            elif diff >= upper_bound:
                 thickness = min_thickness
             elif diff == lower_bound:
                 thickness = max_thickness
-            elif diff > lower_bound and diff < upper_bound:
-                thickness = np.interp(diff, [lower_bound, upper_bound], [min_thickness, max_thickness])
+            elif diff < 0:
+                print 'Error, top is below bottom'
 
             cache[diff] = thickness
         # End if
