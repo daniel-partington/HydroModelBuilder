@@ -504,7 +504,10 @@ class GDALInterface(GISInterface):
 
             fn = os.path.join(self.out_data_folder, base) + '_reproj.shp'
             command = 'ogr2ogr -t_srs "' + target_srs + '" "' + fn + '" "' + filename + '"'
-            print(subprocess.check_output(command))
+            try:
+                print(subprocess.check_output(command))
+            except subprocess.CalledProcessError as e:
+                print("stdout output on error:\n" + e.output)
 
             command = 'ogr2ogr -clipsrc "' + clipping_poly + '" "' + new_file + '" "' + fn + '"'
             try:
@@ -515,10 +518,10 @@ class GDALInterface(GISInterface):
             ds = driver.Open(new_file, 0)
         # End if
 
-        #ds_copy = ogr.GetDriverByName("Memory").CopyDataSource(
-        #    ds, ds.GetDescription())
-
-        return ds#_copy
+        ds_copy = ogr.GetDriverByName("Memory").CopyDataSource(
+            ds, ds.GetDescription())
+        
+        return ds_copy
 
     def map_points_to_grid(self, points_obj, feature_id=None):
         """
