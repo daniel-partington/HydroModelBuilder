@@ -397,10 +397,6 @@ class GDALInterface(GISInterface):
         # print srs.ExportToWkt()
         if srs == self.projected_coordinate_system:
             'No transfrom required ... continue'
-
-            ds_copy = ogr.GetDriverByName("Memory").CopyDataSource(
-                ds, ds.GetDescription())
-
         else:
             ds = reproject.reproject_layer(ds,
                                            src_cs=srs,
@@ -412,8 +408,6 @@ class GDALInterface(GISInterface):
 
         ds_copy = ogr.GetDriverByName("Memory").CopyDataSource(
             ds, ds.GetDescription())
-
-            ds_copy = ds
 
         return ds_copy
 
@@ -504,7 +498,7 @@ class GDALInterface(GISInterface):
 
             clipping_poly = self.boundary_data_file
 
-            fn = os.path.join(self.out_data_folder, base) + '_reproj.shp'
+            fn = os.path.join(self.out_data_folder, base + '_reproj.shp')
             command = 'ogr2ogr -t_srs "' + target_srs + '" "' + fn + '" "' + filename + '"'
             try:
                 print(subprocess.check_output(command, shell=True))
