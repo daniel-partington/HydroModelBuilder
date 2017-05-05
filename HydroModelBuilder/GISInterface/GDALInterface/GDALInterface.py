@@ -498,7 +498,6 @@ class GDALInterface(GISInterface):
 
         if os.path.isfile(new_file):
             print 'Using previously generated file: ' + new_file
-            ds = driver.Open(new_file, 0)
         else:
             # Clip first using boundary polygon
             target_srs = self.pcs_EPSG
@@ -508,23 +507,21 @@ class GDALInterface(GISInterface):
             fn = os.path.join(self.out_data_folder, base) + '_reproj.shp'
             command = 'ogr2ogr -t_srs "' + target_srs + '" "' + fn + '" "' + filename + '"'
             try:
-                print(subprocess.check_output(command))
+                print(subprocess.check_output(command, shell=True))
             except subprocess.CalledProcessError as e:
                 print("stdout output on error:\n" + e.output)
 
-            command = 'ogr2ogr -clipsrc "' + clipping_poly + '" "' + new_file + '" "' + fn + '"'
+            command = 'ogr2ogr -clipsrc "' + clipping_poly + '" "' + new_file + '" "' + fn + '" -f "ESRI Shapefile"'
             try:
-                print(subprocess.check_output(command))
+                print(subprocess.check_output(command, shell=True))
             except subprocess.CalledProcessError as e:
                 print("stdout output on error:\n" + e.output)
 
-            ds = driver.Open(new_file, 0)
         # End if
 
-        ds_copy = ogr.GetDriverByName("Memory").CopyDataSource(
-            ds, ds.GetDescription())
-        
-        return ds_copy
+        ds = driver.Open(new_file, 0)
+
+        return ds
 
     def map_points_to_grid(self, points_obj, feature_id=None):
         """
