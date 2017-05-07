@@ -354,17 +354,14 @@ class GWModelBuilder(object):
 
         self.centroid2mesh2Dindex = {}
         self.mesh2centroid2Dindex = {}
-
-        if self.mesh_type == 'structured':
-            if self.array_ordering.array_order == 'UL_RowColumn':
-                for row in xrange(rows):
-                    for col in xrange(cols):
-                        self.centroid2mesh2Dindex[(x[col], y[row])] = [row, col]
-                        self.mesh2centroid2Dindex[(row, col)] = [x[col], y[row]]
-                    # end for
+        if self.mesh_type == 'structured' and self.array_ordering.array_order == 'UL_RowColumn':
+            for row in xrange(rows):
+                for col in xrange(cols):
+                    self.centroid2mesh2Dindex[(x[col], y[row])] = [row, col]
+                    self.mesh2centroid2Dindex[(row, col)] = [x[col], y[row]]
                 # end for
-            # end if
-        # end if
+            # end for
+        # End if
 
         return self.model_mesh_centroids
 
