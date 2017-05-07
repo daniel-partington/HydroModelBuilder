@@ -3,24 +3,25 @@ import sys
 
 from osgeo import ogr
 
+
 def shp2grid(shp_to_map, poly_mesh, shp_type=None, feature_id=None, data_folder=None):
 
     pwd = os.getcwd()
     if data_folder != None:
         os.chdir(data_folder)
-    
+
     if shp_type in ['poly', 'points']:
         print 'Processing shapefile with ', shp_type
     else:
         print 'Shape type not recognised: ', shp_type
         return
-    #end if
-    
-    mesh_layer = poly_mesh.GetLayer()    
+    # end if
+
+    mesh_layer = poly_mesh.GetLayer()
     srs = mesh_layer.GetSpatialRef()
 
-    shp_to_map_layer = shp_to_map.GetLayer()    
-    
+    shp_to_map_layer = shp_to_map.GetLayer()
+
     # Set driver for creating shape files
     driver_inter = ogr.GetDriverByName('ESRI Shapefile')
 
@@ -33,16 +34,16 @@ def shp2grid(shp_to_map, poly_mesh, shp_type=None, feature_id=None, data_folder=
     for feature in mesh_layer:
 
         # Track progress because this is very slow
-        i = feature.GetFID()        
+        i = feature.GetFID()
         sys.stdout.write('\r')
-        sys.stdout.write("[%-20s] %d%%" % ('='* int(float(i)/float(x)*20.+1), int(100.0/(x-1.0)*i)))
+        sys.stdout.write("[%-20s] %d%%" %
+                         ('=' * int(float(i) / float(x) * 20. + 1), int(100.0 / (x - 1.0) * i)))
         sys.stdout.flush()
-        
+
         grid_cell = feature.GetGeometryRef()
 
         # Setup shape file for each grid cell
         filename = 'mesh_temp.shp'
-
         while os.path.exists(filename):
             os.remove(filename)
 
@@ -54,10 +55,10 @@ def shp2grid(shp_to_map, poly_mesh, shp_type=None, feature_id=None, data_folder=
         while mesh_temp == None:
             mesh_temp = mesh_layer_ds.CreateLayer('mylayer', srs, geom_type=ogr.wkbMultiPolygon)
 
-        featureDefn = mesh_temp.GetLayerDefn()        
+        featureDefn = mesh_temp.GetLayerDefn()
 
         ring = ogr.Geometry(ogr.wkbLinearRing)
-        (xmin, xmax, ymin, ymax) = grid_cell.GetEnvelope()        
+        (xmin, xmax, ymin, ymax) = grid_cell.GetEnvelope()
         ring.AddPoint(xmin, ymax)
         ring.AddPoint(xmax, ymax)
         ring.AddPoint(xmax, ymin)
@@ -73,7 +74,7 @@ def shp2grid(shp_to_map, poly_mesh, shp_type=None, feature_id=None, data_folder=
         outFeature.Destroy
 
         # Setup new shapefile for the intersection
-        fname = 'temp.shp'        
+        fname = 'temp.shp'
         if os.path.exists(fname):
             os.remove(fname)
 
@@ -87,103 +88,95 @@ def shp2grid(shp_to_map, poly_mesh, shp_type=None, feature_id=None, data_folder=
             dstlayer = dstshp.CreateLayer('mylayer', srs, geom_type=ogr.wkbLineString)
 
         shp_to_map_layer.Intersection(mesh_temp, dstlayer)
-        
-        if int(dstlayer.GetFeatureCount()) != 0:        
+
+        if int(dstlayer.GetFeatureCount()) != 0:
             if shp_type == 'points':
                 point_ids = []
                 for feature2 in dstlayer:
                     point_ids += [feature2.GetField(feature_id)]
-                # end for                
-                centroid_txt = grid_cell.Centroid().ExportToWkt()   
-                centroid_nums = centroid_txt.split('(')[1].split(')')[0]           
-                centroid = centroid_nums.split(' ')            
-                shp_to_map_mapped += [[point_ids, centroid]]           
+                # end for
+                centroid_txt = grid_cell.Centroid().ExportToWkt()
+                centroid_nums = centroid_txt.split('(')[1].split(')')[0]
+                centroid = centroid_nums.split(' ')
+                shp_to_map_mapped += [[point_ids, centroid]]
             elif shp_type == 'poly':
                 length = 0.0
                 for feature2 in dstlayer:
                     line = feature2.GetGeometryRef()
                     length += line.Length()
-                #print length, 'm' 
-                #print grid_cell.Centroid()        
-                centroid_txt = grid_cell.Centroid().ExportToWkt()   
-                centroid_nums = centroid_txt.split('(')[1].split(')')[0]           
-                centroid = centroid_nums.split(' ')            
-                shp_to_map_mapped += [[length, centroid]]           
-            #end if
-        #end if
-            
+                # print length, 'm'
+                # print grid_cell.Centroid()
+                centroid_txt = grid_cell.Centroid().ExportToWkt()
+                centroid_nums = centroid_txt.split('(')[1].split(')')[0]
+                centroid = centroid_nums.split(' ')
+                shp_to_map_mapped += [[length, centroid]]
+            # end if
+        # end if
+
         # clean up
-        dstlayer = None            
+        dstlayer = None
         dstshp = None
         mesh_temp = None
         mesh_layer_ds = None
 
-    
-    print ""    
+    print ""
     # Clean up
-    if os.path.exists('mesh_temp.shp'):
-        os.remove('mesh_temp.shp')
-    if os.path.exists('mesh_temp.dbf'):
-        os.remove('mesh_temp.dbf')
-    if os.path.exists('mesh_temp.prj'):
-        os.remove('mesh_temp.prj')
-    if os.path.exists('mesh_temp.shx'):
-        os.remove('mesh_temp.shx')
-    if os.path.exists('temp.shp'):
-        os.remove('temp.shp')
-    if os.path.exists('temp.dbf'):
-        os.remove('temp.dbf')
-    if os.path.exists('temp.prj'):
-        os.remove('temp.prj')
-    if os.path.exists('temp.shx'):
-        os.remove('temp.shx')
+    tgt_fns = ["mesh_temp", "temp"]
+    fns = []
+    _ = [fns.extend([fn + '.shp', fn + '.dbf', fn + '.prj', fn + '.shx']) for fn in tgt_fns]
+    for fn in fns:
+        if os.path.exists(fn):
+            os.remove(fn)
+        # End if
+    # End if
 
     # close shape files
     mesh_layer = None
-    shp_to_map_layer = None 
+    shp_to_map_layer = None
 
     # Go back to working directory
     os.chdir(pwd)
-    
+
     return shp_to_map_mapped
 
 if __name__ == "__main__":
     # Open a points object
-    driver = ogr.GetDriverByName("ESRI Shapefile")        
-    ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\testbox\model_files\pumping wells_reproj.shp", 0)
-    poly_obj = ds.GetLayer()    
+    driver = ogr.GetDriverByName("ESRI Shapefile")
+    ds = driver.Open(
+        r"C:\Workspace\part0075\MDB modelling\testbox\model_files\pumping wells_reproj.shp", 0)
+    poly_obj = ds.GetLayer()
     if poly_obj == None:
         print 'Could not open '
     srs = poly_obj.GetSpatialRef()
 
     # Open the mesh object
-    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
+    ds2 = driver.Open(
+        r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
 
-
-    mapped_list = shp2grid(ds, ds2, shp_type='points', feature_id = "OLD ID")
-    #for item in mapped_list:
+    mapped_list = shp2grid(ds, ds2, shp_type='points', feature_id="OLD ID")
+    # for item in mapped_list:
     #    print item
-    print mapped_list #[0]
+    print mapped_list  # [0]
 
     ds = None
     ds2 = None
-    
+
     # Open a polyline object
-    driver = ogr.GetDriverByName("ESRI Shapefile")        
-    ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\Campaspe_Riv_model.shp", 0)
-    poly_obj = ds.GetLayer()    
+    driver = ogr.GetDriverByName("ESRI Shapefile")
+    ds = driver.Open(
+        r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\Campaspe_Riv_model.shp", 0)
+    poly_obj = ds.GetLayer()
     if poly_obj == None:
         print 'Could not open '
     srs = poly_obj.GetSpatialRef()
 
     # Open the mesh object
-    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
-
+    ds2 = driver.Open(
+        r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
 
     mapped_list = shp2grid(ds, ds2, shp_type='poly')
     for item in mapped_list:
         print item
 
-
     ds = None
-    ds2 = None    
+    ds2 = None
