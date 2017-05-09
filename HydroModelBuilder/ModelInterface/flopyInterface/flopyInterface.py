@@ -192,6 +192,8 @@ class ModflowModel(object):
             unit_number=None, # Leave as None and let flopy define unit_number
             filenames=None # Leave as None as let flopy define output names
             )
+        self.sfr.check()
+        
 
     def createGagepackage(self):
         self.gage = flopy.modflow.ModflowGage(self.mf, numgage=0, gage_data=None, filenames=None)
