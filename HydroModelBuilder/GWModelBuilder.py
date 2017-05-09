@@ -232,8 +232,7 @@ class GWModelBuilder(object):
         elif array_file.endswith('npy') or array_file.endswith('npz'):
             return np.load(array_file)
         else:
-            print 'File type not recognised as "txt", "npy" or "npz" \n'
-            sys.exit(1)
+            sys.exit('File type not recognised as "txt", "npy" or "npz" \n')
         # end if
 
     def save_dataframe(self, filename, df):
@@ -243,8 +242,7 @@ class GWModelBuilder(object):
         if filename.endswith('.h5'):
             return pd.read_hdf(filename, 'table')
         else:
-            print 'File type not recognised as "h5"'
-            sys.exit(1)
+            sys.exit('File type not recognised as "h5"')
         # end if
 
     def save_obj(self, obj, filename):
@@ -260,8 +258,7 @@ class GWModelBuilder(object):
                 return p
 
         else:
-            print 'File type not recognised as "pkl"'
-            sys.exit(1)
+            sys.exit('File type not recognised as "pkl"')
         # end if
 
     def flush(self, mode=None):
@@ -270,12 +267,10 @@ class GWModelBuilder(object):
         elif mode == 'model':
             folder = self.model_data_folder
         else:
-            print 'Expected mode to be either "data" or "model" but got: ', mode
-            sys.exit(1)
+            sys.exit('Expected mode to be either "data" or "model" but got: {}'.format(mode))
 
         if folder == None:
-            print 'No folder set, so no flushing'
-            sys.exit(1)
+            sys.exit('No folder set, so no flushing')
         # end if
         for the_file in os.listdir(folder):
             file_path = os.path.join(folder, the_file)
@@ -359,17 +354,14 @@ class GWModelBuilder(object):
 
         self.centroid2mesh2Dindex = {}
         self.mesh2centroid2Dindex = {}
-
-        if self.mesh_type == 'structured':
-            if self.array_ordering.array_order == 'UL_RowColumn':
-                for row in range(rows):
-                    for col in range(cols):
-                        self.centroid2mesh2Dindex[(x[col], y[row])] = [row, col]
-                        self.mesh2centroid2Dindex[(row, col)] = [x[col], y[row]]
-                    # end for
+        if self.mesh_type == 'structured' and self.array_ordering.array_order == 'UL_RowColumn':
+            for row in xrange(rows):
+                for col in xrange(cols):
+                    self.centroid2mesh2Dindex[(x[col], y[row])] = [row, col]
+                    self.mesh2centroid2Dindex[(row, col)] = [x[col], y[row]]
                 # end for
-            # end if
-        # end if
+            # end for
+        # End if
 
         return self.model_mesh_centroids
 
@@ -389,11 +381,10 @@ class GWModelBuilder(object):
         x = X[0]
         y = [y[0] for y in Y]
 
-        X = np.asarray([X] * (lays - 1))  # np.repeat(X[np.newaxis, :, :], (lays-1), axis=0)
-        Y = np.asarray([Y] * (lays - 1))  # np.repeat(Y[np.newaxis, :, :], (lays-1), axis=0)
+        X = np.asarray([X] * (lays - 1))
+        Y = np.asarray([Y] * (lays - 1))
 
         self.model_mesh3D_centroids = (X, Y, self.model_mesh3D[0])
-
         self.centroid2mesh3Dindex = {}
 
         if self.mesh_type == 'structured':
@@ -478,18 +469,20 @@ class GWModelBuilder(object):
 
         """
 
+        mesh3D_1 = self.model_mesh3D[1]
+
         # Clean up idle cells:
-        (lay, row, col) = self.model_mesh3D[1].shape
+        (lay, row, col) = mesh3D_1.shape
         for p in xrange(passes):
             for k in xrange(lay):
                 for j in xrange(row):
                     for i in xrange(col):
-                        cell_zone = self.model_mesh3D[1][k][j][i]
+                        cell_zone = mesh3D_1[k][j][i]
                         if cell_zone == -1:
                             continue
                         # End if
 
-                        target_zone = self.model_mesh3D[1][k]
+                        target_zone = mesh3D_1[k]
                         # Assimilate cell if surrounded by four of the same
                         if assimilate:
                             if (((j > 0) and (target_zone[j - 1][i] != cell_zone)) and       # North
@@ -558,7 +551,7 @@ class GWModelBuilder(object):
 
         return self.GISInterface.read_poly(filename, path, poly_type=poly_type)
 
-    def get_poly_name_and_obj(self, poly):
+    def _get_poly_name_and_obj(self, poly):
         if type(poly) is str:
             poly = self.read_poly(poly)
         # end if
@@ -568,14 +561,41 @@ class GWModelBuilder(object):
             poly_name = poly.GetDescription()
         # end if
 
-        poly_name = os.path.splitext(os.path.basename(poly_name))[0]
-
         return poly_name, poly
+
+    def _pointsdist(self, p1, p2, cache={}):
+        """Calculate distance between points"""
+        tmp = cache.get((p1, p2), None)
+        if tmp is not None:
+            return tmp
+
+        tmp = ((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)**0.5
+        cache[(p1, p2)] = tmp
+        return tmp
+
+    def _hacky_centroid_to_mesh(self, centroid, dist_min, cache={}):
+        """
+        Nasty (and slow!) workaround due to minor mismatch in centroids from mesh and separate
+        generation in this class. Perhaps better to actually define this array in fishnet when
+        define_structured_mesh is called
+        """
+        closest_key = cache.get((centroid, dist_min), None)
+        if closest_key is None:
+            half_grid_height = self.gridHeight / 2.0
+            for key in self.centroid2mesh2Dindex:
+                dist = self._pointsdist(centroid, key)
+                if dist < dist_min:
+                    dist_min, closest_key = dist, key
+                    if dist_min < half_grid_height:
+                        break
+
+            cache[(centroid, dist_min)] = self.centroid2mesh2Dindex[closest_key]
+
+        return self.centroid2mesh2Dindex[closest_key]
 
     def map_polyline_to_grid(self, polyline_obj):
 
-        poly_name, polyline_obj = self.get_poly_name_and_obj(polyline_obj)
-
+        poly_name, polyline_obj = self._get_poly_name_and_obj(polyline_obj)
         if os.path.exists(os.path.join(self.out_data_folder_grid, poly_name + '_mapped.pkl')):
             print "Using previously mapped polyline to grid object"
             self.polyline_mapped[poly_name] = self.load_obj(os.path.join(self.out_data_folder_grid,
@@ -589,23 +609,7 @@ class GWModelBuilder(object):
                 try:
                     grid_loc = self.centroid2mesh2Dindex[centroid]
                 except:
-                    # This is a very nasty workaround AND slow due to mismatch in
-                    # centroids from mesh and separate generation in this class
-                    # Perhaps better to actually define this array in fishnet
-                    # when define structured mesh is called
-                    def pointsdist(p1, p2):
-                        return ((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)**0.5
-
-                    dist_min = 1E6
-                    for key in self.centroid2mesh2Dindex:
-                        dist = pointsdist(centroid, key)
-                        if dist < dist_min:
-                            dist_min = dist
-                            closest_key = key
-                            if dist_min < self.gridHeight / 2.0:
-                                break
-
-                    grid_loc = self.centroid2mesh2Dindex[closest_key]
+                    grid_loc = self._hacky_centroid_to_mesh(centroid, dist_min=1E6)
 
                 temp += [[grid_loc, item[0]]]
             # end for
@@ -616,8 +620,7 @@ class GWModelBuilder(object):
 
     def map_polygon_to_grid(self, polygon_obj, feature_name=None):
 
-        poly_name, polygon_obj = self.get_poly_name_and_obj(polygon_obj)
-
+        poly_name, polygon_obj = self._get_poly_name_and_obj(polygon_obj)
         if os.path.exists(os.path.join(self.out_data_folder_grid, poly_name + '_mapped.pkl')):
             print "Using previously mapped polygons to grid object"
             self.polygons_mapped[poly_name] = self.load_obj(os.path.join(self.out_data_folder_grid,
@@ -645,15 +648,7 @@ class GWModelBuilder(object):
 
     def map_points_to_grid(self, points_obj, feature_id=None):
 
-        if type(points_obj) is str:
-            points_obj = self.read_points_data(points_obj)
-        # end if
-        if os.path.sep in points_obj.GetDescription():
-            point_name = points_obj.GetDescription().split(os.path.sep)[-1]
-        else:
-            point_name = points_obj.GetDescription()
-        # end if
-
+        point_name, points_obj = self._get_poly_name_and_obj(points_obj)
         if os.path.exists(os.path.join(self.out_data_folder_grid, point_name + '_mapped.pkl')):
             print "Using previously mapped points to grid object"
             self.points_mapped[point_name] = self.load_obj(os.path.join(self.out_data_folder_grid,
@@ -669,23 +664,7 @@ class GWModelBuilder(object):
                 try:
                     grid_loc = self.centroid2mesh2Dindex[centroid]
                 except:
-                    # This is a very nasty workaround AND slow due to minor mismatch in
-                    # centroids from mesh and separate generation in this class
-                    # Perhaps better to actually define this array in fishnet
-                    # when define_structured_mesh is called
-                    def pointsdist(p1, p2):
-                        return ((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)**0.5
-
-                    dist_min = 1E6
-                    for key in self.centroid2mesh2Dindex:
-                        dist = pointsdist(centroid, key)
-                        if dist < dist_min:
-                            dist_min = dist
-                            closest_key = key
-                            if dist_min < self.gridHeight / 2.0:
-                                break
-                    # print 'Closest key is: ', closest_key
-                    grid_loc = self.centroid2mesh2Dindex[closest_key]
+                    grid_loc = self._hacky_centroid_to_mesh(centroid, dist_min=1E6)
 
                 temp += [[grid_loc, item[0]]]
 
@@ -749,14 +728,9 @@ class GWModelBuilder(object):
             points = np.array(points)
         # end if
 
-        def do_kdtree(model_mesh_points, points):
-            mytree = spatial.cKDTree(model_mesh_points)
-            dist, indexes = mytree.query(points)
-            return indexes
+        closest = self.do_kdtree(model_mesh_points, points)
 
-        closest = do_kdtree(model_mesh_points, points)
         point2mesh_map = {}
-
         for index, point in enumerate(points):
             if identifier[0]:
                 point2mesh_map[identifier[index]] = self.centroid2mesh3Dindex[
@@ -1113,8 +1087,7 @@ class ModelBoundaries(object):
         #    sys.exit(1)
         # end if
         if bc_type not in self.bc_types:
-            print 'bc_type not recognised, use one of: ', self.bc_types
-            sys.exit(1)
+            sys.exit('bc_type not recognised, use one of: {}'.format(self.bc_types))
 
         self.bc[bc_name] = {}
         self.bc[bc_name]['bc_type'] = bc_type
@@ -1124,8 +1097,7 @@ class ModelBoundaries(object):
         if bc_name in self.bc:
             self.bc[bc_name]['bc_array'] = bc_array
         else:
-            print 'No boundary condition with name: ', bc_name
-            sys.exit(1)
+            sys.exit('No boundary condition with name: {}'.format(bc_name))
 
 
 class ModelProperties(object):
@@ -1201,13 +1173,14 @@ class ModelParameters(object):
             print('         longer than 12 char length par names')
         # end if
 
-        for i in range(num_parameters):
-            self.param[name + str(i)] = {}
-            self.param[name + str(i)]['PARVAL1'] = value
+        for i in xrange(num_parameters):
+            name_i = name + str(i)
+            self.param[name_i] = {}
+            self.param[name_i]['PARVAL1'] = value
             if i == 0:
-                self.param_set[name] = [name + str(i)]
+                self.param_set[name] = [name_i]
             else:
-                self.param_set[name] += [name + str(i)]
+                self.param_set[name] += [name_i]
 
     def parameter_options_set(self, param_set_name, PARTRANS=None, PARCHGLIM=None,
                               PARLBND=None, PARUBND=None, PARGP=None,
@@ -1269,12 +1242,12 @@ class ModelObservations(object):
 
     def collate_observations(self):
         for name in self.obs_group.keys():
-            self.obs_group[name]['time_series']['obs_map'] = 'null'
-            for ob in self.obs_group[name]['time_series'].iterrows():
+            ts = self.obs_group[name]['time_series']
+            ts['obs_map'] = 'null'
+            for ob in ts.iterrows():
                 if ob[1]['active'] == True:
                     self.obs['ob' + str(self.obID)] = ob[1]['value']
-                    self.obs_group[name]['time_series'].set_value(
-                        ob[0], 'obs_map', 'ob' + str(self.obID))
+                    ts.set_value(ob[0], 'obs_map', 'ob' + str(self.obID))
                     self.obID += 1
 
     def check_obs(self):
