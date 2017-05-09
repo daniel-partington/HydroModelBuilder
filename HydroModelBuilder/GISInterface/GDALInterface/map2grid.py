@@ -42,12 +42,6 @@ def shp2grid(shp_to_map, poly_mesh, shp_type=None, feature_id=None, data_folder=
 
         grid_cell = feature.GetGeometryRef()
 
-        # Setup shape file for each grid cell
-        #filename = 'mesh_temp.shp'
-
-        #while os.path.exists(filename):
-        #    os.remove(filename)
-
         mesh_layer_ds = None
         while mesh_layer_ds == None:
             #mesh_layer_ds = driver_inter.CreateDataSource('mesh_temp.shp')
@@ -74,11 +68,6 @@ def shp2grid(shp_to_map, poly_mesh, shp_type=None, feature_id=None, data_folder=
         outFeature.SetGeometry(poly)
         mesh_temp.CreateFeature(outFeature)
         outFeature.Destroy
-
-        # Setup new shapefile for the intersection
-        #fname = 'temp.shp'        
-        #if os.path.exists(fname):
-        #    os.remove(fname)
 
         dstshp = None
         while dstshp == None:
