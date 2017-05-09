@@ -40,6 +40,10 @@ class GDALInterface(GISInterface):
     def _load_shapefile(self, shapefile_name, shapefile_path=None):
         pass
 
+    def _test_osgeo_load(obj, file_name):
+        if obj is None:
+            sys.exit('Could not open {}'.format(file_name))
+
     def set_model_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None):
         """
         Function to set the model boundary using a shapefile, assuming polygon type:
@@ -55,11 +59,8 @@ class GDALInterface(GISInterface):
             print 'Using previously generated file: ' + new_file
             driver = ogr.Open(new_file).GetDriver()
             ds = driver.Open(new_file, 0)
+            self._test_osgeo_load(ds, new_file)
 
-            if ds is None:
-                print 'Could not open ' + os.path.join(shapefile_path, shapefile_name)
-                sys.exit(1)
-            # End if
             layer = ds.GetLayer()
             spatialRef = layer.GetSpatialRef()
             # Check spatial ref coords:
@@ -69,11 +70,7 @@ class GDALInterface(GISInterface):
             fname = os.path.join(shapefile_path, shapefile_name)
             driver = ogr.Open(fname).GetDriver()
             ds = driver.Open(fname, 0)
-
-            if ds is None:
-                print 'Could not open ' + fname
-                sys.exit(1)
-            # End if
+            self._test_osgeo_load(ds, fname)
 
             layer = ds.GetLayer()
             spatialRef = layer.GetSpatialRef()
@@ -95,10 +92,7 @@ class GDALInterface(GISInterface):
 
                 ds = driver.Open(base_name + '_model.shp', 0)
 
-                if ds is None:
-                    print 'Could not open ' + new_file
-                    sys.exit(1)
-                # End if
+                self._test_osgeo_load(ds, new_file)
 
                 layer = ds.GetLayer()
             # End if
@@ -135,9 +129,11 @@ class GDALInterface(GISInterface):
         if os.path.isfile(new_file):
             print 'Using previously generated file: ' + new_file
             self.data_boundary = ogr.Open(new_file, 1)
+            self._test_osgeo_load(self.data_boundary, new_file)
         else:
             self.data_boundary = create_buffer.create_buffer4poly(
                 shapefile_name, buffile=new_file, buffer_distance=buffer_dist)
+            self._test_osgeo_load(self.data_boundary, new_file)
         # End if
         self.boundary_data_file = new_file
         return self.data_boundary, self.boundary_data_file
@@ -175,6 +171,7 @@ class GDALInterface(GISInterface):
         if os.path.isfile(new_file):
             print 'Using previously generated file: ' + new_file
             self.model_mesh = ogr.Open(new_file, 1)
+            self._test_osgeo_load(self.model_mesh, new_file)
         else:
             structured_mesh = StructuredMesh(xmin=self.model_boundary[0],
                                              xmax=self.model_boundary[1],
@@ -185,6 +182,7 @@ class GDALInterface(GISInterface):
 
             self.model_mesh = fishnet.create_fishnet(structured_mesh, self.model_boundary[
                                                      4], copy_dest=self.model_data_folder)
+            self._test_osgeo_load(self.model_mesh, new_file)
         # End if
         return self.model_mesh
 
@@ -206,12 +204,9 @@ class GDALInterface(GISInterface):
             rst = os.path.join(self.out_data_folder, raster + '_reproj.bil')
             if os.path.isfile(rst):
                 ds = gdal.Open(rst, gdalconst.GA_ReadOnly)
+                self._test_osgeo_load(ds, rst)
             else:
                 ds = gdal.Open(os.path.join(path, raster), gdalconst.GA_ReadOnly)
-
-                if ds is None:
-                    print 'Could not open ' + os.path.join(path, raster)
-                    sys.exit(1)
 
                 # Check raster GCS
                 prj = ds.GetProjection()
@@ -235,6 +230,7 @@ class GDALInterface(GISInterface):
                         print e
 
                     ds = gdal.Open(rst, gdalconst.GA_ReadOnly)
+                    self._test_osgeo_load(ds, rst)
 
             print 'Processing: ', raster
             rasters[raster] = [ds.ReadAsArray(), os.path.join(path, raster)]
@@ -273,11 +269,8 @@ class GDALInterface(GISInterface):
                 for index, raster in enumerate(new_files):
 
                     ds = gdal.Open(raster, gdalconst.GA_ReadOnly)  # raster_path
+                    self._test_osgeo_load(ds, raster)
 
-                    if ds is None:
-                        print 'Could not open ' + raster
-                        sys.exit(1)
-                    # End if
                     simplified_raster_array[raster_files[index]] = ds.GetRasterBand(1).ReadAsArray()
                     ds = None
                 # end for
@@ -311,11 +304,8 @@ class GDALInterface(GISInterface):
 
                     # Use clipped raster to map active raster cells to grid
                     ds = gdal.Open(clp_file, gdalconst.GA_ReadOnly)  # raster_path
+                    self._test_osgeo_load(ds, clp_file)
 
-                    if ds is None:
-                        print 'Could not open ' + clp_file
-                        sys.exit(1)
-                    # End if
                     mapped_raster = reproject.reproject_raster(
                         ds,  # raster_collection[raster], # raster dataset
                         pixel_spacing=pixel_spacing,
@@ -388,23 +378,23 @@ class GDALInterface(GISInterface):
         p_f = os.path.join(path, filename)
 
         ds = driver.Open(p_f, 0)
+        self._test_osgeo_load(ds, p_f)
+
         poly_obj = ds.GetLayer()
-        if poly_obj is None:
-            print 'Could not open ' + p_f
-            sys.exit(1)
 
         srs = poly_obj.GetSpatialRef()
         # print srs.ExportToWkt()
         if srs == self.projected_coordinate_system:
             'No transfrom required ... continue'
         else:
+            copy_dest = os.path.join(self.out_data_folder, filename[:-4] + '_model.shp')
             ds = reproject.reproject_layer(ds,
                                            src_cs=srs,
                                            dst_cs=self.projected_coordinate_system,
                                            create_copy=True,
-                                           copy_dest=os.path.join(self.out_data_folder, filename[
-                                                                  :-4] + '_model.shp'),
+                                           copy_dest=copy_dest,
                                            geom_type=geom_type)
+            self._test_osgeo_load(ds, copy_dest)
 
         ds_copy = ogr.GetDriverByName("Memory").CopyDataSource(
             ds, ds.GetDescription())
@@ -514,7 +504,7 @@ class GDALInterface(GISInterface):
         # End if
 
         ds = driver.Open(new_file, 0)
-
+        self._test_osgeo_load(ds, new_file)
         return ds
 
     def map_points_to_grid(self, points_obj, feature_id=None):
