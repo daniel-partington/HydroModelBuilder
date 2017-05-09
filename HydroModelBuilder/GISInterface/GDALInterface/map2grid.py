@@ -22,7 +22,7 @@ def shp2grid(shp_to_map, poly_mesh, shp_type=None, feature_id=None, data_folder=
     shp_to_map_layer = shp_to_map.GetLayer()    
     
     # Set driver for creating shape files
-    driver_inter = ogr.GetDriverByName('ESRI Shapefile')
+    driver_inter = ogr.GetDriverByName('MEMORY')
 
     shp_to_map_mapped = []
 
@@ -41,14 +41,15 @@ def shp2grid(shp_to_map, poly_mesh, shp_type=None, feature_id=None, data_folder=
         grid_cell = feature.GetGeometryRef()
 
         # Setup shape file for each grid cell
-        filename = 'mesh_temp.shp'
+        #filename = 'mesh_temp.shp'
 
-        while os.path.exists(filename):
-            os.remove(filename)
+        #while os.path.exists(filename):
+        #    os.remove(filename)
 
         mesh_layer_ds = None
         while mesh_layer_ds == None:
-            mesh_layer_ds = driver_inter.CreateDataSource('mesh_temp.shp')
+            #mesh_layer_ds = driver_inter.CreateDataSource('mesh_temp.shp')
+            mesh_layer_ds = driver_inter.CreateDataSource('')
 
         mesh_temp = None
         while mesh_temp == None:
@@ -73,13 +74,14 @@ def shp2grid(shp_to_map, poly_mesh, shp_type=None, feature_id=None, data_folder=
         outFeature.Destroy
 
         # Setup new shapefile for the intersection
-        fname = 'temp.shp'        
-        if os.path.exists(fname):
-            os.remove(fname)
+        #fname = 'temp.shp'        
+        #if os.path.exists(fname):
+        #    os.remove(fname)
 
         dstshp = None
         while dstshp == None:
-            dstshp = driver_inter.CreateDataSource('temp.shp')
+            #dstshp = driver_inter.CreateDataSource('temp.shp')
+            dstshp = driver_inter.CreateDataSource('')
 
         if shp_type == 'points':
             dstlayer = dstshp.CreateLayer('mylayer', srs, geom_type=ogr.wkbPoint)
@@ -118,26 +120,6 @@ def shp2grid(shp_to_map, poly_mesh, shp_type=None, feature_id=None, data_folder=
         mesh_temp = None
         mesh_layer_ds = None
 
-    
-    print ""    
-    # Clean up
-    if os.path.exists('mesh_temp.shp'):
-        os.remove('mesh_temp.shp')
-    if os.path.exists('mesh_temp.dbf'):
-        os.remove('mesh_temp.dbf')
-    if os.path.exists('mesh_temp.prj'):
-        os.remove('mesh_temp.prj')
-    if os.path.exists('mesh_temp.shx'):
-        os.remove('mesh_temp.shx')
-    if os.path.exists('temp.shp'):
-        os.remove('temp.shp')
-    if os.path.exists('temp.dbf'):
-        os.remove('temp.dbf')
-    if os.path.exists('temp.prj'):
-        os.remove('temp.prj')
-    if os.path.exists('temp.shx'):
-        os.remove('temp.shx')
-
     # close shape files
     mesh_layer = None
     shp_to_map_layer = None 
@@ -150,14 +132,15 @@ def shp2grid(shp_to_map, poly_mesh, shp_type=None, feature_id=None, data_folder=
 if __name__ == "__main__":
     # Open a points object
     driver = ogr.GetDriverByName("ESRI Shapefile")        
-    ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\testbox\model_files\pumping wells_reproj.shp", 0)
+    ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\testbox\data_build\pumping wells_reproj.shp", 0)
     poly_obj = ds.GetLayer()    
     if poly_obj == None:
         print 'Could not open '
     srs = poly_obj.GetSpatialRef()
 
     # Open the mesh object
-    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
+    #ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
+    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\Campaspe_data\SW\Farm\structured_model_grid_5000m.shp", 0)
 
 
     mapped_list = shp2grid(ds, ds2, shp_type='points', feature_id = "OLD ID")
@@ -170,14 +153,15 @@ if __name__ == "__main__":
     
     # Open a polyline object
     driver = ogr.GetDriverByName("ESRI Shapefile")        
-    ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\Campaspe_Riv_model.shp", 0)
+    ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\testbox\input_data\Waterways\Campaspe_Riv.shp", 0)
     poly_obj = ds.GetLayer()    
     if poly_obj == None:
         print 'Could not open '
     srs = poly_obj.GetSpatialRef()
 
     # Open the mesh object
-    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
+    #ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
+    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\Campaspe_data\SW\Farm\structured_model_grid_5000m.shp", 0)
 
 
     mapped_list = shp2grid(ds, ds2, shp_type='poly')
