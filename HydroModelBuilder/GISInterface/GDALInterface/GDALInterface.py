@@ -40,7 +40,7 @@ class GDALInterface(GISInterface):
     def _load_shapefile(self, shapefile_name, shapefile_path=None):
         pass
 
-    def _test_osgeo_load(obj, file_name):
+    def _test_osgeo_load(self, obj, file_name):
         if obj is None:
             sys.exit('Could not open {}'.format(file_name))
 
@@ -79,10 +79,8 @@ class GDALInterface(GISInterface):
 
             if self.projected_coordinate_system is None:
                 self.projected_coordinate_system = srs
-
             elif self.projected_coordinate_system == srs:
                 print 'No transform required ... continuing'
-
             else:
                 reproject.reproject_layer(ds,
                                           src_cs=srs,
@@ -106,8 +104,7 @@ class GDALInterface(GISInterface):
                 self.model_boundary = [xmin, xmax, ymin, ymax, self.projected_coordinate_system]
             # End for
         elif self.mesh_type == 'unstructured':
-            print 'Mesh type "unstructured" unsupported at the moment'
-            sys.exit(1)
+            sys.exit('Mesh type "unstructured" unsupported at the moment')
         # End if
 
         ds = None
