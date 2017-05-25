@@ -331,7 +331,7 @@ class ModflowModel(object):
     #**************************************************************************
     #**************************************************************************
 
-    def checkCovergence(self, path=None, name=None):
+    def checkConvergence(self, path=None, name=None):
         converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP",  # Clear statement of model fail in list file
                                  " PERCENT DISCREPANCY =         200.00",  # Convergence but extreme discrepancy in results
                                  " NaN "  # Something big went wrong but somehow convergence was reached?
