@@ -67,6 +67,7 @@ def rasterize(source_ds, out_fname='default.tif', pixel_size=None, bounds=None, 
             x_min, pixel_size, 0,
             y_max, 0, -pixel_size,
         ))
+    
     if source_srs:
         # Make the target raster have the same projection as the source
         target_ds.SetProjection(source_srs.ExportToWkt())

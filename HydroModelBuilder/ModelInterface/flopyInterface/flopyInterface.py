@@ -10,7 +10,7 @@ import flopy.utils.binaryfile as bf
 
 class ModflowModel(object):
 
-    def __init__(self, model_data, data_folder=None, stream_representation=None, **kwargs):
+    def __init__(self, model_data, data_folder=None, verbose=True, **kwargs):
         """
         :param name: model_data: Object containing all the data for the model
         """
@@ -23,14 +23,16 @@ class ModflowModel(object):
             self.data_folder = os.path.join(data_folder, 'model_' + self.name) + os.path.sep
         # end if
 
-        if stream_representation == None:
-            self.stream_representation = 'RIV'
-        elif stream_representation not in ['RIV', 'STR', 'SFR']:
-            print("stream_representation not valid, must be one of {}".format(['RIV', 'STR', 'SFR']))
-            print("setting to 'RIV'")
-            self.stream_representation = 'RIV'
-        else:
-            self.stream_representation = stream_representation
+        self.verbose = verbose
+
+#        if stream_representation == None:
+#            self.stream_representation = 'RIV'
+#        elif stream_representation not in ['RIV', 'STR', 'SFR']:
+#            print("stream_representation not valid, must be one of {}".format(['RIV', 'STR', 'SFR']))
+#            print("setting to 'RIV'")
+#            self.stream_representation = 'RIV'
+#        else:
+#            self.stream_representation = stream_representation
 
         self.executable = r".\MODFLOW-NWT_64.exe"
 
@@ -139,6 +141,7 @@ class ModflowModel(object):
         # Add UPW package to the MODFLOW model to represent aquifers
         self.upw = flopy.modflow.ModflowUpw(self.mf,
                                             hk=self.hk,
+                                            #layvka=self.vka_ani_flag
                                             vka=self.vka,
                                             sy=self.sy,
                                             ss=self.ss,
@@ -154,55 +157,72 @@ class ModflowModel(object):
 
     def createSTRpackage(self, STRvariables=None):
         self.str = flopy.modflow.ModflowStr(self.mf, ipakcb=53, stress_period_data=STRvariables)
+    # end createSTRpackage
 
-    def createSFRpackage(self, ):
+    def createSFRpackage(self, reach_data, segment_data):
         if self.model_data.model_time.t['steady_state'] == True:
             transroute = False
         else:
             transroute = True
-        print('Assuming units of model are m^3/d, change "const" if this is not true')
-        self.sfr = flopy.modflow.ModflowSfr(self.mf,
-            nstrm=2, # number of stream reaches, stream cells 
-            nss=1, # number of stream segments 
+        nstrm = reach_data.shape[0]
+        nss = segment_data[0].shape[0]
+            
+        if self.verbose:
+            print('SFR: Assuming units of model are m^3/d, change "const" if this is not true')
+        # end if
+        self.sfr = flopy.modflow.ModflowSfr2(self.mf,
+            nstrm=nstrm, # number of stream reaches, stream cells 
+            nss=nss, # number of stream segments 
             nsfrpar=0, # DO NOT CHANGE
             nparseg=0, # Using reach input so set this to zero 
             const=86400, # This is 1.0 for m^3/s and otherwise if units different
             dleak=0.0001, # Tolerance level of stream depth used in computing leakage between each stream reach and active model cell
             ipakcb=53, # Write leakage to cell by cell file 
-            istcb2=81, 
+            istcb2=81, # Write flow info to output file
             isfropt=1, 
             # Next three only used if isfrop > 1
             nstrail=10, # IGNORE FOR NOW  
             isuzn=1, # IGNORE FOR NOW
             nsfrsets=30, # IGNORE FOR NOW 
             irtflg=1, # This can only be 1 at the moment and specifies the use of the kinematic wave (KW) equation for solving stream flow
-            numtim=1, # Number of time steps of timesteps to use within each MF-NWT timestep 
+            numtim=1, # Number of timesteps to use within each MF-NWT timestep 
             weight=0.75, # Time weighting factor to calculate the change in channel storage
-            flwtol=0.0001,  # flow tolerance covergence criterion for KW equation
-            reach_data=None, # rec array with as many entries as stream reaches
-            segment_data=None,
-            channel_geometry_data=None,
-            channel_flow_data=None,
-            dataset_5={0: [0,0,0]}, # This is not required unless one wants to mod printing across stress periods 
-            reachinput=True, 
+            flwtol=0.0001,  # flow tolerance convergence criterion for KW equation
+            reach_data=reach_data, # "Data Set 2", rec array with as many entries as stream reaches
+            segment_data=segment_data, # "Data Set 4b", dict with recarray of segment data for each stress period
+            channel_geometry_data=None, # "Data Set 6d", Can ignore for now, but necessary if icalc is > 1
+            channel_flow_data=None, # "Data Set 6e"
+            dataset_5={0: [nss, 0, 0]}, # This is not required unless one wants to mod printing across stress periods 
+            reachinput=True,  
             transroute=transroute,
             tabfiles=False, 
             tabfiles_dict=None,
             extension='sfr', # Leave as is which is the default
             unit_number=None, # Leave as None and let flopy define unit_number
-            filenames=None # Leave as None as let flopy define output names
+            filenames=None # Leave as None and let flopy define output names
             )
-        self.sfr.check()
-        
+        if self.verbose:
+            print(self.sfr.check())
+        # end if
+        #self.sfr.plot(key='iseg')
+    # end createSFRpackage        
 
-    def createGagepackage(self):
-        self.gage = flopy.modflow.ModflowGage(self.mf, numgage=0, gage_data=None, filenames=None)
+    def createGagepackage(self, gages, files=None):
+        # gages should contain seg, rch, unit, outtype [set = 9]
+        if files == None:
+            files = ['Gage.gage']
+            files += ['Gage.gag{}'.format(x) for x in range(len(gages))]
+        # end if
+        self.gage = flopy.modflow.ModflowGage(self.mf, numgage=len(gages), gage_data=gages, filenames=None)
+    # end createGagepackage
 
     def createDRNpackage(self, lrcsc=None):
         self.drn = flopy.modflow.ModflowDrn(self.mf, ipakcb=53, stress_period_data=lrcsc)
+    # end createDRNpackage
 
     def createGHBpackage(self, lrcsc=None):
         self.ghb = flopy.modflow.ModflowGhb(self.mf, ipakcb=53, stress_period_data=lrcsc)
+    # end createGHBpackage
 
     def createRCHpackage(self, rchrate=None):
         # Add RCH package to the MODFLOW model to represent recharge
@@ -230,7 +250,10 @@ class ModflowModel(object):
 
     def createLMTpackage(self):
         # Add LMT package to the MODFLOW model to allow linking with MT3DMS
-        self.lmt = flopy.modflow.ModflowLmt(self.mf)
+        self.lmt = flopy.modflow.ModflowLmt(self.mf, 
+                                            output_file_header='extended',
+                                            output_file_format='formatted', 
+                                            package_flows = ['sfr'])
 
     # end createLMTpackage
 
@@ -276,6 +299,13 @@ class ModflowModel(object):
                         river[key] += bc_array[key]
                     except:
                         river[key] = bc_array[key]
+                # end for
+            #end if
+
+            if (bc_type == 'river_flow'):
+                self.createSFRpackage(bc_array[0], bc_array[1])
+                #self.createGagepackage(gages)
+            #end if
 
             if bc_type == 'wells':
                 wells_exist = True
@@ -288,16 +318,7 @@ class ModflowModel(object):
         # End for
 
         if river_exists:
-            if self.stream_representation == 'RIV':
-                self.createRIVpackage(river)
-            elif self.stream_representation == 'STR':
-                print("STR package not yet implemented")
-                #self.createSTRpackage()
-                #self.createGagepackage()
-            elif self.stream_representation == 'SFR':
-                self.createSFRpackage()
-                self.createGagepackage()
-            #end if
+            self.createRIVpackage(river)
 
         if wells_exist:
             self.createWELpackage(wel)
@@ -331,7 +352,7 @@ class ModflowModel(object):
     #**************************************************************************
     #**************************************************************************
 
-    def checkCovergence(self, path=None, name=None):
+    def checkConvergence(self, path=None, name=None):
         converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP",  # Clear statement of model fail in list file
                                  " PERCENT DISCREPANCY =         200.00",  # Convergence but extreme discrepancy in results
                                  " NaN "  # Something big went wrong but somehow convergence was reached?
@@ -1522,8 +1543,8 @@ class ModflowModel(object):
         times = headobj.get_times()
         head = headobj.get_data(totim=times[-1])
 
-        frf = cbbobj.get_data(text='FLOW RIGHT FACE')[0]
-        fff = cbbobj.get_data(text='FLOW FRONT FACE')[0]
+        #frf = cbbobj.get_data(text='FLOW RIGHT FACE')[0]
+        #fff = cbbobj.get_data(text='FLOW FRONT FACE')[0]
         #head_zoned = HeadsByZone(head)
 
         # First step is to set up the plot

@@ -20,7 +20,7 @@ import numpy as np
 
 class PilotPoints(object):
 
-    def __init__(self, output_directory=None):
+    def __init__(self, output_directory=None, additional_name=""):
         self.min_allowable_points_separation = 0.0
         self.grid_spec_fname = 'grid.spc'
         self.points_fname = 'points.pts'
@@ -32,7 +32,7 @@ class PilotPoints(object):
         self.fac2real_exe = 'fac2real.exe'
         self.ppcov_exe = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                       'ppcov.exe')
-        self.output_directory = os.path.join(output_directory, 'pilot_points')                                        
+        self.output_directory = os.path.join(output_directory, '{}_pilot_points'.format(additional_name))                                        
         if not os.path.exists(self.output_directory):
             os.mkdir(self.output_directory)
             

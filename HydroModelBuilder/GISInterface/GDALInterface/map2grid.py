@@ -122,40 +122,68 @@ def shp2grid(shp_to_map, poly_mesh, shp_type=None, feature_id=None, data_folder=
 
 if __name__ == "__main__":
     # Open a points object
+#    driver = ogr.GetDriverByName("ESRI Shapefile")        
+#    ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\testbox\data_build\pumping wells_reproj.shp", 0)
+#    poly_obj = ds.GetLayer()    
+#    if poly_obj == None:
+#        print 'Could not open '
+#    srs = poly_obj.GetSpatialRef()
+#
+#    # Open the mesh object
+#    #ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
+#    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\Campaspe_data\SW\Farm\structured_model_grid_5000m.shp", 0)
+#
+#    mapped_list = shp2grid(ds, ds2, shp_type='points', feature_id="OLD ID")
+#    # for item in mapped_list:
+#    #    print item
+#    print mapped_list  # [0]
+#
+#    ds = None
+#    ds2 = None
+
+    # Open a polyline object
     driver = ogr.GetDriverByName("ESRI Shapefile")        
-    ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\testbox\data_build\pumping wells_reproj.shp", 0)
+    ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\Campaspe_data\SW\Farm\test_model.shp", 0)
+    #ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\testbox\input_data\Waterways\Campaspe_Riv.shp", 0)
     poly_obj = ds.GetLayer()    
     if poly_obj == None:
         print 'Could not open '
     srs = poly_obj.GetSpatialRef()
 
     # Open the mesh object
-    #ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
-    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\Campaspe_data\SW\Farm\structured_model_grid_5000m.shp", 0)
+    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\testbox\00_Campaspe_Cascade\02_transient_flow\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
+    #ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\Campaspe_data\SW\Farm\structured_model_grid_5000m.shp", 0)
 
-    mapped_list = shp2grid(ds, ds2, shp_type='points', feature_id="OLD ID")
-    # for item in mapped_list:
+    import time
+
+    start1 = time.time()
+    mapped_list = shp2grid(ds, ds2, shp_type='poly')
+    end1 = time.time()
+    #for item in mapped_list:
     #    print item
-    print mapped_list  # [0]
 
     ds = None
     ds2 = None
 
     # Open a polyline object
     driver = ogr.GetDriverByName("ESRI Shapefile")        
-    ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\testbox\input_data\Waterways\Campaspe_Riv.shp", 0)
+    ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\Campaspe_data\SW\Farm\test_model_new.shp", 0)
     poly_obj = ds.GetLayer()    
     if poly_obj == None:
         print 'Could not open '
     srs = poly_obj.GetSpatialRef()
 
     # Open the mesh object
-    #ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
-    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\Campaspe_data\SW\Farm\structured_model_grid_5000m.shp", 0)
+    ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\testbox\00_Campaspe_Cascade\02_transient_flow\structured_model_grid_1000m\structured_model_grid_1000m.shp", 0)
+    #ds2 = driver.Open(r"C:\Workspace\part0075\MDB modelling\Campaspe_data\SW\Farm\structured_model_grid_5000m.shp", 0)
 
+    start2 = time.time()
     mapped_list = shp2grid(ds, ds2, shp_type='poly')
-    for item in mapped_list:
-        print item
+    end2 = time.time()
+    #for item in mapped_list:
+    #    print item
+
+    print(end1 - start1, end2 - start2)
 
     ds = None
     ds2 = None

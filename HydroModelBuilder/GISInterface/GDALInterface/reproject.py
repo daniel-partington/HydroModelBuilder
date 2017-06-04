@@ -3,7 +3,7 @@
 import os
 
 from osgeo import gdal, gdalconst, ogr, osr
-
+import numpy as np
 
 """
 This contains functions for reprojecting:
@@ -105,8 +105,10 @@ def reproject_raster(ds,  # raster dataset
         # Define extent from set_bounds if it exists
         (ulx, lrx, lry, uly) = set_bounds
 
-    dest = mem_drv.Create('', int((lrx - ulx) / pixel_spacing),
-                          int((uly - lry) / pixel_spacing), 1, gdal.GDT_Float32)
+    row = int((lrx - ulx) / pixel_spacing)
+    col = int((uly - lry) / pixel_spacing)
+
+    dest = mem_drv.Create('',row , col, 1, gdal.GDT_Float32)
     # Calculate the new geotransform
     new_geo = (ulx, pixel_spacing, geo_t[2],
                uly, geo_t[4], -pixel_spacing)
@@ -115,6 +117,8 @@ def reproject_raster(ds,  # raster dataset
     dest.SetGeoTransform(new_geo)
     dest.SetProjection(dst_cs.ExportToWkt())
     dest.GetRasterBand(1).SetNoDataValue(NO_DATA)
+    dest.GetRasterBand(1).WriteArray(np.ones((col, row)) * NO_DATA)
+    dest.GetRasterBand(1).FlushCache()
     # Perform the projection/resampling
     gdal.ReprojectImage(ds, dest, src_cs.ExportToWkt(), dst_cs.ExportToWkt(), reproj_method)
 
@@ -214,7 +218,7 @@ def reproject_layer(lyr_src,
 
     # create the prj projection file
     outSpatialRef.MorphToESRI()
-    with  open(copy_dest[:-4] + '.prj', 'w') as prj_file:
+    with open(copy_dest[:-4] + '.prj', 'w') as prj_file:
         prj_file.write(outSpatialRef.ExportToWkt())
 
     outDataSet = None 
@@ -227,7 +231,7 @@ if __name__ == "__main__":
     gdal.UseExceptions()
     # Test for raster reprojection
     dataset = r"C:\Workspace\part0075\MDB modelling\Campaspe_model\GIS\GIS_preprocessed\Hydrogeological_Unit_Layers\qa_1t_bb"
-    pixel_spacing = 10000
+    pixel_spacing = 100
     epsg_from = None
     epsg_to = 28355
     reproj_method = gdal.GRA_Bilinear
@@ -240,7 +244,7 @@ if __name__ == "__main__":
     Proj_CS = osr.SpatialReference()
     # 28355 is the code for gda94 mga zone 55;
     # http://spatialreference.org/ref/epsg/gda94-mga-zone-55/
-    Proj_CS.ImportFromEPSG(28355)
+    Proj_CS.ImportFromEPSG(epsg_to)
 
     #set_corner=[ulx, uly, 0, lrx, lry, 0]
     reproject_raster(ds,  # raster dataset

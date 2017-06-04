@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 from scipy import spatial
 
+from more_itertools import unique_everseen
+
 from Utilities import interpolation
 from Utilities.PilotPoints import pilotpoints
 
@@ -18,6 +20,9 @@ class GWModelBuilder(object):
     spatial data using GIS type objects for reading and manipulating spatial
     data before mapping it to a model grid and converting it into an easily readable
     array structure to pass to the groundwater model.
+    
+    This class is a first step in the model building process. The object created
+    from this class when it is packaged can be used with a separate model interface.
     """
 
     def __init__(self, name=None, model_type=None, mesh_type=None,
@@ -232,7 +237,7 @@ class GWModelBuilder(object):
         elif array_file.endswith('npy') or array_file.endswith('npz'):
             return np.load(array_file)
         else:
-            sys.exit('File type not recognised as "txt", "npy" or "npz" \n')
+            sys.exit('File type not recognised as "txt", "npy" or "npz" \n {}'.format(array_file))
         # end if
 
     def save_dataframe(self, filename, df):
@@ -242,7 +247,7 @@ class GWModelBuilder(object):
         if filename.endswith('.h5'):
             return pd.read_hdf(filename, 'table')
         else:
-            sys.exit('File type not recognised as "h5"')
+            sys.exit('File type not recognised as "h5": {}'.format(filename))
         # end if
 
     def save_obj(self, obj, filename):
@@ -256,9 +261,9 @@ class GWModelBuilder(object):
                 print filename
                 p = pickle.load(f)
                 return p
-
+            # end with
         else:
-            sys.exit('File type not recognised as "pkl"')
+            sys.exit('File type not recognised as "pkl": {}'.format(filename))
         # end if
 
     def flush(self, mode=None):
@@ -282,7 +287,8 @@ class GWModelBuilder(object):
                 # end if
             except Exception as e:
                 print(e)
-        # End for
+            # end try
+        # end for
 
     def set_model_boundary_from_corners(self, xmin, xmax, ymin, ymax):
         """
@@ -424,6 +430,10 @@ class GWModelBuilder(object):
     def map_rasters_to_grid(self, raster_files, raster_path):
 
         return self.GISInterface.map_rasters_to_grid(raster_files, raster_path)
+
+    def map_raster_to_regular_grid_return_array(self, raster_fname):
+        
+        return self.GISInterface.map_raster_to_regular_grid_return_array(raster_fname) 
 
     def map_heads_to_mesh_by_layer(self):
 
@@ -592,6 +602,331 @@ class GWModelBuilder(object):
             cache[(centroid, dist_min)] = self.centroid2mesh2Dindex[closest_key]
 
         return self.centroid2mesh2Dindex[closest_key]
+
+    ###########################################################################
+    # FUNCTIONS USED TO CREATE AND MAP STREAM INFO TO MODEL MESH ... perhaps 
+    # move these elsewhere but will leave here for now.
+    # There is some repitition from above and this needs sorting out!!
+    ###########################################################################
+
+    def create_river_dataframe(self, poly_file, surface_raster_file, plotting=False):
+        poly_file = self.GISInterface.read_poly(poly_file)
+        points_list, points_dict = self.GISInterface.polyline_explore(poly_file)
+        points_dict = self._get_start_and_end_points_from_line_features(points_dict)
+        point_merge = self._points_merge(points_dict)
+        closest = self._points2mesh(point_merge)
+        point2mesh_map, point2mesh_map2 = self._points2mesh_map(point_merge, closest)
+        amalg_riv_points, amalg_riv_points_collection = self._amalgamate_points(point2mesh_map2, point_merge)
+        # Do test and report any cell jumps more than 1 up, down, left, right
+        self._naive_cell_odering_test(amalg_riv_points)
+        def dist(p1, p2):
+            return np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+        
+        def points_dist_collection(points):
+            dist_total = 0
+            for index in range(len(points)):
+                if index == 0:
+                    pass
+                else:
+                    dist_total += dist(points[index], points[index - 1]) 
+            return dist_total        
+        
+        lengths = []
+        for i in range(len(amalg_riv_points_collection.keys())):
+            if i == 0:
+                lengths += [points_dist_collection(amalg_riv_points_collection[i])]
+                continue
+            # end if
+            lengths += [points_dist_collection([amalg_riv_points_collection[i-1][-1]] + \
+                         amalg_riv_points_collection[i])]            
+        
+        surf_raster_fname = os.path.join(self.out_data_folder_grid, 'surf_raster_processed.pkl') 
+        if os.path.exists(surf_raster_fname):
+            print(" --- Using previously processed surface raster data --- ")
+            sr_array, point2surf_raster_map = self.load_obj(surf_raster_fname)
+        else:            
+            surf_raster_info = self.get_raster_info(surface_raster_file)
+            srm = surf_raster_info['metadata']
+            surf_centroids = self._create_centroids(srm['pixel_x'], srm['pixel_y'], (srm['ulx'], \
+                                                    srm['ulx'] + srm['cols'] * srm['pixel_x'], \
+                                                    srm['uly'] - srm['rows'] * srm['pixel_y'], \
+                                                    srm['uly']))
+            surf_raster_points = np.array(surf_centroids[0].keys())
+            closest_srp = self.do_kdtree(surf_raster_points, point_merge)
+            point2surf_raster_map = []
+            for index, point in enumerate(point_merge):
+                point2surf_raster_map += [surf_centroids[0][tuple(surf_raster_points[closest_srp[index]])] ]          
+            sr_array = surf_raster_info['array']
+            self.save_obj([sr_array, point2surf_raster_map], surf_raster_fname[:-4])
+        #end if
+        
+        riv_elevations = [sr_array[x[0]][x[1]] for x in point2surf_raster_map]
+        riv_reach = []
+        reach = 0
+        for index, point in enumerate(point2mesh_map2):
+            # If it is the last point
+            if index == len(point2mesh_map2) - 1:
+                riv_reach += [reach]
+                continue
+            if index == 0:
+                riv_reach += [reach]
+                continue
+            if point == point2mesh_map2[index + 1]:
+                riv_reach += [reach]
+            elif point != point2mesh_map2[index + 1]:
+                reach += 1
+                riv_reach += [reach]
+
+        river_df = pd.DataFrame({'reach':riv_reach, 'strtop':riv_elevations})
+        river_seg = river_df.groupby('reach').min()
+        river_seg['rchlen'] = lengths
+        river_seg['Cumulative Length'] = river_seg['rchlen'].cumsum()
+        # end if
+        river_reach_elev = river_seg['strtop'].tolist()
+        river_reach_elev_adjusted = []
+        for index, elev_reach in enumerate(river_reach_elev):
+            if index == 0:
+                river_reach_elev_adjusted += [elev_reach]
+                continue
+            if index == len(river_reach_elev) - 1:
+                river_reach_elev_adjusted += [self._adjust_elevations(river_reach_elev_adjusted[index - 1], elev_reach, None)]
+                continue
+            
+            river_reach_elev_adjusted += [self._adjust_elevations(river_reach_elev_adjusted[-1], elev_reach, river_reach_elev[index + 1])]
+        # end for
+        river_seg['strtop_raw'] = river_seg['strtop']
+        river_seg['strtop'] = river_reach_elev_adjusted
+        if plotting:
+            ax = river_seg.plot(x='Cumulative Length', y='strtop_raw', alpha=0.3)
+            river_seg.plot(x='Cumulative Length', y='strtop', ax=ax)
+
+        slopes = []
+        for index, riv_elev in enumerate(river_reach_elev_adjusted):
+            if index == len(river_reach_elev_adjusted) - 1:
+                slopes += [slopes[-1]]
+                continue
+            slopes += [(riv_elev - river_reach_elev_adjusted[index + 1]) / lengths[index]]
+
+        river_seg['slope'] = slopes   
+                 
+        amalg_riv_points_naive_layer = [[0] + x for x in amalg_riv_points]
+        river_seg['k'] = [x[0] for x in amalg_riv_points_naive_layer]
+        river_seg['j'] = [x[1] for x in amalg_riv_points_naive_layer]
+        river_seg['i'] = [x[2] for x in amalg_riv_points_naive_layer]
+        river_seg['amalg_riv_points'] = amalg_riv_points
+        river_seg['amalg_riv_points_collection'] = [amalg_riv_points_collection[x] for x in range(len(amalg_riv_points_collection.keys()))]                 
+        self.river_mapping = river_seg 
+
+    def get_closest_riv_segments(self, points):
+        '''
+        Fuction to find the closest river segment defined in self.river_mapping
+        for the points passed to the function.
+        
+        This function requires that self.river_mapping exists, which occurs 
+        after running "self.create_river_dataframe"
+        
+        '''
+        try:
+            self.river_mapping
+        except NameError:
+            print("This function can only be run after running 'create_river_dataframe'")        
+        # end except
+        
+        river_points = []
+        amalg_riv_points = self.river_mapping['amalg_riv_points_collection'].tolist()
+        for i in range(self.river_mapping.shape[0]):
+            river_points += amalg_riv_points[i]
+        closest = self.do_kdtree(np.array(river_points), np.array(points))
+        #return closest
+        river_seg_close = []
+        for index in closest:
+            for i in range(self.river_mapping.shape[0]):
+                if river_points[index] in amalg_riv_points[i]:
+                    river_seg_close += [i]        
+                    continue
+        return river_seg_close
+    
+    def _adjust_elevations(self, us, active, ds, adjust=0.1, verbose=False):
+        '''
+        Function to force the river to be decreasing in elevation as you move downstream
+        
+        paramaters:
+        us = upstream elevation
+        active = elevation being analysed
+        ds = downstream elevation
+        
+        '''
+        
+        if us == None:
+            if verbose: print("No upstream to worry about, move on")
+            return active
+        if us > active and active > ds:
+            if verbose: print("The active elevation fits between upstream and downstream, move on")
+            return active
+        if us < active and ds != None:
+            if us > ds:
+                if verbose: print("Active greater than upstream and downstream, interpolate between us and ds")
+                return (us + ds) / 2.
+            if us < ds:
+                if verbose: print("Case 4")
+                return us - adjust
+        if us < active and ds == None:
+            if verbose: print("Case 5")
+            return us - adjust
+        if us == active:
+            if verbose: print("Case 6")        
+            return us - adjust
+        
+        if verbose: print("Case 7: {} {} {}".format(us, active, ds))
+        return us - adjust
+
+    def _create_centroids(self, x_pixel, y_pixel, bounds):
+        '''
+        Function to create centroids of raster cells given the bounds of the 
+        raster and the width and height of the cells
+        '''
+        xmin, xmax, ymin, ymax = bounds
+        cols = int((xmax - xmin)/x_pixel)
+        rows = int((ymax - ymin)/y_pixel)
+        x = np.linspace(xmin + x_pixel / 2.0, xmax - x_pixel / 2.0, cols)
+        y = np.linspace(ymax - y_pixel / 2.0, ymin + y_pixel / 2.0, rows)
+        X, Y = np.meshgrid(x, y)
+    
+        centroid2mesh2Dindex = {}
+        mesh2centroid2Dindex = {}
+        for row in xrange(rows):
+            for col in xrange(cols):
+                centroid2mesh2Dindex[(x[col], y[row])] = [row, col]
+                mesh2centroid2Dindex[(row, col)] = [x[col], y[row]]
+            # end for
+        # end for
+        return centroid2mesh2Dindex, mesh2centroid2Dindex
+
+    def get_raster_info(self, raster_file):
+        '''
+        Function to get raster data and array into python objects
+        '''
+        return self.GISInterface.get_raster_info(raster_file)
+
+    def _get_lengths_for_polyline_in_cells(self, point_merge, point2mesh_map2):
+        lengths = []
+        current = 0.
+        carryover = 0.
+        def dist(p1, p2):
+            return np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+        
+        for index, points in enumerate(point2mesh_map2):
+            index_next = index + 1
+            # Stop at the last iteration
+            if index == len(point2mesh_map2) - 1:
+                lengths += [current + carryover]
+                continue
+            # If points are in same cell, calculage length and add to current
+            if point2mesh_map2[index] == point2mesh_map2[index_next]:
+                current += dist(point_merge[index], point_merge[index_next])
+            elif point2mesh_map2[index] != point2mesh_map2[index_next]:
+                lengths += [current + carryover]
+                current = 0.
+                carryover = dist(point_merge[index], point_merge[index_next])
+            #end if        
+
+    def _naive_cell_odering_test(self, cell_list):
+        '''
+        Function to test the ordering of cells and see that they are sequentially 
+        neighbours and not jumping multiple cells.
+        
+        This is a test for river cell ordering which is specific for MODFLOW
+        SFR and STR packages.
+        '''
+        cl = cell_list
+        for index in range(len(cell_list)):
+            if index == 0:
+                pass
+            else:
+                if np.sqrt((cl[index][0] - cl[index - 1][0]) ** 2 + (cl[index][1] - cl[index - 1][1]) ** 2) > 1:
+                    print("Warning, cell jump from {} to {}".format(cl[index-1], cl[index]))
+
+    def _amalgamate_points(self, point2mesh_map2, point_merge):
+        amalg_riv_points = []
+        amalg_riv_points_collection = {}
+        counter = 0
+        for index, point in enumerate(point2mesh_map2):
+            if index == 0:
+                amalg_riv_points += [point]
+                try:
+                    amalg_riv_points_collection[counter] += [point_merge[index]]
+                except:
+                    amalg_riv_points_collection[counter] = [point_merge[index]]
+                continue
+            elif point != amalg_riv_points[-1]:
+                #if point not in amalg_riv_points:  # Apply this test to avoid passing through same cell twice!
+                amalg_riv_points += [point]       
+                counter += 1
+                try:
+                    amalg_riv_points_collection[counter] += [point_merge[index]]
+                except:
+                    amalg_riv_points_collection[counter] = [point_merge[index]]
+            else:
+                try:
+                    amalg_riv_points_collection[counter] += [point_merge[index]]
+                except:
+                    amalg_riv_points_collection[counter] = [point_merge[index]]
+                
+            # end if
+        # end for
+        
+        return amalg_riv_points, amalg_riv_points_collection
+        
+    def _points2mesh_map(self, points, closest):
+        points_array = np.array(points)
+        centroids = self.centroid2mesh2Dindex #.keys()
+        model_mesh_points = np.array(self.centroid2mesh2Dindex.keys())
+
+        point2mesh_map = {}
+        for index, point in enumerate(points_array):
+            point2mesh_map[tuple(list(point))] = centroids[tuple(model_mesh_points[closest[index]])]
+        # end for
+           
+        point2mesh_map2 = []
+        for index, point in enumerate(points_array):
+            point2mesh_map2 += [centroids[tuple(model_mesh_points[closest[index]])] ]           
+        # end for
+
+        return point2mesh_map, point2mesh_map2
+
+    def _points2mesh(self, points):
+        return self.do_kdtree(np.array(self.centroid2mesh2Dindex.keys()), 
+                              np.array(points))
+
+    def _get_start_and_end_points_from_line_features(self, points_dict):
+        for key in points_dict.keys():
+            points_dict[key] += [{'start':points_dict[key][0], 'end':points_dict[key][-1]}]        
+        return points_dict
+
+    def _points_merge(self, points_dict):
+        '''
+        Merge points from multiple feature into one continuous line
+        '''
+        point_merge = points_dict[0][0:-1]
+        for _ in points_dict.keys()[1:]:
+            for key in points_dict.keys()[1:]:
+                if points_dict[key][-1]['start'] == point_merge[-1]:
+                    point_merge += points_dict[key][0:-1] 
+                    continue
+                # end if
+                if points_dict[key][-1]['end'] == point_merge[0]:
+                    point_merge = points_dict[key][0:-1] + point_merge
+                    continue
+                # end if   
+            # end for
+        # end for
+        point_merge = list(unique_everseen(point_merge))        
+        
+        return point_merge
+
+    ###########################################################################
+    ###########################################################################
+    ###########################################################################
 
     def map_polyline_to_grid(self, polyline_obj):
 
@@ -918,7 +1253,7 @@ class GWModelBuilder(object):
 
     def create_pilot_points(self, name):
         self.pilot_points[name] = pilotpoints.PilotPoints(
-            output_directory=self.out_data_folder_grid)
+            output_directory=self.out_data_folder_grid, additional_name=name)
 
     def save_pilot_points(self):
         self.save_obj(self.pilot_points, os.path.join(self.out_data_folder_grid, 'pilot_points'))
@@ -1078,7 +1413,7 @@ class ModelBoundaries(object):
     def __init__(self):
         self.bc = {}
         # self.bc_locale_types = ['point', 'layer', 'domain']
-        self.bc_types = ['river', 'wells', 'recharge', 'rainfall',
+        self.bc_types = ['river', 'river_flow', 'wells', 'recharge', 'rainfall',
                          'head', 'drain', 'channel', 'general head']
 
     def create_model_boundary_condition(self, bc_name, bc_type, bc_static=True, bc_parameter=None):
@@ -1176,7 +1511,12 @@ class ModelParameters(object):
         for i in xrange(num_parameters):
             name_i = name + str(i)
             self.param[name_i] = {}
-            self.param[name_i]['PARVAL1'] = value
+            # Test if value is passed as single value or list ... would be nice to accept np arrays here later
+            if type(value) == list:
+                self.param[name_i]['PARVAL1'] = value[i]
+            else:
+                self.param[name_i]['PARVAL1'] = value
+            # end if
             if i == 0:
                 self.param_set[name] = [name_i]
             else:
@@ -1275,7 +1615,7 @@ class ModelFeature(object):
     """
     This class defines typical features that might be represented in
     a GW model, the definition of which is assigned to particular arrays
-    which can then be passed to the appropriate groundwater model.
+    which can then be passed to the appropriate hydrological model.
 
     """
 

@@ -24,6 +24,91 @@ import array2Vtk
 
 # Step 1. Load raster layers top and bottom
 
+def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
+    """
+    Function to remove cells that are surrounded by non-active cells in the horizontal plane
+
+    e.g. if cells with positive integer is surrounded in above, below and to each side, then reassign to -1.
+
+    """
+
+    # Clean up idle cells:
+    (lay, row, col) = mesh3D_1.shape
+    for p in xrange(passes):
+        for k in xrange(lay):
+            for j in xrange(row):
+                for i in xrange(col):
+                    cell_zone = mesh3D_1[k][j][i]
+                    if cell_zone == -1:
+                        continue
+                    # End if
+
+                    target_zone = mesh3D_1[k]
+                    # Assimilate cell if surrounded by four of the same
+                    if assimilate:
+                        if (((j > 0) and (target_zone[j - 1][i] != cell_zone)) and       # North
+                            # South
+                            ((j < row - 1) and (target_zone[j + 1][i] != cell_zone)) and
+                            ((i < col - 1) and (target_zone[j][i + 1] != cell_zone)) and  # East
+                            ((i > 0) and (target_zone[j][i - 1] != cell_zone)) and       # West
+                            # North-East
+                            ((j > 0) and (i < col - 1) and (target_zone[j - 1][i + 1] != cell_zone)) and
+                            # South-East
+                            ((j < row - 1) and (i < col - 1) and (target_zone[j + 1][i + 1] != cell_zone)) and
+                            # North-West
+                            ((j > 0) and (i > 0) and (target_zone[j - 1][i - 1] != cell_zone)) and
+                                ((j < row - 1) and (i > 0) and (target_zone[j + 1][i - 1] != cell_zone))):          # South-West
+
+                            neighbours = []
+                            if j > 0:
+                                neighbours += [target_zone[j - 1][i]]
+                            if j < row - 1:
+                                neighbours += [target_zone[j + 1][i]]
+                            if i < col - 1:
+                                neighbours += [target_zone[j][i + 1]]
+                            if i > 0:
+                                neighbours += [target_zone[j][i - 1]]
+                            # end if
+                            from itertools import groupby as g
+
+                            def most_common_oneliner(L):
+                                return max(g(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
+
+                            most_common = most_common_oneliner(neighbours)
+                            if most_common != -1:
+                                target_zone[j][i] = most_common_oneliner(neighbours)
+
+                    # Check North, South, East, West zones
+                    # If any condition is true, then continue on
+                    # Otherwise, set the cell to -1
+                    if (((j > 0) and (target_zone[j - 1][i] != -1)) or       # North
+                        ((j < row - 1) and (target_zone[j + 1][i] != -1)) or  # South
+                        ((i < col - 1) and (target_zone[j][i + 1] != -1)) or  # East
+                            ((i > 0) and (target_zone[j][i - 1] != -1))):         # West
+                        continue
+                    # End if
+
+                    # End if
+
+                    #  Check neighbours
+                    # if k > 0:
+                    #    cell_above_zone = MM.GW_build[name].model_mesh3D[1][k-1][j][i]
+                    #    if cell_above_zone != -1: #cell_zone:
+                    #        cell_active = True
+                    # if k < lay - 1:
+                    #    cell_below_zone = MM.GW_build[name].model_mesh3D[1][k+1][j][i]
+                    #    if cell_below_zone != -1: # == cell_zone:
+                    #        cell_active = True
+
+                    # None of the above conditions were true
+                    target_zone[j][i] = -1
+                    print("reclassifying")
+
+                # End for
+            # End for
+        # End for
+    # End for
+    return mesh3D_1
 
 def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
                              min_height, max_height):
@@ -35,10 +120,12 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
         fname = os.path.join(hu_raster_path, raster) # + hu_ext
         print 'Processing: ', fname    
         ds = gdal.Open(fname, gdalconst.GA_ReadOnly)    
-        raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(), 0.0] 
+        raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(), 
+                              ds.GetRasterBand(1).GetNoDataValue()] 
 
         ds = gdal.Open(fname, gdalconst.GA_ReadOnly)
-        raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(), 0.0]
+        raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(), 
+                              ds.GetRasterBand(1).GetNoDataValue()]
 
         if raster == hu_raster_files[0]:
             ncol = ds.RasterXSize
@@ -72,7 +159,9 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
     for raster in hu_raster_files:
         data = raster_set[raster][0]
-        invalid = np.ma.masked_array(data, data == raster_set[raster][1])
+        #invalid = np.ma.masked_array(data, data == raster_set[raster][1])
+        #data[data==np.min(data)] = np.NAN
+        invalid = np.ma.masked_equal(data, np.min(data)) #raster_set[raster][1])
         raster_set[raster] += [invalid]
         a = fill(data, invalid=invalid.mask)
         raster_set[raster] += [a]
@@ -82,6 +171,57 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
         invalid = None
         a = None
     # end for
+
+    #return raster_set
+
+    ###########################################################################
+    ###########################################################################
+    ###########################################################################
+#    layers = len(hu_raster_files) / 2
+#    rows, cols = raster_set[hu_raster_files[0]][0].shape
+#    mesh = np.empty((layers + 1, rows, cols))
+#    mesh[:] = np.NAN
+#    zone_matrix = np.empty((layers, rows, cols))
+#
+#    r_s_active_t = raster_set[hu_raster_files[0]][2]
+#    r_s_active_b = raster_set[hu_raster_files[1]][2]
+#    select_mask = ~r_s_active_t.mask
+#    mesh[0][select_mask] = r_s_active_t[select_mask]
+#    mesh[1][select_mask] = r_s_active_b[select_mask]
+#
+#    mesh_active = np.ma.masked_invalid(mesh)
+#    diff = mesh_active[0] - mesh_active[1]
+#    layer_active = 0
+#    print("Max value in layer {}: {}".format(layer_active, diff.max()))
+#    print("Min value in layer {}: {}".format(layer_active, diff.min()))
+#    if diff.min() <= 0.:
+#        import sys
+#        sys.exit("Meshing error, thickness negative")
+#    
+#    # Check overlay of layers:
+#    r_s_active_t_new = raster_set[hu_raster_files[2]][2]
+#    r_s_active_b_new = raster_set[hu_raster_files[3]][2]
+#    #overlay = r_s_active_t_new.mask | r_s_active_b.mask
+#
+#    # Check if anywhere that current bottom elevations are lower than new bottom layer for overlap
+#    diff_keep = np.ma.masked_greater(r_s_active_b - r_s_active_b_new, 0.)
+#    diff_kill = np.ma.masked_less_equal(r_s_active_b - r_s_active_b_new, 0.)
+#
+#    plt.imshow(diff_keep)
+#    plt.colorbar()
+#    plt.figure()
+#    plt.imshow(diff_kill)
+#    plt.colorbar()
+#    #print new_diff3.max(), new_diff3.min()
+#
+#    
+#
+#    return 
+
+    ###########################################################################
+    ###########################################################################
+    ###########################################################################
+
 
     # Determine required number of layers based on
     # Note: this is integer division
@@ -252,7 +392,10 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             continue
 
         thickness[index / 2] = mesh[index / 2] - mesh[index / 2 + 1]
+        zone_matrix[index / 2][thickness[index / 2] < 0] = -1
     # End for
+
+    zone_matrix = reclassIsolatedCells(zone_matrix)
 
     tester2 = True
     if tester2 == True:
@@ -285,10 +428,12 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             fig = plt.figure()
             fig.add_subplot(1, 3, 1, aspect='equal')        
             plt.imshow(mesh_zone_thickness[i], interpolation='none')
+            print(i, mesh_zone_thickness[i].min(), mesh_zone_thickness[i].max())
             plt.title('Thickness in mesh: ' + hu_raster_files[i * 2])
             plt.colorbar()
             fig.add_subplot(1, 3, 2, aspect='equal')        
             plt.imshow(raster_thickness[i], interpolation='none')        
+            print(i, raster_thickness[i].min(), mesh_zone_thickness[i].max())
             plt.title('Thickness in raster')
             plt.colorbar()
             fig.add_subplot(1, 3, 3, aspect='equal')        
@@ -352,29 +497,36 @@ if __name__ == "__main__":
     # "utaf_1t_bb", "utaf_2b_bb", "lta_1t_bb", "lta_2b_bb", "cps_1t_bb",
     # "cps_2b_bb"]
 
-    hu_raster_path = r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\structured_model_grid_\\"
-    hu_raster_files = ["qa_1t_model_grid.bil", "qa_2b_model_grid.bil", "utb_1t_model_grid.bil", "utb_2b_model_grid.bil", "utqa_1t_model_grid.bil", "utqa_2b_model_grid.bil", "utam_1t_model_grid.bil",
-                       "utam_2b_model_grid.bil", "utaf_1t_model_grid.bil", "utaf_2b_model_grid.bil", "lta_1t_model_grid.bil", "lta_2b_model_grid.bil", "bse_1t_model_grid.bil", "bse_2b.tif_model_grid.bil"]
+    hu_raster_path = r"C:\Workspace\part0075\MDB modelling\testbox\00_Campaspe_Cascade\01_steady_state\structured_model_grid_1000m"
+    hu_raster_files = ["qa_1t_model_grid.tif", "qa_2b_model_grid.tif", \
+                       "utb_1t_model_grid.tif", "utb_2b_model_grid.tif", \
+                       "utqa_1t_model_grid.tif", "utqa_2b_model_grid.tif", \
+                       "utam_1t_model_grid.tif", "utam_2b_model_grid.tif", \
+                       "utaf_1t_model_grid.tif", "utaf_2b_model_grid.tif", \
+                       "lta_1t_model_grid.tif", "lta_2b_model_grid.tif", \
+                       "bse_1t_model_grid.tif", "bse_2b.tif_model_grid.tif" \
+                       ]
 
     dx = "1000m"
 
-    hu_raster_path = hu_raster_path[:-2] + dx + hu_raster_path[-2:]
+    #hu_raster_path = hu_raster_path[:-2] + dx + hu_raster_path[-2:]
     # hu_raster_files = [x[:-4] + '_' + dx + x[-4:] for x in hu_raster_files]
 
     #      "utb_1t_model_grid.bil", "utb_2b_model_grid.bil",
     #      "qa_1t_model_grid.bil", "qa_2b_model_grid.bil",   , "bse_1t_model_grid.bil", "bse_2b.tif_model_grid.bil"
 
     # hu_layers = {"qa":["qa_1t_mb", "qa_2b_mb"], "utb":["utb_1t_mb", "utb_2b_mb"], "utqa":["utqa_1t_mb", "utqa_2b_mb"], "utaf":["utaf_1t_mb", "utaf_2b_mb"], "lta":["lta_1t_mb", "lta_2b_mb"], "bse":["bse_1t_mb", "bse_2b_mb.tif"]}
-    hu_layers_ordering = ["qa", "utb", "utqa", "utaf", "lta", "bse"]
+    #hu_layers_ordering = ["qa", "utb", "utqa", "utam", "utaf", "lta", "bse"]
+    hu_layers_ordering = ["qa", "utb", "utqa", "utam", "utaf", "lta", "bse"]
     # hu_ext = "_mb"
     vtk_out = 'Campaspe_all_model_mesh'
 
-    out_path = r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\testing\\"
+    out_path = hu_raster_path #r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\testing\\"
 
     # Minimum thickness of cells
     min_height = 1
     # Maximum thickness of cells
     max_height = 1000
 
-    map_raster_array_to_mesh(hu_raster_path, hu_raster_files,
+    ret = map_raster_array_to_mesh(hu_raster_path, hu_raster_files,
                              out_path, vtk_out, min_height, max_height)
