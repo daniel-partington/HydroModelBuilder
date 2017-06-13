@@ -123,6 +123,8 @@ class GWModelBuilder(object):
         self.base_data_register = []
         self.gridded_data_register = []
 
+        self.river_mapping = {}
+
         # Set default target attributes
         if target_attr is None:
             self.target_attr = [
@@ -160,7 +162,8 @@ class GWModelBuilder(object):
                 'gridded_data_register',
                 # Some necessary parameters for now which should be replaced later
                 'gridHeight',
-                'gridWidth'
+                'gridWidth',
+                'river_mapping'
             ]
         else:
             self.target_attr = target_attr
@@ -481,6 +484,11 @@ class GWModelBuilder(object):
 
         mesh3D_1 = self.model_mesh3D[1]
 
+        def most_common_oneliner(L):
+            return max(g(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
+
+        from itertools import groupby as g
+
         # Clean up idle cells:
         (lay, row, col) = mesh3D_1.shape
         for p in xrange(passes):
@@ -518,10 +526,7 @@ class GWModelBuilder(object):
                                 if i > 0:
                                     neighbours += [target_zone[j][i - 1]]
                                 # end if
-                                from itertools import groupby as g
 
-                                def most_common_oneliner(L):
-                                    return max(g(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
 
                                 most_common = most_common_oneliner(neighbours)
                                 if most_common != -1:
@@ -609,7 +614,8 @@ class GWModelBuilder(object):
     # There is some repitition from above and this needs sorting out!!
     ###########################################################################
 
-    def create_river_dataframe(self, poly_file, surface_raster_file, plotting=False):
+    def create_river_dataframe(self, name, poly_file, surface_raster_file, 
+                               plotting=False, avoid_collocation=False):
         poly_file = self.GISInterface.read_poly(poly_file)
         points_list, points_dict = self.GISInterface.polyline_explore(poly_file)
         points_dict = self._get_start_and_end_points_from_line_features(points_dict)
@@ -640,7 +646,7 @@ class GWModelBuilder(object):
             lengths += [points_dist_collection([amalg_riv_points_collection[i-1][-1]] + \
                          amalg_riv_points_collection[i])]            
         
-        surf_raster_fname = os.path.join(self.out_data_folder_grid, 'surf_raster_processed.pkl') 
+        surf_raster_fname = os.path.join(self.out_data_folder_grid, 'surf_raster_processed_{}.pkl'.format(name)) 
         if os.path.exists(surf_raster_fname):
             print(" --- Using previously processed surface raster data --- ")
             sr_array, point2surf_raster_map = self.load_obj(surf_raster_fname)
@@ -678,8 +684,24 @@ class GWModelBuilder(object):
                 riv_reach += [reach]
 
         river_df = pd.DataFrame({'reach':riv_reach, 'strtop':riv_elevations})
+        # In case of hitting no data values replace these with nan 
+        river_df['strtop'][river_df['strtop'] < 0] = np.nan 
+        # Then to fill the Nan values interpolate or drop??
+        river_df.dropna(inplace=True)
+
+        # Group the dataframe stream points by reach        
         river_seg = river_df.groupby('reach').min()
         river_seg['rchlen'] = lengths
+        river_seg['amalg_riv_points'] = amalg_riv_points
+        
+        # Check that order of elevations if from upstream to downstream ...
+        elev = river_seg['strtop'].tolist()
+                # Reorder the dataframe if this is the case
+        if elev[0] < elev[-1]:
+            river_seg = river_seg.reindex(index=river_seg.index[::-1])
+        # end if
+        
+        # Now get the cumulative length along the stream         
         river_seg['Cumulative Length'] = river_seg['rchlen'].cumsum()
         # end if
         river_reach_elev = river_seg['strtop'].tolist()
@@ -709,15 +731,15 @@ class GWModelBuilder(object):
 
         river_seg['slope'] = slopes   
                  
-        amalg_riv_points_naive_layer = [[0] + x for x in amalg_riv_points]
+        amalg_riv_points_naive_layer = [[0] + x for x in river_seg['amalg_riv_points'].tolist()]
         river_seg['k'] = [x[0] for x in amalg_riv_points_naive_layer]
-        river_seg['j'] = [x[1] for x in amalg_riv_points_naive_layer]
-        river_seg['i'] = [x[2] for x in amalg_riv_points_naive_layer]
-        river_seg['amalg_riv_points'] = amalg_riv_points
+        river_seg['i'] = [x[1] for x in amalg_riv_points_naive_layer]
+        river_seg['j'] = [x[2] for x in amalg_riv_points_naive_layer]
         river_seg['amalg_riv_points_collection'] = [amalg_riv_points_collection[x] for x in range(len(amalg_riv_points_collection.keys()))]                 
-        self.river_mapping = river_seg 
 
-    def get_closest_riv_segments(self, points):
+        self.river_mapping[name] = river_seg
+
+    def get_closest_riv_segments(self, name, points):
         '''
         Fuction to find the closest river segment defined in self.river_mapping
         for the points passed to the function.
@@ -725,22 +747,27 @@ class GWModelBuilder(object):
         This function requires that self.river_mapping exists, which occurs 
         after running "self.create_river_dataframe"
         
+        param:: name: Name given to stream or river when create_river_dataframe
+        was run
+        param:: points: points for which to find the closest to named river
+
         '''
         try:
-            self.river_mapping
+            self.river_mapping[name]
         except NameError:
             print("This function can only be run after running 'create_river_dataframe'")        
         # end except
         
         river_points = []
-        amalg_riv_points = self.river_mapping['amalg_riv_points_collection'].tolist()
-        for i in range(self.river_mapping.shape[0]):
+        amalg_riv_points = self.river_mapping[name]['amalg_riv_points_collection'].tolist()
+        riv_len = self.river_mapping[name].shape[0]
+        for i in range(riv_len):
             river_points += amalg_riv_points[i]
         closest = self.do_kdtree(np.array(river_points), np.array(points))
         #return closest
         river_seg_close = []
         for index in closest:
-            for i in range(self.river_mapping.shape[0]):
+            for i in range(riv_len):
                 if river_points[index] in amalg_riv_points[i]:
                     river_seg_close += [i]        
                     continue

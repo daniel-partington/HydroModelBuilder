@@ -1,4 +1,5 @@
 import os
+import datetime
 
 import pandas as pd
 import numpy as np
@@ -6,11 +7,11 @@ import matplotlib.pyplot as plt
 
 import flopy
 import flopy.utils.binaryfile as bf
-
+from flopy.utils.sfroutputfile import SfrFile
 
 class ModflowModel(object):
 
-    def __init__(self, model_data, data_folder=None, verbose=True, **kwargs):
+    def __init__(self, model_data, data_folder=None, **kwargs):
         """
         :param name: model_data: Object containing all the data for the model
         """
@@ -22,9 +23,7 @@ class ModflowModel(object):
         else:
             self.data_folder = os.path.join(data_folder, 'model_' + self.name) + os.path.sep
         # end if
-
-        self.verbose = verbose
-
+       
 #        if stream_representation == None:
 #            self.stream_representation = 'RIV'
 #        elif stream_representation not in ['RIV', 'STR', 'SFR']:
@@ -99,6 +98,8 @@ class ModflowModel(object):
                                             perlen=self.perlen,
                                             nstp=self.nstp,
                                             steady=self.steady)  # ,
+        if self.verbose:
+            if self.check: self.dis.check()
         # start_datetime = self.start_datetime)
     # End createDiscretisation()
 
@@ -113,6 +114,9 @@ class ModflowModel(object):
         strt = self.strt  # np.nan*np.empty((nlay, nrow, ncol), dtype=np.float32)
 
         self.bas = flopy.modflow.ModflowBas(self.mf, ibound=ibound, strt=strt)
+
+        if self.verbose:
+            if self.check: self.bas.check()
 
     # End setupBASPackage()
 
@@ -153,10 +157,14 @@ class ModflowModel(object):
 
     def createRIVpackage(self, lrcd=None):
         self.riv = flopy.modflow.ModflowRiv(self.mf, ipakcb=53, stress_period_data=lrcd)
+        if self.verbose:
+            if self.check: self.riv.check()
     # end createRIVpackage
 
     def createSTRpackage(self, STRvariables=None):
         self.str = flopy.modflow.ModflowStr(self.mf, ipakcb=53, stress_period_data=STRvariables)
+        if self.verbose:
+            if self.check: self.str.check()
     # end createSTRpackage
 
     def createSFRpackage(self, reach_data, segment_data):
@@ -201,10 +209,10 @@ class ModflowModel(object):
             unit_number=None, # Leave as None and let flopy define unit_number
             filenames=None # Leave as None and let flopy define output names
             )
+        
         if self.verbose:
-            print(self.sfr.check())
+            if self.check: self.sfr.check()
         # end if
-        #self.sfr.plot(key='iseg')
     # end createSFRpackage        
 
     def createGagepackage(self, gages, files=None):
@@ -214,20 +222,28 @@ class ModflowModel(object):
             files += ['Gage.gag{}'.format(x) for x in range(len(gages))]
         # end if
         self.gage = flopy.modflow.ModflowGage(self.mf, numgage=len(gages), gage_data=gages, filenames=None)
+        if self.verbose:
+            if self.check: self.gage.check()
     # end createGagepackage
 
     def createDRNpackage(self, lrcsc=None):
         self.drn = flopy.modflow.ModflowDrn(self.mf, ipakcb=53, stress_period_data=lrcsc)
+        if self.verbose:
+            if self.check: self.drn.check()
     # end createDRNpackage
 
     def createGHBpackage(self, lrcsc=None):
         self.ghb = flopy.modflow.ModflowGhb(self.mf, ipakcb=53, stress_period_data=lrcsc)
+        if self.verbose:
+            if self.check: self.ghb.check()
     # end createGHBpackage
 
     def createRCHpackage(self, rchrate=None):
         # Add RCH package to the MODFLOW model to represent recharge
         # rchrate  = 1.0E-3 * np.random.rand(self.nrow, self.ncol)
         self.rch = flopy.modflow.ModflowRch(self.mf, ipakcb=53, rech=rchrate, nrchop=3)
+        if self.verbose:
+            if self.check: self.rch.check()
     # end createRCHpackage
 
     def createWELpackage(self, lrcq=None):
@@ -237,7 +253,8 @@ class ModflowModel(object):
         #lrcq = {}
         # lrcq[0] = [[0, 7, 7, -100.]] # layer, row, column, flux
         self.wel = flopy.modflow.ModflowWel(self.mf, ipakcb=53, stress_period_data=lrcq)
-
+        if self.verbose:
+            if self.check: self.wel.check()
     # end createWElpackage
 
     def createOCpackage(self):
@@ -262,10 +279,12 @@ class ModflowModel(object):
         self.mf.write_input()
     # end finaliseModel
 
-    def buildMODFLOW(self, transport=False, write=True):
+    def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False):
 
         self.mf = flopy.modflow.Modflow(self.name, exe_name=self.executable,
                                         model_ws=self.data_folder, version='mfnwt')
+        self.verbose = verbose
+        self.check = check
 
         self.createDiscretisation()
         self.setupBASPackage(self.nlay, self.nrow, self.ncol)
@@ -330,6 +349,9 @@ class ModflowModel(object):
         if write == True:
             self.finaliseModel()
 
+        if self.verbose:
+            if self.check: self.checkMODFLOW()
+
     # End buildMODFLOW()
 
     def checkMODFLOW(self):
@@ -340,8 +362,13 @@ class ModflowModel(object):
 
         success, buff = self.mf.run_model(silent=silent)
         if not success:
-            raise Exception('MODFLOW did not terminate normally.')
-        # End if
+            #raise Exception('MODFLOW did not terminate normally.')
+            convergence = self.checkConvergence(fail=True)
+        else:
+            convergence = self.checkConvergence()
+        # end if            
+        return convergence
+
     # End runMODFLOW()
 
     #**************************************************************************
@@ -352,7 +379,7 @@ class ModflowModel(object):
     #**************************************************************************
     #**************************************************************************
 
-    def checkConvergence(self, path=None, name=None):
+    def checkConvergence(self, path=None, name=None, fail=False):
         converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP",  # Clear statement of model fail in list file
                                  " PERCENT DISCREPANCY =         200.00",  # Convergence but extreme discrepancy in results
                                  " NaN "  # Something big went wrong but somehow convergence was reached?
@@ -360,36 +387,44 @@ class ModflowModel(object):
         if path:
             with open(os.path.join(path, name) + '.list', 'r') as f:
                 list_file = f.read()
-            for converge_fail in converge_fail_options:
-                if converge_fail in list_file:
-                    print "*** Convergence failure ***"
-                    import datetime
-                    now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
-                    with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
-                        fail.write("Model did not converge, @ %s" %
-                                   datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-                        fail.write("Error: \n {}".format(converge_fail))
-                    return False
-                # end if
-            # end for
-            return True
-
         else:
             with open(os.path.join(self.data_folder, self.name + '.list'), 'r') as f:
                 list_file = f.read()
-            for converge_fail in converge_fail_options:
-                if converge_fail in list_file:
-                    print "*** Convergence failure ***"
-                    import datetime
-                    now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
-                    with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
-                        fail.write("Model did not converge, @ %s" %
-                                   datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-                        fail.write("Error: \n {}".format(converge_fail))
-                    return False
-                # end if
-            # end for
-            return True
+
+        for converge_fail in converge_fail_options:
+            if converge_fail in list_file:
+                print "*** Convergence failure ***"
+                now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
+                with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
+                    fail.write("Model did not converge, @ %s" %
+                               datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                    fail.write("Error: \n {}".format(converge_fail))
+                return False
+            # end if
+            if fail == True:
+                print "*** Model run failure ***"
+                now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
+                with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
+                    fail.write("Model did not run, @ %s" %
+                               datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                    fail.write("Error: \n {}".format('MODFLOW did not terminate normally'))
+                return False
+            # end if
+        # end for
+        return True
+
+#            for converge_fail in converge_fail_options:
+#                if converge_fail in list_file:
+#                    print "*** Convergence failure ***"
+#                    now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
+#                    with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
+#                        fail.write("Model did not converge, @ %s" %
+#                                   datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+#                        fail.write("Error: \n {}".format(converge_fail))
+#                    return False
+#                # end if
+#            # end for
+#            return True
 
     #**************************************************************************
     #**************************************************************************
@@ -710,6 +745,11 @@ class ModflowModel(object):
         self.cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
         return self.cbbobj
 
+    def SFRoutput_plot(self):
+        sfrout = SfrFile(self.data_folder + self.name + '.sfr.out')
+        sfr_df = sfrout.get_dataframe()
+        sfr_df
+    
     def waterBalance(self, plot=True, nper=0):
 
         cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
@@ -1057,6 +1097,7 @@ class ModflowModel(object):
         # modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
 
         modelmap.plot_bc('RIV')
+        modelmap.plot_bc('SFR')
         modelmap.plot_bc('WEL')
         modelmap.plot_bc('GHB')
         # modelmap.plot_bc('DRN')
@@ -1558,13 +1599,14 @@ class ModflowModel(object):
 
         # modelmap.plot_bc('WEL')
         modelmap.plot_bc('RIV')
+        modelmap.plot_bc('SFR')
         ax.axes.xaxis.set_ticklabels([])
 
         #linecollection = modelmap.plot_grid()
 
         #print(np.amin(head[head != -999.99]))
         vmin = np.round(np.amin(head[head != -999.99]))
-        vmax = 150  # np.amax(head)
+        vmax = np.amax(head)
         cmap = 'jet'
 
         ax = fig.add_subplot(2, 4, 2, aspect='equal')
@@ -1575,7 +1617,7 @@ class ModflowModel(object):
         min_head = np.amin(head)
         print max_head
 
-        levels = np.arange(vmin, vmax, 1)
+        levels = np.arange(vmin, vmax, 10)
 
         #array = modelmap.plot_array(head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
         array = modelmap.contour_array(head[0], masked_values=[-999.98999023, max_head,
@@ -1769,8 +1811,6 @@ class ModflowModel(object):
 
     def viewHeads2(self):
 
-        import flopy.utils.binaryfile as bf
-        import pandas as pd
         #import matplotlib.ticker as plticker
         # Create the headfile object
         headobj = bf.HeadFile(self.data_folder + self.name + '.hds')
@@ -1821,7 +1861,7 @@ class ModflowModel(object):
         wat_bal_df = pd.DataFrame(water_bal_summed_values, water_bal_summed_titles)
         wat_bal_df.columns = ['Flux m^3/d']
         wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.]
-        print wat_bal_df
+        #print wat_bal_df
 
         #x = np.linspace(self.model_data.model_boundary[0], self.model_data.model_boundary[1], self.ncol)
         #y = np.linspace(self.model_data.model_boundary[2], self.model_data.model_boundary[3], self.nrow)
@@ -1843,9 +1883,10 @@ class ModflowModel(object):
         # modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
 
         # modelmap.plot_bc('WEL')
-        modelmap.plot_bc('RIV')
+        modelmap.plot_bc('RIV', plotAll=True)
+        modelmap.plot_bc('SFR', plotAll=True)
         try:
-            modelmap.plot_bc('GHB')
+            modelmap.plot_bc('GHB', plotAll=True)
         except:
             pass
         ax.axes.xaxis.set_ticklabels([])
@@ -1865,9 +1906,10 @@ class ModflowModel(object):
         fig.colorbar(array, cax=cbar_ax2)
 
         ax = fig.add_subplot(2, 4, 3, aspect='equal')
-        ax.set_title('Riv exchange')
+        ax.set_title('Murray exchange')
+        modelmap.plot_ibound()
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
-        river_flux = modelmap.plot_array(water_balance['RIVER LEAKAGE'][0], alpha=0.5)
+        river_flux = modelmap.plot_array(water_balance['RIVER LEAKAGE'].sum(axis=0), alpha=0.5)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
 
@@ -1879,16 +1921,47 @@ class ModflowModel(object):
             12.5715 / ((wat_bal_df.max()[0] - wat_bal_df.min()[0]) / float(wat_bal_df.shape[1])))
 
         ax = fig.add_subplot(2, 4, 4, aspect=aspect)
-        ax.set_title('Water Balance')
-        wat_bal_df.plot(kind='bar', ax=plt.gca())
-        ax.grid(True)
-        gridlines = ax.get_xgridlines()  # + ax.get_ygridlines()
-        for line in gridlines:
-            line.set_linestyle('-')
+        modelmap.plot_ibound()
+        ax.set_title('Campaspe exchange')
+        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        river_flux = modelmap.plot_array(water_balance['STREAM LEAKAGE'].sum(axis=0), alpha=0.5)
+        ax.xaxis.set_ticklabels([])
+        ax.yaxis.set_ticklabels([])
+
+        cbar_ax1 = fig.add_axes([0.92, 0.525, 0.01, 0.42])
+        fig.colorbar(river_flux, cax=cbar_ax1)
+
+        # Setup params to get water balance aspect ratio looking nice
+        aspect = float(
+            12.5715 / ((wat_bal_df.max()[0] - wat_bal_df.min()[0]) / float(wat_bal_df.shape[1])))
+
+        ax = fig.add_subplot(2, 4, 8, aspect=aspect)
+        modelmap.plot_ibound()
+        ax.set_title('GW under Murray')
+        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
+        river_flux = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'].sum(axis=0), alpha=0.5)
+        ax.xaxis.set_ticklabels([])
+        ax.yaxis.set_ticklabels([])
+
+        cbar_ax1 = fig.add_axes([0.92, 0.055, 0.01, 0.42])
+        fig.colorbar(river_flux, cax=cbar_ax1)
+
+        # Setup params to get water balance aspect ratio looking nice
+        aspect = float(
+            12.5715 / ((wat_bal_df.max()[0] - wat_bal_df.min()[0]) / float(wat_bal_df.shape[1])))
+
+#        ax.set_title('Water Balance')
+#        wat_bal_df.plot(kind='bar', ax=plt.gca())
+#        ax.grid(True)
+#        gridlines = ax.get_xgridlines()  # + ax.get_ygridlines()
+#        for line in gridlines:
+#            line.set_linestyle('-')
 
         ax = fig.add_subplot(2, 4, 5, aspect='equal')
         ax.set_title('Rainfall recharge')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         recharge = modelmap.plot_array(water_balance['RECHARGE'][0], masked_values=[0.], alpha=0.5)
         # print water_balance['RECHARGE'][0]
         # print np.mean(water_balance['RECHARGE'][0])
@@ -1907,6 +1980,7 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 6, aspect='equal')
         ax.set_title('Surface elevation')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         elev = self.mf.dis.top.array
         #ibound_mask = np.ma.masked_where(self.model_data.model_mesh3D[1][0] == -1, self.model_data.model_mesh3D[1][0])
         elev = np.ma.masked_where(self.model_data.model_mesh3D[1][0] == 0, elev)
@@ -1946,6 +2020,7 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 7, aspect='equal')
         ax.set_title('Pressure Head')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         storage = modelmap.plot_array(
             head[0] - elev, masked_values=[0.], alpha=0.5, vmin=-50, vmax=50)
         ax.yaxis.set_ticklabels([])
@@ -1991,8 +2066,6 @@ class ModflowModel(object):
 
     def viewGHB(self):
 
-        import flopy.utils.binaryfile as bf
-        import pandas as pd
         #import matplotlib.ticker as plticker
         # Create the headfile object
         headobj = bf.HeadFile(self.data_folder + self.name + '.hds')
@@ -2042,7 +2115,7 @@ class ModflowModel(object):
         wat_bal_df = pd.DataFrame(water_bal_summed_values, water_bal_summed_titles)
         wat_bal_df.columns = ['Flux m^3/d']
         wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.]
-        print wat_bal_df
+        #print wat_bal_df
 
         #x = np.linspace(self.model_data.model_boundary[0], self.model_data.model_boundary[1], self.ncol)
         #y = np.linspace(self.model_data.model_boundary[2], self.model_data.model_boundary[3], self.nrow)
@@ -2076,6 +2149,7 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 2, aspect='equal')
         ax.set_title('Riv flux')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         # modelmap.plot_ibound(alpha=1)
         max_val = np.amax(water_balance['RIVER LEAKAGE'][0])
         min_val = np.amin(water_balance['RIVER LEAKAGE'][0])
@@ -2101,6 +2175,7 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 3, aspect='equal')
         ax.set_title('GHB layer 2')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         # modelmap.plot_grid()
         river_flux = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][
                                          1], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
@@ -2114,13 +2189,13 @@ class ModflowModel(object):
         aspect = float(
             12.5715 / ((wat_bal_df.max()[0] - wat_bal_df.min()[0]) / float(wat_bal_df.shape[1])))
 
-        ax = fig.add_subplot(2, 4, 4, aspect=aspect)
-        ax.set_title('Water Balance')
-        wat_bal_df.plot(kind='bar', ax=plt.gca())
-        ax.grid(True)
-        gridlines = ax.get_xgridlines()  # + ax.get_ygridlines()
-        for line in gridlines:
-            line.set_linestyle('-')
+#        ax = fig.add_subplot(2, 4, 4, aspect=aspect)
+#        ax.set_title('Water Balance')
+#        wat_bal_df.plot(kind='bar', ax=plt.gca())
+#        ax.grid(True)
+#        gridlines = ax.get_xgridlines()  # + ax.get_ygridlines()
+#        for line in gridlines:
+#            line.set_linestyle('-')
 
         max_val = np.amax(water_balance['HEAD DEP BOUNDS'][2])
         min_val = np.amin(water_balance['HEAD DEP BOUNDS'][2])
@@ -2132,6 +2207,7 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 5, aspect='equal')
         ax.set_title('GHB layer 3')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         recharge = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][2], masked_values=[
                                        0.], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
         # print water_balance['RECHARGE'][0]
@@ -2158,6 +2234,7 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 6, aspect='equal')
         ax.set_title('GHB layer 4')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         elevation = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][
                                         3], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
         ax.yaxis.set_ticklabels([])
@@ -2203,6 +2280,7 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 7, aspect='equal')
         ax.set_title('GHB layer 5')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         storage = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][
                                       5], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
         ax.yaxis.set_ticklabels([])

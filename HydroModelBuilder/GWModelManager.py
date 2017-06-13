@@ -55,7 +55,8 @@ class GWModelManager(object):
             'gridded_data_register',
             # Some necessary parameters for now which should be replaced later
             'gridHeight',
-            'gridWidth'
+            'gridWidth',
+            'river_mapping'
         ]
 
     # Save and load utility using pickle
