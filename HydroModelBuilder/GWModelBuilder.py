@@ -123,7 +123,11 @@ class GWModelBuilder(object):
         self.base_data_register = []
         self.gridded_data_register = []
 
+        # Temp object to store river mapping data
         self.river_mapping = {}
+
+        # Object to handle all of the SFR specific data in pandas dataframes
+        self.mf_sfr_df = {}
 
         # Set default target attributes
         if target_attr is None:
@@ -163,7 +167,8 @@ class GWModelBuilder(object):
                 # Some necessary parameters for now which should be replaced later
                 'gridHeight',
                 'gridWidth',
-                'river_mapping'
+                'river_mapping',
+                'mf_sfr_df'
             ]
         else:
             self.target_attr = target_attr
@@ -527,7 +532,6 @@ class GWModelBuilder(object):
                                     neighbours += [target_zone[j][i - 1]]
                                 # end if
 
-
                                 most_common = most_common_oneliner(neighbours)
                                 if most_common != -1:
                                     target_zone[j][i] = most_common_oneliner(neighbours)
@@ -685,7 +689,7 @@ class GWModelBuilder(object):
 
         river_df = pd.DataFrame({'reach':riv_reach, 'strtop':riv_elevations})
         # In case of hitting no data values replace these with nan 
-        river_df['strtop'][river_df['strtop'] < 0] = np.nan 
+        river_df.loc[river_df['strtop'] < 0, 'strtop'] = np.nan 
         # Then to fill the Nan values interpolate or drop??
         river_df.dropna(inplace=True)
 
@@ -950,6 +954,11 @@ class GWModelBuilder(object):
         point_merge = list(unique_everseen(point_merge))        
         
         return point_merge
+
+
+    def save_MODFLOW_SFR_dataframes(self, name, reach_df, seg_df):
+        self.mf_sfr_df[name] = MODFLOW_SFR_dataframes(reach_df, seg_df)
+
 
     ###########################################################################
     ###########################################################################
@@ -1278,6 +1287,20 @@ class GWModelBuilder(object):
             if len(not_updated) > 0:
                 print 'Parameters unchanged for : ', not_updated
 
+    def generate_update_report(self):
+        """"
+        Generate report on boundaries and properties that have been updated 
+        
+        For use in model running to report on which boundaries and properties
+        have been changed in the run scripts. Requires use of update commands
+        for both properties and boundaries to work, i.e.,
+            boundaries.update_boundary_array
+            update_model_properties
+            
+        """
+        self.boundaries.generate_update_report()
+        self.properties.generate_update_report()
+
     def create_pilot_points(self, name):
         self.pilot_points[name] = pilotpoints.PilotPoints(
             output_directory=self.out_data_folder_grid, additional_name=name)
@@ -1454,13 +1477,32 @@ class ModelBoundaries(object):
         self.bc[bc_name] = {}
         self.bc[bc_name]['bc_type'] = bc_type
         self.bc[bc_name]['bc_static'] = bc_static
-
+        self.bc[bc_name]['updated'] = False
+               
+    def associate_zonal_array_and_dict(self, bc_name, zonal_array, zonal_dict):
+        self.bc[bc_name]['zonal_array'] = zonal_array
+        self.bc[bc_name]['zonal_dict'] = zonal_dict
+              
     def assign_boundary_array(self, bc_name, bc_array):
         if bc_name in self.bc:
             self.bc[bc_name]['bc_array'] = bc_array
         else:
             sys.exit('No boundary condition with name: {}'.format(bc_name))
 
+    def update_boundary_array(self, bc_name, bc_array):
+        if bc_name in self.bc:
+            self.bc[bc_name]['bc_array'] = bc_array
+            self.bc[bc_name]['updated'] = True
+        else:
+            sys.exit('No boundary condition with name: {}'.format(bc_name))
+
+    def generate_update_report(self):
+        print("The following bc's were updated: \n {}".format(
+                [key for key in self.bc.keys() \
+                 if self.bc[key]['updated'] == True]))
+        print("\nThe following bc's were NOT updated: \n {}\n".format(
+                [key for key in self.bc.keys() \
+                 if self.bc[key]['updated'] == False]))
 
 class ModelProperties(object):
     """
@@ -1471,6 +1513,7 @@ class ModelProperties(object):
     def __init__(self):
         self.properties = {}
         self.prop_types = ['Kh', 'Kv', 'SS', 'Sy']
+        self.prop_types_updated = {'Kh':False, 'Kv':False, 'SS':False, 'Sy':False}
 
     def assign_model_properties(self, prop_type, value):
         if prop_type in self.prop_types:
@@ -1478,6 +1521,22 @@ class ModelProperties(object):
         else:
             print("{} not in {}".format(prop_type, self.prop_types))
             sys.exit('Property type not recognised')
+
+    def update_model_properties(self, prop_type, value):
+        if prop_type in self.prop_types:
+            self.properties[prop_type] = value
+            self.prop_types_updated[prop_type] = True
+        else:
+            print("{} not in {}".format(prop_type, self.prop_types))
+            sys.exit('Property type not recognised')
+
+    def generate_update_report(self):
+        print("The following properties were updated: \n {}".format(
+                [key for key in self.properties.keys() \
+                 if self.prop_types_updated[key] == True]))
+        print("\nThe following properties were NOT updated: \n {}\n".format(
+                [key for key in self.properties.keys() \
+                 if self.prop_types_updated[key] == False]))
 
 
 class ModelParameters(object):
@@ -1563,6 +1622,11 @@ class ModelParameters(object):
                                    PARGP=PARGP, SCALE=SCALE, OFFSET=OFFSET)
 
 
+    def print_parameters(self):
+        params = ["{} \n".format(key) for key in self.param.keys()]
+        print("List of parameters defined: \n {}".format(params))
+
+            
 class ModelObservations(object):
     """
     This class is used to store all of the obervations relevant to the model
@@ -1675,7 +1739,13 @@ class ModelBuilderType(object):
         self.time = ['s', 'h', 'd', 'w', 'y']
         self.mass = ['mg', 'g', 'kg']
 
-
+class MODFLOW_SFR_dataframes(object):
+    
+    def __init__(self, reach_df, seg_df):
+        self.reach_df = reach_df
+        self.seg_df = seg_df
+    
+        
 class ArrayOrdering(object):
     """
     This class describes the array ordering conventions for MODFLOW and HGS

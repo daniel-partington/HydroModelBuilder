@@ -152,7 +152,7 @@ class ModflowModel(object):
                                             hdry=-999.9,
                                             laywet=0,
                                             laytyp=1)
-
+        
     # end setupUPWpackage
 
     def createRIVpackage(self, lrcd=None):

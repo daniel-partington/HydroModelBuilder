@@ -574,12 +574,14 @@ def mesh3DToVtk(mesh_array, grid_info, val_array, val_name, out_path, vtk_out):
                                    [np.fliplr(mesh)], ["zone", val_name], 
                                    [np.fliplr(zone_matrix), np.fliplr(val_array)], 
                                    out_path, vtk_out)
+
+
     
 if __name__ == "__main__":
 
     from HydroModelBuilder.GWModelManager import GWModelManager
 
-    resolution = 2000
+    resolution = 1000
     zone_map = {1: 'qa', 2: 'utb', 3: 'utqa', 4: 'utam', 5: 'utaf', 6: 'lta', 
                 7: 'bse'}
     HGU_map = {'bse':'Bedrock', 'utb':'Newer Volcanics Basalts', 

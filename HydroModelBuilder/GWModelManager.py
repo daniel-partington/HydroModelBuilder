@@ -56,7 +56,8 @@ class GWModelManager(object):
             # Some necessary parameters for now which should be replaced later
             'gridHeight',
             'gridWidth',
-            'river_mapping'
+            'river_mapping',
+            'mf_sfr_df'
         ]
 
     # Save and load utility using pickle
