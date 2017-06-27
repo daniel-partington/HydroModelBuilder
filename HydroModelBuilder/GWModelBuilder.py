@@ -25,9 +25,10 @@ class GWModelBuilder(object):
     from this class when it is packaged can be used with a separate model interface.
     """
 
-    def __init__(self, name=None, model_type=None, mesh_type=None,
-                 units=None, data_folder=None, out_data_folder=None, model_data_folder=None,
-                 GISInterface=None, data_format='binary', target_attr=None, **kwargs):
+    def __init__(self, name=None, model_type=None, mesh_type=None, units=None, 
+                 data_folder=None, out_data_folder=None, model_data_folder=None,
+                 GISInterface=None, data_format='binary', target_attr=None, 
+                 **kwargs):
         """
         :param name: Model name.
         :param model_type: Type of model, e.g. MODFLOW (makes use of flopy), HGS (uses pyHGS ... which is not developed yet ;) ).
@@ -89,7 +90,7 @@ class GWModelBuilder(object):
             self.array_ordering.SetHGSArrays()
         else:
             pass
-        # End if
+        # end if
 
         self.properties = ModelProperties()
         self.boundaries = ModelBoundaries()
@@ -628,7 +629,7 @@ class GWModelBuilder(object):
         point2mesh_map, point2mesh_map2 = self._points2mesh_map(point_merge, closest)
         amalg_riv_points, amalg_riv_points_collection = self._amalgamate_points(point2mesh_map2, point_merge)
         # Do test and report any cell jumps more than 1 up, down, left, right
-        self._naive_cell_odering_test(amalg_riv_points)
+        self._naive_cell_ordering_test(amalg_riv_points)
         def dist(p1, p2):
             return np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
         
@@ -773,7 +774,7 @@ class GWModelBuilder(object):
         for index in closest:
             for i in range(riv_len):
                 if river_points[index] in amalg_riv_points[i]:
-                    river_seg_close += [i]        
+                    river_seg_close += [i + 1] # Note that seg is 1-based indexing so we add 1 here        
                     continue
         return river_seg_close
     
@@ -861,7 +862,7 @@ class GWModelBuilder(object):
                 carryover = dist(point_merge[index], point_merge[index_next])
             #end if        
 
-    def _naive_cell_odering_test(self, cell_list):
+    def _naive_cell_ordering_test(self, cell_list):
         '''
         Function to test the ordering of cells and see that they are sequentially 
         neighbours and not jumping multiple cells.
@@ -1216,8 +1217,11 @@ class GWModelBuilder(object):
             points = []
             values = []
             for key in points_dict:
-                points += [points_dict[key]]
-                values += [float(values_dataframe[key])]
+                try:
+                    values += [float(values_dataframe[key])]
+                    points += [points_dict[key]]
+                except:
+                    pass
 
         return interpolation.Interpolator(self.mesh_type, np.array(points), np.array(values),
                                           self.model_mesh_centroids, method=method, use=use,
@@ -1301,9 +1305,13 @@ class GWModelBuilder(object):
         self.boundaries.generate_update_report()
         self.properties.generate_update_report()
 
-    def create_pilot_points(self, name):
-        self.pilot_points[name] = pilotpoints.PilotPoints(
-            output_directory=self.out_data_folder_grid, additional_name=name)
+    def create_pilot_points(self, name, linear=False):
+        if linear == False:
+            self.pilot_points[name] = pilotpoints.PilotPoints(
+                output_directory=self.out_data_folder_grid, additional_name=name)
+        else:
+            self.pilot_points[name] = PilotPointsLinear()
+            
 
     def save_pilot_points(self):
         self.save_obj(self.pilot_points, os.path.join(self.out_data_folder_grid, 'pilot_points'))
@@ -1464,7 +1472,7 @@ class ModelBoundaries(object):
         self.bc = {}
         # self.bc_locale_types = ['point', 'layer', 'domain']
         self.bc_types = ['river', 'river_flow', 'wells', 'recharge', 'rainfall',
-                         'head', 'drain', 'channel', 'general head']
+                         'head', 'drain', 'channel', 'general head', 'pet', 'aet']
 
     def create_model_boundary_condition(self, bc_name, bc_type, bc_static=True, bc_parameter=None):
         # if bc_locale_type not in self.bc_locale_types:
@@ -1621,7 +1629,10 @@ class ModelParameters(object):
                                    PARLBND=PARLBND, PARUBND=PARUBND,
                                    PARGP=PARGP, SCALE=SCALE, OFFSET=OFFSET)
 
-
+    def save_parameters_to_file(self, fname):
+        with open(fname + '.pkl', 'wb') as f:
+            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+        
     def print_parameters(self):
         params = ["{} \n".format(key) for key in self.param.keys()]
         print("List of parameters defined: \n {}".format(params))
@@ -1661,9 +1672,9 @@ class ModelObservations(object):
         self.obs_group[name] = {}
         # check time series meets the standard format of columns = ['name', 'datetime', 'value']
         self.obs_group[name]['time_series'] = time_series
-        self.obs_group[name]['time_series']['active'] = True
+        self.obs_group[name]['time_series'].loc[:, 'active'] = True
         self.obs_group[name]['by_zone'] = by_zone
-        self.obs_group[name]['time_series']['zone'] = 'null'
+        self.obs_group[name]['time_series'].loc[:, 'zone'] = 'null'
         self.obs_group[name]['locations'] = locations
         self.obs_group[name]['domain'] = domain
         self.obs_group[name]['obs_type'] = obs_type
@@ -1701,6 +1712,21 @@ class ModelInitialConditions(object):
         self.ic_data[name] = ic_data
         return self.ic_data
 
+class PilotPointsLinear(object):
+    """
+    This class is used to handle linear "pilot points" in a simple fashion
+    """
+    def __init__(self):
+        pass
+    
+    def set_uniform_points(self, length, num_points):
+        self.length = length
+        self.num_points = num_points
+        self.points = [length / x for x in range(1, num_points)] + [0.]
+        self.points = self.points[::-1]
+
+    def interpolate_unknown_points_from_df_col(self, df_col, points_vals):
+        return np.interp(df_col.tolist(), self.points, points_vals)
 
 class ModelFeature(object):
     """
