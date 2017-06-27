@@ -45,7 +45,7 @@ class ModflowModel(object):
         self.xul = self.model_data.model_boundary[0]
         self.yul = self.model_data.model_boundary[3]
 
-        self.headtol = 1E-6
+        self.headtol = 1E-3 # 1E-6
 
         if self.model_data.model_time.t['steady_state'] == True:
             self.nper = 1
@@ -60,7 +60,7 @@ class ModflowModel(object):
                 x.total_seconds() / 86400. for x in self.model_data.model_time.t['intervals']]  # 365000
             self.nstp = 1  # 10
             self.steady = False
-            self.start_datetime = self.model_data.model_time.t['start_time']
+            self.start_datetime = self.model_data.model_time.t['dateindex'][0]
 
         # Initial data:
         # self.model_data.model_mesh3D[0][1:] + 20.
@@ -124,7 +124,7 @@ class ModflowModel(object):
         # Specify NWT settings
         self.nwt = flopy.modflow.ModflowNwt(self.mf,
                                             headtol=headtol,  # 1E-4
-                                            fluxtol=1.0E1,  # 1.0E1
+                                            fluxtol=1.0E4,  # 1.0E1
                                             linmeth=2,
                                             iprnwt=1,
                                             ibotav=1,
@@ -174,7 +174,7 @@ class ModflowModel(object):
             transroute = True
         nstrm = reach_data.shape[0]
         nss = segment_data[0].shape[0]
-            
+        dataset_5 = {key:[nss, 0, 0] for key in segment_data.keys()}
         if self.verbose:
             print('SFR: Assuming units of model are m^3/d, change "const" if this is not true')
         # end if
@@ -200,7 +200,7 @@ class ModflowModel(object):
             segment_data=segment_data, # "Data Set 4b", dict with recarray of segment data for each stress period
             channel_geometry_data=None, # "Data Set 6d", Can ignore for now, but necessary if icalc is > 1
             channel_flow_data=None, # "Data Set 6e"
-            dataset_5={0: [nss, 0, 0]}, # This is not required unless one wants to mod printing across stress periods 
+            dataset_5=dataset_5, # This is not required unless one wants to mod printing across stress periods 
             reachinput=True,  
             transroute=transroute,
             tabfiles=False, 
@@ -433,6 +433,50 @@ class ModflowModel(object):
     #**************************************************************************
     #**************************************************************************
     #**************************************************************************
+
+    def Calculate_Rn_from_SFR_with_simple_model(self, df, Ini_cond, Rn_decay=0.181):
+        '''
+        Use a simple model to calculate Radon concentrations in the stream
+        based on outputs from the SFR package and using some other data that 
+        is required as arguments to this function.
+        
+        In particular the df is a pandas dataframe that should contain the output
+        from the sfr package which can be imported via the sfroutputfile util
+        from flopy. The other parameters required are:
+            
+
+        Ini_Cond = Ini_cond # 3 item list containing Initial flow, radon and ec concentrations 
+        Rn_decay = Rn_decay # constant for Radon decay
+        # Dataframe variables
+        df['HZ_poro'] # Hyporheic zone porosity
+        df['HZ_Prod_Rate'] # Hyporheic zone radon production rate
+        df['HZ_RTime'] # Hyporheic zone residence time
+        df['R_depth_HZ'] # Depth of the hyporheic zone
+        df['GTV'] # Gas transfer velocity
+        df['GW_Rn_conc'] # Groundwater radon concentration
+        df['GW_EC'] # Groundwater EC
+        df['Trib_EC'] # EC of the inflowing tributary water if present
+        df['Trib_Rn'] # Radon concentration of inflowing tributary water if present
+        df['dx'] # Reach length
+            
+        '''
+        try:
+            self.sfr
+        except:
+            print("SFR package not activated in current model")
+            return
+        # end try
+
+        #from flopy.utils import sfroutputfile
+        #sfr = sfroutputfile.SfrFile(os.path.join(self.data_folder, self.sfr.file_name[0] + '.out'))
+        #sfr_df = sfr.get_dataframe()
+        #sfr_info = self.model_data.river_mapping['Campaspe']
+        #cum_len = sfr_info['Cumulative Length'].tolist()
+        #sfr_df['Cumulative Length'] = cum_len * (sfr_df['time'].max() + 1)
+
+        FlRnEC = Radon_EC_simple(df, Ini_cond, Rn_decay=Rn_decay)
+        Flow, Rn, EC = FlRnEC.Fl_Rn_EC_simul()
+        return Flow, Rn, EC
 
     def getFinalHeads(self, filename):
         headobj = bf.HeadFile(filename)
@@ -1615,7 +1659,6 @@ class ModflowModel(object):
         modelmap.plot_ibound()
         max_head = np.amax(head)
         min_head = np.amin(head)
-        print max_head
 
         levels = np.arange(vmin, vmax, 10)
 
@@ -2451,6 +2494,79 @@ class MT3DModel(object):
         # End if
     # End runMT3D()
 
+class Radon_EC_simple(object):
+    
+    def __init__(self, df, Ini_cond, Rn_decay=0.181, units='m,d'):
+        self.Ini_Cond = Ini_cond # 3 item list containing Initial flow, radon and ec concentrations 
+        self.Rn_decay = Rn_decay # constant for Radon decay
+        self.units = units # units being used ... not really used yet!
+        # Dataframe variables
+        self.HZ_Poro = df['HZ_poro'].tolist() # Hyporheic zone porosity
+        self.HZ_Prod_Rate = df['HZ_Prod_Rate'].tolist() # Hyporheic zone radon production rate
+        self.HZ_RTime = df['HZ_RTime'].tolist() # Hyporheic zone residence time
+        self.R_depth_HZ = df['R_depth_HZ'].tolist() 
+        self.GTV = df['GTV'].tolist() # Gas transfer velocity
+        self.GW_Rn_conc = df['GW_Rn_conc'].tolist() # Groundwater radon concentration
+        self.GW_EC = df['GW_EC'].tolist() # Groundwater EC
+        self.Trib_EC = df['Trib_EC'].tolist() 
+        self.Trib_Rn = df['Trib_Rn'].tolist() 
+        self.dx = df['dx'].tolist()
+        # Variables inherited from the output of SFR package
+        self.Evap_Rate = df['Qet'].tolist() # Evaporation rate
+        self.Trib_inflow = df['Qovr'].tolist() 
+        try:
+            self.R_Pump = df['R_pump'].tolist() 
+        except:
+            self.R_Pump = [0.] * df.shape[0]
+        # end try            
+        self.R_depth = df['depth'].tolist() 
+        self.R_width = df['width'].tolist() 
+        self.GW_inflow = (df['Qaquifer'] * -1.).tolist()
+        
+    def Fl_Rn_EC_simul(self):
+
+        # Specify radon decay constant
+        Rn_decay = self.Rn_decay
+        # Initialise temp vars
+        Flow_temp = self.Ini_Cond[0]
+        Rn_temp = self.Ini_Cond[1]
+        EC_temp = self.Ini_Cond[2]
+        Fl_simul = [Flow_temp]
+        Rn_simul = [Rn_temp]
+        EC_simul = [EC_temp]
+        
+        # Calculate simulated Radon and EC for the 
+        for i in range(len(self.dx) - 1):
+            # Steady state stream flow calculation ... check against modelled
+            # as this won't consider rate of change in storage
+            Flow_temp += self.GW_inflow[i] - self.Evap_Rate[i] - \
+                         self.R_Pump[i] + self.Trib_inflow[i]
+            # Radon concentration calculation based on steady state stream flow
+            if self.GW_inflow[i] < 0.:
+                GW_Rn_conc_adj = Rn_temp
+            else:
+                GW_Rn_conc_adj = self.GW_Rn_conc[i]
+            # end if    
+            Rn_temp  += 1. / (Flow_temp) * (
+                        self.GW_inflow[i] * (GW_Rn_conc_adj - Rn_temp) + \
+                        self.Trib_inflow[i] * (self.Trib_Rn[i] - Rn_temp) + \
+                        Rn_temp * (self.Evap_Rate[i] - self.dx[i] *  
+                        self.R_width[i] * (self.GTV[i] + self.R_depth[i] * Rn_decay)) + \
+                        self.dx[i] * self.HZ_Poro[i] / (1 + Rn_decay * self.HZ_RTime[i]) * 
+                        self.R_width[i] * self.R_depth_HZ[i] * (self.HZ_Prod_Rate[i] - Rn_temp))
+            if Rn_temp < 0:
+                Rn_temp = 0.
+            # EC calculation based on steady state stream flow
+            EC_temp  += 1 / (Flow_temp) * (
+                        self.GW_inflow[i] * (self.GW_EC[1] - EC_temp) + \
+                        self.Trib_inflow[i] * (self.Trib_EC[i] - EC_temp) + \
+                        EC_temp * self.Evap_Rate[i])
+            
+            Fl_simul.append(Flow_temp)
+            Rn_simul.append(Rn_temp)
+            EC_simul.append(EC_temp)
+        
+        return Fl_simul, Rn_simul, EC_simul
 
 class MT3DPostProcess(object):
 
