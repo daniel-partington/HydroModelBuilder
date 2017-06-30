@@ -702,6 +702,26 @@ class ModflowModel(object):
                         sim_head = np.mean(sim_heads)
                         f.write('%f\n' % sim_head)
 
+    def plotRiverFromRiverSegData(self, ax, names=None, **kwargs):
+        river_mapping = self.model_data.river_mapping
+        if names != None:
+            keys = [i for i in names if i in river_mapping.keys()]
+            not_a_key = [j for j in names if j not in river_mapping.keys()]
+            if len(not_a_key) == 0:
+                print("Bad names passed that are not in dict: {}".format(not_a_key))
+        else:
+            keys = river_mapping.keys()
+        # end if
+        for key in keys:
+            river_seg = river_mapping[key]
+            all_riv = [] 
+            for x in river_seg['amalg_riv_points_collection']:
+                all_riv += x        
+            # end for
+            x = [x[0] for x in all_riv]
+            y = [y[1] for y in all_riv]
+            ax.plot(x, y, **kwargs)
+        # end for
     def getObservation(self, obs, interval, obs_set):
         # Set model output arrays to None to initialise
         head = None
@@ -1639,11 +1659,12 @@ class ModflowModel(object):
         # Next we create an instance of the ModelMap class
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
         modelmap.plot_ibound()
+        self.plotRiverFromRiverSegData(ax)
         #linecollection = modelmap.plot_grid()
 
         # modelmap.plot_bc('WEL')
-        modelmap.plot_bc('RIV')
-        modelmap.plot_bc('SFR')
+        modelmap.plot_bc('RIV', plotAll=True)
+        modelmap.plot_bc('SFR', plotAll=True)
         ax.axes.xaxis.set_ticklabels([])
 
         #linecollection = modelmap.plot_grid()
@@ -1669,6 +1690,7 @@ class ModflowModel(object):
         #modelmap.plot_discharge(frf, fff, head=head)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
+        self.plotRiverFromRiverSegData(ax)
         cbar_ax2 = fig.add_axes([0.43, 0.525, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax2)
 
@@ -1681,6 +1703,7 @@ class ModflowModel(object):
                                                                min_head], alpha=0.9, vmin=vmin, vmax=vmax, cmap=cmap, levels=levels)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
+        self.plotRiverFromRiverSegData(ax)
         cbar_ax1 = fig.add_axes([0.67, 0.525, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax1)
 
@@ -1693,6 +1716,7 @@ class ModflowModel(object):
                                                                min_head], alpha=0.9, vmin=vmin, vmax=vmax, cmap=cmap, levels=levels)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
+        self.plotRiverFromRiverSegData(ax)
         cbar_ax5 = fig.add_axes([0.91, 0.525, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax5)
 
@@ -1708,6 +1732,7 @@ class ModflowModel(object):
         end = end // 1000 * 1000 - 1000
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+        self.plotRiverFromRiverSegData(ax)
 
         cbar_ax3 = fig.add_axes([0.19, 0.055, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax3)
@@ -1722,6 +1747,7 @@ class ModflowModel(object):
         ax.yaxis.set_ticklabels([])
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+        self.plotRiverFromRiverSegData(ax)
 
         cbar_ax4 = fig.add_axes([0.43, 0.055, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax4)
@@ -1733,6 +1759,7 @@ class ModflowModel(object):
         #modelmap.plot_discharge(frf[5], fff[5])
         array = modelmap.contour_array(head[5], masked_values=[-999.98999023, max_head,
                                                                min_head], alpha=0.9, vmin=vmin, vmax=vmax, cmap=cmap, levels=levels)
+        self.plotRiverFromRiverSegData(ax)
         ax.yaxis.set_ticklabels([])
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
@@ -1830,7 +1857,6 @@ class ModflowModel(object):
         modelmap.plot_ibound()
         max_head = np.amax(head)
         min_head = np.amin(head)
-        print max_head
 
         levels = np.arange(vmin, vmax, 1)
 
@@ -1932,6 +1958,7 @@ class ModflowModel(object):
             modelmap.plot_bc('GHB', plotAll=True)
         except:
             pass
+        self.plotRiverFromRiverSegData(ax)
         ax.axes.xaxis.set_ticklabels([])
 
         #linecollection = modelmap.plot_grid()
@@ -1943,6 +1970,7 @@ class ModflowModel(object):
         min_head = np.amin(head)
         array = modelmap.plot_array(
             head, masked_values=[-999.98999023, max_head, min_head], alpha=0.5)
+        self.plotRiverFromRiverSegData(ax)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
         cbar_ax2 = fig.add_axes([0.43, 0.525, 0.01, 0.42])
@@ -1953,6 +1981,7 @@ class ModflowModel(object):
         modelmap.plot_ibound()
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
         river_flux = modelmap.plot_array(water_balance['RIVER LEAKAGE'].sum(axis=0), alpha=0.5)
+        self.plotRiverFromRiverSegData(ax)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
 
@@ -1968,6 +1997,7 @@ class ModflowModel(object):
         ax.set_title('Campaspe exchange')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
         river_flux = modelmap.plot_array(water_balance['STREAM LEAKAGE'].sum(axis=0), alpha=0.5)
+        self.plotRiverFromRiverSegData(ax)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
 
@@ -1984,6 +2014,7 @@ class ModflowModel(object):
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
         modelmap.plot_ibound()
         river_flux = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'].sum(axis=0), alpha=0.5)
+        self.plotRiverFromRiverSegData(ax)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
 
@@ -2006,6 +2037,7 @@ class ModflowModel(object):
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
         modelmap.plot_ibound()
         recharge = modelmap.plot_array(water_balance['RECHARGE'][0], masked_values=[0.], alpha=0.5)
+        self.plotRiverFromRiverSegData(ax)
         # print water_balance['RECHARGE'][0]
         # print np.mean(water_balance['RECHARGE'][0])
         # print np.max(water_balance['RECHARGE'][0])
@@ -2028,6 +2060,7 @@ class ModflowModel(object):
         #ibound_mask = np.ma.masked_where(self.model_data.model_mesh3D[1][0] == -1, self.model_data.model_mesh3D[1][0])
         elev = np.ma.masked_where(self.model_data.model_mesh3D[1][0] == 0, elev)
         elevation = modelmap.plot_array(elev, alpha=0.5)
+        self.plotRiverFromRiverSegData(ax)
         ax.yaxis.set_ticklabels([])
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
@@ -2064,8 +2097,12 @@ class ModflowModel(object):
         ax.set_title('Pressure Head')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
         modelmap.plot_ibound()
+        pressure = head[0] - elev
+        #pressure_min = np.std(pressure)
+        #pressure_max =                
         storage = modelmap.plot_array(
-            head[0] - elev, masked_values=[0.], alpha=0.5, vmin=-50, vmax=50)
+            pressure, masked_values=[x for x in np.unique(pressure) if x > 0.], alpha=0.5) #, vmin=-50, vmax=50)
+        self.plotRiverFromRiverSegData(ax)
         ax.yaxis.set_ticklabels([])
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
