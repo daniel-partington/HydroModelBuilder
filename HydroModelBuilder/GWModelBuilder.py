@@ -1127,40 +1127,80 @@ class GWModelBuilder(object):
                 if self.observations.obs_group[key]['domain'] == 'porous':
                     points = [list(x) for x in self.observations.obs_group[
                         key]['locations'].to_records(index=False)]
-                    self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_3Dmesh(
-                        points, identifier=self.observations.obs_group[key]['locations'].index)
+                    self.observations.obs_group[key]['mapped_observations'] = \
+                        self.map_points_to_3Dmesh(points, 
+                                                  identifier= \
+                                                  self.observations
+                                                      .obs_group[key] \
+                                                       ['locations'].index)
 
                     # Check that 'mapped_observations' are in active cells and if not then set
                     # the observation to inactive
-                    for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
-                        [k, j, i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
+                    for obs_loc in self.observations.obs_group[
+                        key]['mapped_observations'].keys():
+                        [k, j, i] = self.observations.obs_group[key] \
+                                         ['mapped_observations'][obs_loc]
                         if self.model_mesh3D[1][k][j][i] in ignore:
                             self.observations.obs_group[key]['time_series'].loc[
-                                self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
+                                self.observations.obs_group[key]['time_series'] \
+                                    ['name'] == obs_loc, 'active'] = False
                         else:
                             self.observations.obs_group[key]['time_series'].loc[
-                                self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'zone'] = "{}{}".format(key, int(self.model_mesh3D[1][k][j][i]))
+                                self.observations.obs_group[key] \
+                                    ['time_series']['name'] == obs_loc, 'zone'] \
+                                    = "{}{}".format(key, int(
+                                        self.model_mesh3D[1][k][j][i]))
 
                 elif self.observations.obs_group[key]['domain'] == 'surface':
                     if self.observations.obs_group[key]['real']:
                         points = [list(x) for x in self.observations.obs_group[
                             key]['locations'].to_records(index=False)]
-                        self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_2Dmesh(
-                            points, identifier=self.observations.obs_group[key]['locations'].index)
+                        self.observations.obs_group[key]['mapped_observations'] \
+                            = self.map_points_to_2Dmesh(
+                                points, 
+                                identifier=self.observations.obs_group[key] \
+                                                ['locations'].index)
 
                         # Check that 'mapped_observations' are in active cells and if not then set
                         # the observation to inactive
-                        for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
+                        for obs_loc in self.observations.obs_group[key][
+                            'mapped_observations'].keys():
                             [j, i] = self.observations.obs_group[
                                 key]['mapped_observations'][obs_loc]
                             if self.model_mesh3D[1][0][j][i] in ignore:
-                                self.observations.obs_group[key]['time_series'].loc[
-                                    self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
+                                self.observations.obs_group[key]['time_series'] \
+                                    .loc[self.observations 
+                                    .obs_group[key]['time_series']['name'] == \
+                                        obs_loc, 'active'] = False
                             else:
-                                self.observations.obs_group[key]['time_series'].loc[
-                                    self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'zone'] = "{}{}".format(key, int(self.model_mesh3D[1][k][j][i]))
+                                self.observations.obs_group[key]['time_series'] \
+                                    .loc[self.observations
+                                    .obs_group[key]['time_series']['name'] == \
+                                        obs_loc, 'zone'] = \
+                                        "{}{}".format(key, int(
+                                            self.model_mesh3D[1][k][j][i]))
                             # end if
                         # end for
+                    else:
+                        self.observations.obs_group[key]['mapped_observations'] = {}
+                        for index, loc in enumerate(self.observations.obs_group[key]['locations']):
+                            self.observations.obs_group[key]['mapped_observations'][index] = loc
+                        # end for
+                    # end if
+                elif self.observations.obs_group[key]['domain'] == 'stream':
+                    if self.observations.obs_group[key]['real']:
+                        self.observations.obs_group[key]['mapped_observations'] = {}
+                        for index, loc in enumerate(self.observations.obs_group[key]['locations']):
+                            self.observations.obs_group[key]['mapped_observations'][index] = loc
+                        
+#                        for obs_loc in self.observations.obs_group[key][
+#                            'mapped_observations'].keys():
+#                            [j, i] = self.observations.obs_group[
+#                                key]['mapped_observations'][obs_loc]
+#                            self.observations.obs_group[key]['time_series'].loc[
+#                                self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'zone'] = "{}{}".format(key, int(self.model_mesh3D[1][k][j][i]))
+#                            # end if
+#                        # end for
                     else:
                         self.observations.obs_group[key]['mapped_observations'] = {}
                         for index, loc in enumerate(self.observations.obs_group[key]['locations']):
@@ -1253,7 +1293,7 @@ class GWModelBuilder(object):
                 self.observations.obs_group[key]['time_series']['interval'] = 0
         else:
             for key in self.observations.obs_group.keys():
-                self.observations.obs_group[key]['time_series']['interval'] = self.observations.obs_group[key][
+                self.observations.obs_group[key]['time_series'].loc[:, 'interval'] = self.observations.obs_group[key][
                     'time_series'].apply(lambda row: self._findInterval(row, self.model_time.t['dateindex']), axis=1)
                 # remove np.nan values from the obs as they are not relevant
                 if self.observations.obs_group[key]['real']:
@@ -1472,7 +1512,8 @@ class ModelBoundaries(object):
         self.bc = {}
         # self.bc_locale_types = ['point', 'layer', 'domain']
         self.bc_types = ['river', 'river_flow', 'wells', 'recharge', 'rainfall',
-                         'head', 'drain', 'channel', 'general head', 'pet', 'aet']
+                         'head', 'drain', 'channel', 'general head', 'pet', 
+                         'aet', 'river_ec']
 
     def create_model_boundary_condition(self, bc_name, bc_type, bc_static=True, bc_parameter=None):
         # if bc_locale_type not in self.bc_locale_types:
@@ -1694,8 +1735,8 @@ class ModelObservations(object):
 
     def check_obs(self):
         obs_nodes = []
-        for ob in self.observations.obs.keys():
-            obs_nodes += self.observations.obs[ob]
+        for ob in self.obs.keys():
+            obs_nodes += self.obs[ob]
 
 
 class ModelInitialConditions(object):

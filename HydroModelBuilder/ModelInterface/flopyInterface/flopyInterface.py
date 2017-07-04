@@ -46,6 +46,7 @@ class ModflowModel(object):
         self.yul = self.model_data.model_boundary[3]
 
         self.headtol = 1E-3 # 1E-6
+        self.fluxtol = 1.0E4
 
         if self.model_data.model_time.t['steady_state'] == True:
             self.nper = 1
@@ -120,11 +121,11 @@ class ModflowModel(object):
 
     # End setupBASPackage()
 
-    def setupNWTpackage(self, headtol):
+    def setupNWTpackage(self, headtol, fluxtol):
         # Specify NWT settings
         self.nwt = flopy.modflow.ModflowNwt(self.mf,
                                             headtol=headtol,  # 1E-4
-                                            fluxtol=1.0E4,  # 1.0E1
+                                            fluxtol=fluxtol,  # 1.0E1
                                             linmeth=2,
                                             iprnwt=1,
                                             ibotav=1,
@@ -288,7 +289,7 @@ class ModflowModel(object):
 
         self.createDiscretisation()
         self.setupBASPackage(self.nlay, self.nrow, self.ncol)
-        self.setupNWTpackage(self.headtol)
+        self.setupNWTpackage(self.headtol, self.fluxtol)
         self.setupUPWpackage()
         self.createOCpackage()
 
@@ -484,7 +485,7 @@ class ModflowModel(object):
         head = headobj.get_data(totim=times[-1])
         return head
 
-    def getRiverFlux(self, name):
+    def getRivFlux(self, name):
         cbbobj = self.importCbb()
         riv_flux = cbbobj.get_data(text='RIVER LEAKAGE', full3D=True)
         times = cbbobj.get_times()
@@ -511,7 +512,7 @@ class ModflowModel(object):
 
         return riv_exchange
 
-    def getRiverFluxNodes(self, nodes):
+    def getRivFluxNodes(self, nodes):
         cbbobj = self.importCbb()
         riv_flux = cbbobj.get_data(text='RIVER LEAKAGE', full3D=True)
         times = cbbobj.get_times()
@@ -590,7 +591,8 @@ class ModflowModel(object):
 
         # Set model output arrays to None to initialise
         head = None
-
+        sfr_df = None
+        stream_options = ['stage', 'depth', 'discharge']
         # Write observation to file
         for obs_set in self.model_data.observations.obs_group.keys():
             obs_type = self.model_data.observations.obs_group[obs_set]['obs_type']
@@ -601,106 +603,134 @@ class ModflowModel(object):
                     headobj = self.importHeads()
                     #times = headobj.get_times()
                     head = headobj.get_alldata()  # (totim=times[0])
-            elif obs_type == 'stage':
-                #stage = self.importStage()
-                pass
-            elif obs_type == 'discharge':
-                pass
+            elif obs_type in stream_options:
+                try:
+                    self.sfr_df
+                except:
+                    sfr_df = self.importSfrOut()                
+                # end except
             else:
                 continue
             # end if
-
             # if self.model_data.observations.obs_group[obs_set]['real']
 
             obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
-            zoned = self.model_data.observations.obs_group[obs_set]['by_zone']            
             obs_df = obs_df[obs_df['active'] == True]
             sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
 
-            # with open(self.data_folder + os.path.sep + 'observations_'+
-            # self.model_data.name +'.txt', 'w') as f:
-            for zone in obs_df['zone'].unique():
-                with open(self.data_folder + os.path.sep + 'observations_' + zone + '.txt', 'w') as f:
-                    obs_df_zone = obs_df[obs_df['zone'] == zone]
-                    for observation in obs_df_zone.index:
-                        interval = int(obs_df_zone['interval'].loc[observation])
-                        name = obs_df_zone['name'].loc[observation]
-                        x = self.model_data.observations.obs_group[
-                            obs_set]['locations']['Easting'].loc[name]
-                        y = self.model_data.observations.obs_group[
-                            obs_set]['locations']['Northing'].loc[name]
-                        (x_cell, y_cell) = self.model_data.mesh2centroid2Dindex[
-                            (sim_map_dict[name][1], sim_map_dict[name][2])]
-                        west = True
-                        north = True
-                        (lay, row, col) = [sim_map_dict[name][0],
-                                           sim_map_dict[name][1], sim_map_dict[name][2]]
-                        
-                        sim_heads = [head[interval][lay][row][col]]
-    
-    #                    if x > x_cell:
-    #                        west = False
-    #                        west_diff = x-x_cell
-    #                    if y < y_cell:
-    #                        north = False
-    #                        north_diff = y - y_cell
-    #
-    #                    sim_zone = self.model_data.model_mesh3D[1][lay][row][col]
-    #
-    #                    if north:
-    #                        try:
-    #                            if self.model_data.model_mesh3D[1][lay][row-1][col] == sim_zone:
-    #                                sim_heads += [head[interval][lay][row-1][col]]
-    #                        except IndexError as e:
-    #                            print e.mmsg
-    #                        if west:
-    #                            try:
-    #                                if self.model_data.model_mesh3D[1][lay][row-1][col-1] == sim_zone:
-    #                                    sim_heads += [head[interval][lay][row-1][col-1]]
-    #                             except IndexError as e:
-    #                                 print e.mmsg
-    #                        else:
-    #                            try:
-    #                                if self.model_data.model_mesh3D[1][lay][row-1][col+1] == sim_zone:
-    #                                    sim_heads += [head[interval][lay][row-1][col+1]]
-    #                            except:
-    #                                pass
-    #
-    #                    else:
-    #                        try:
-    #                            if self.model_data.model_mesh3D[1][lay][row+1][col] == sim_zone:
-    #                                sim_heads += [head[interval][lay][row+1][col]]
-    #                        except:
-    #                            pass
-    #                        if west:
-    #                            try:
-    #                                if self.model_data.model_mesh3D[1][lay][row+1][col-1] == sim_zone:
-    #                                    sim_heads += [head[interval][lay][row+1][col-1]]
-    #                            except:
-    #                                pass
-    #                        else:
-    #                            try:
-    #                                if self.model_data.model_mesh3D[1][lay][row+1][col+1] == sim_zone:
-    #                                    sim_heads += [head[interval][lay][row+1][col+1]]
-    #                            except:
-    #                                pass
-    #
-    #
-    #                    if west:
-    #                        try:
-    #                            if self.model_data.model_mesh3D[1][lay][row][col-1] == sim_zone:
-    #                                sim_heads += [head[interval][lay][row][col-1]]
-    #                        except:
-    #                            pass
-    #                    else:
-    #                        try:
-    #                            if self.model_data.model_mesh3D[1][lay][row][col+1] == sim_zone:
-    #                                sim_heads += [head[interval][lay][row][col+1]]
-    #                        except:
-    #                            pass
-    
-                        sim_head = np.mean(sim_heads)
-                        f.write('%f\n' % sim_head)
+            if obs_type in stream_options:
+                sfr_location = self.model_data.observations.obs_group[obs_set]['locations']['seg_loc']
+                for zone in obs_df['zone'].unique():
+                    if len(obs_df['zone'].unique()) == 1:
+                        zone_txt = obs_type
+                    else:
+                        zone_txt = obs_type + zone
+                    # end if
+                    with open(os.path.join(self.data_folder, 'observations_' + zone_txt + '.txt'), 'w') as f:
+                        obs_df_zone = obs_df[obs_df['zone'] == zone]
+                        for observation in obs_df_zone.index:
+                            interval = int(obs_df_zone['interval'].loc[observation])
+                            name = obs_df_zone['name'].loc[observation]
+                            seg = sfr_location.loc[name]
+                            sfr = sfr_df
+                            col_of_interest = obs_type
+                            if obs_type == 'discharge': 
+                                col_of_interest = 'Qout'
+                            sim_obs = sfr[(sfr['segment'] == seg) & \
+                                            (sfr['time'] == interval)] \
+                                           [col_of_interest]
+                            f.write('%f\n' % sim_obs)                
+                
+
+            if obs_type == 'head':
+                for zone in obs_df['zone'].unique():
+                    if len(obs_df['zone'].unique()) == 1:
+                        zone_txt = 'head'
+                    else:
+                        zone_txt = zone
+                    with open(os.path.join(self.data_folder, 'observations_' + zone_txt + '.txt'), 'w') as f:
+                        obs_df_zone = obs_df[obs_df['zone'] == zone]
+                        for observation in obs_df_zone.index:
+                            interval = int(obs_df_zone['interval'].loc[observation])
+                            name = obs_df_zone['name'].loc[observation]
+        #                    x = self.model_data.observations.obs_group[
+        #                        obs_set]['locations']['Easting'].loc[name]
+        #                    y = self.model_data.observations.obs_group[
+        #                        obs_set]['locations']['Northing'].loc[name]
+                            (x_cell, y_cell) = self.model_data.mesh2centroid2Dindex[
+                                (sim_map_dict[name][1], sim_map_dict[name][2])]
+        #                    west = True
+        #                    north = True
+                            (lay, row, col) = [sim_map_dict[name][0],
+                                               sim_map_dict[name][1], sim_map_dict[name][2]]
+                            
+                            sim_heads = [head[interval][lay][row][col]]
+        
+        #                    if x > x_cell:
+        #                        west = False
+        #                        west_diff = x-x_cell
+        #                    if y < y_cell:
+        #                        north = False
+        #                        north_diff = y - y_cell
+        #
+        #                    sim_zone = self.model_data.model_mesh3D[1][lay][row][col]
+        #
+        #                    if north:
+        #                        try:
+        #                            if self.model_data.model_mesh3D[1][lay][row-1][col] == sim_zone:
+        #                                sim_heads += [head[interval][lay][row-1][col]]
+        #                        except IndexError as e:
+        #                            print e.mmsg
+        #                        if west:
+        #                            try:
+        #                                if self.model_data.model_mesh3D[1][lay][row-1][col-1] == sim_zone:
+        #                                    sim_heads += [head[interval][lay][row-1][col-1]]
+        #                             except IndexError as e:
+        #                                 print e.mmsg
+        #                        else:
+        #                            try:
+        #                                if self.model_data.model_mesh3D[1][lay][row-1][col+1] == sim_zone:
+        #                                    sim_heads += [head[interval][lay][row-1][col+1]]
+        #                            except:
+        #                                pass
+        #
+        #                    else:
+        #                        try:
+        #                            if self.model_data.model_mesh3D[1][lay][row+1][col] == sim_zone:
+        #                                sim_heads += [head[interval][lay][row+1][col]]
+        #                        except:
+        #                            pass
+        #                        if west:
+        #                            try:
+        #                                if self.model_data.model_mesh3D[1][lay][row+1][col-1] == sim_zone:
+        #                                    sim_heads += [head[interval][lay][row+1][col-1]]
+        #                            except:
+        #                                pass
+        #                        else:
+        #                            try:
+        #                                if self.model_data.model_mesh3D[1][lay][row+1][col+1] == sim_zone:
+        #                                    sim_heads += [head[interval][lay][row+1][col+1]]
+        #                            except:
+        #                                pass
+        #
+        #
+        #                    if west:
+        #                        try:
+        #                            if self.model_data.model_mesh3D[1][lay][row][col-1] == sim_zone:
+        #                                sim_heads += [head[interval][lay][row][col-1]]
+        #                        except:
+        #                            pass
+        #                    else:
+        #                        try:
+        #                            if self.model_data.model_mesh3D[1][lay][row][col+1] == sim_zone:
+        #                                sim_heads += [head[interval][lay][row][col+1]]
+        #                        except:
+        #                            pass
+        
+                            sim_head = np.mean(sim_heads)
+                            f.write('%f\n' % sim_head)
+                        # end for
+
 
     def plotRiverFromRiverSegData(self, ax, names=None, **kwargs):
         river_mapping = self.model_data.river_mapping
@@ -804,6 +834,16 @@ class ModflowModel(object):
         else:
             self.headobj = bf.HeadFile(self.data_folder + self.name + '.hds')
             return self.headobj
+
+    def importSfrOut(self, path=None, name=None, ext='.sfr.out'):
+        if path:
+            sfrout = SfrFile(os.path.join(path, name + ext))
+            self.sfr_df = sfrout.get_dataframe()
+        else:
+            sfrout = SfrFile(os.path.join(self.data_folder, self.name + ext))
+            self.sfr_df = sfrout.get_dataframe()
+        # end if
+        return self.sfr_df
 
     def importCbb(self):
         self.cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
@@ -2614,6 +2654,9 @@ class MT3DPostProcess(object):
         self.concobj = bf.UcnFile(self.mf_model.data_folder + 'MT3D001.UCN')
         return self.concobj
 
+    def importSftConcs(self):
+        self.sft_conc
+
     def ConcsByZone(self, concs):
 
         self.mf_model.model_data.model_mesh3D[1]
@@ -2662,6 +2705,7 @@ class MT3DPostProcess(object):
 
         # Set model output arrays to None to initialise
         conc = None
+        sft_conc = None
         data_folder = self.mf_model.data_folder
         model_data = self.mf_model.model_data
         obs_group = self.mf_model.model_data.observations.obs_group
@@ -2670,15 +2714,24 @@ class MT3DPostProcess(object):
         for obs_set in model_data.observations.obs_group.keys():
             obs_type = obs_group[obs_set]['obs_type']
             # Import the required model outputs for processing
-            if obs_type != 'concentration':
+            if obs_type not in ['concentration', 'EC', 'Radon']:
                 continue
             else:
-                # if obs_type == 'concentration':
-                # Check if model outputs have already been imported and if not import
-                if not conc:
-                    concobj = self.importConcs()
-                    conc = concobj.get_alldata()  # (totim=times[0])
-            # end if
+                if obs_type == 'concentration':
+                    # Check if model outputs have already been imported and if not import
+                    if not conc:
+                        concobj = self.importConcs()
+                        conc = concobj.get_alldata()  # (totim=times[0])
+                    # end if
+                elif obs_type == 'EC':
+                    continue #^&*^&*^&*^&*^&*^&*^&*^&*^&*^*^&*^&*^&**&^*&^*&^*&
+                    try:
+                        sft_conc
+                    except:
+                        sft_conc = self.importSftConcs()
+                elif obs_type == 'Radon':
+                    continue
+                # end if
 
             obs_df = obs_group[obs_set]['time_series']
             obs_df = obs_df[obs_df['active'] == True]
@@ -2688,83 +2741,102 @@ class MT3DPostProcess(object):
             # +'_transport.txt', 'w') as f:
             with open(data_folder + os.path.sep + 'observations_' + obs_set + '.txt', 'w') as f:
 
-                for observation in obs_df.index:
-                    interval = int(obs_df['interval'].loc[observation])
-                    name = obs_df['name'].loc[observation]
-                    x = obs_group[obs_set]['locations']['Easting'].loc[name]
-                    y = obs_group[obs_set]['locations']['Northing'].loc[name]
-                    (x_cell, y_cell) = model_data.mesh2centroid2Dindex[
-                        (sim_map_dict[name][1], sim_map_dict[name][2])]
-                    west = True
-                    north = True
-                    (lay, row, col) = [sim_map_dict[name][0],
-                                       sim_map_dict[name][1], sim_map_dict[name][2]]
-                    sim_conc = [conc[interval][lay][row][col]]
+                if obs_group[obs_set]['domain'] == 'stream':
+                    sft_location = self.model_data.observations.obs_group[obs_set]['locations']['seg_loc']
 
-#                    if x > x_cell:
-#                        west = False
-#                        west_diff = x-x_cell
-#                    if y < y_cell:
-#                        north = False
-#                        north_diff = y - y_cell
-#
-#                    sim_zone = self.model_data.model_mesh3D[1][lay][row][col]
-#
-#                    if north:
-#                        try:
-#                            if self.model_data.model_mesh3D[1][lay][row-1][col] == sim_zone:
-#                                sim_heads += [head[interval][lay][row-1][col]]
-#                        except IndexError as e:
-#                            print e.mmsg
-#                        if west:
-#                            try:
-#                                if self.model_data.model_mesh3D[1][lay][row-1][col-1] == sim_zone:
-#                                    sim_heads += [head[interval][lay][row-1][col-1]]
-#                             except IndexError as e:
-#                                 print e.mmsg
-#                        else:
-#                            try:
-#                                if self.model_data.model_mesh3D[1][lay][row-1][col+1] == sim_zone:
-#                                    sim_heads += [head[interval][lay][row-1][col+1]]
-#                            except:
-#                                pass
-#
-#                    else:
-#                        try:
-#                            if self.model_data.model_mesh3D[1][lay][row+1][col] == sim_zone:
-#                                sim_heads += [head[interval][lay][row+1][col]]
-#                        except:
-#                            pass
-#                        if west:
-#                            try:
-#                                if self.model_data.model_mesh3D[1][lay][row+1][col-1] == sim_zone:
-#                                    sim_heads += [head[interval][lay][row+1][col-1]]
-#                            except:
-#                                pass
-#                        else:
-#                            try:
-#                                if self.model_data.model_mesh3D[1][lay][row+1][col+1] == sim_zone:
-#                                    sim_heads += [head[interval][lay][row+1][col+1]]
-#                            except:
-#                                pass
-#
-#
-#                    if west:
-#                        try:
-#                            if self.model_data.model_mesh3D[1][lay][row][col-1] == sim_zone:
-#                                sim_heads += [head[interval][lay][row][col-1]]
-#                        except:
-#                            pass
-#                    else:
-#                        try:
-#                            if self.model_data.model_mesh3D[1][lay][row][col+1] == sim_zone:
-#                                sim_heads += [head[interval][lay][row][col+1]]
-#                        except:
-#                            pass
-
-                    sim_conc = np.mean(sim_conc)
-                    f.write('%f\n' % sim_conc)
-
+                    for observation in obs_df.index:
+                        interval = int(obs_df['interval'].loc[observation])
+                        name = obs_df['name'].loc[observation]
+                        seg = sft_location.loc[name]
+                        sft = sft_conc
+                        col_of_interest = obs_type
+                        if obs_type == 'EC': 
+                            col_of_interest = 'SFR-CONCENTRATION'
+                        sim_conc = sft[(sft['SFR-NODE'] == seg) & \
+                                       (sft['time'] == interval)] \
+                                       [col_of_interest]
+                        f.write('%f\n' % sim_conc)
+                
+                if obs_group[obs_set]['domain'] == 'porous':
+                    for observation in obs_df.index:
+                        interval = int(obs_df['interval'].loc[observation])
+                        name = obs_df['name'].loc[observation]
+    #                    x = obs_group[obs_set]['locations']['Easting'].loc[name]
+    #                    y = obs_group[obs_set]['locations']['Northing'].loc[name]
+                        (x_cell, y_cell) = model_data.mesh2centroid2Dindex[
+                            (sim_map_dict[name][1], sim_map_dict[name][2])]
+    #                    west = True
+    #                    north = True
+                        (lay, row, col) = [sim_map_dict[name][0],
+                                           sim_map_dict[name][1], sim_map_dict[name][2]]
+                        sim_conc = [conc[interval][lay][row][col]]
+    
+    #                    if x > x_cell:
+    #                        west = False
+    #                        west_diff = x-x_cell
+    #                    if y < y_cell:
+    #                        north = False
+    #                        north_diff = y - y_cell
+    #
+    #                    sim_zone = self.model_data.model_mesh3D[1][lay][row][col]
+    #
+    #                    if north:
+    #                        try:
+    #                            if self.model_data.model_mesh3D[1][lay][row-1][col] == sim_zone:
+    #                                sim_heads += [head[interval][lay][row-1][col]]
+    #                        except IndexError as e:
+    #                            print e.mmsg
+    #                        if west:
+    #                            try:
+    #                                if self.model_data.model_mesh3D[1][lay][row-1][col-1] == sim_zone:
+    #                                    sim_heads += [head[interval][lay][row-1][col-1]]
+    #                             except IndexError as e:
+    #                                 print e.mmsg
+    #                        else:
+    #                            try:
+    #                                if self.model_data.model_mesh3D[1][lay][row-1][col+1] == sim_zone:
+    #                                    sim_heads += [head[interval][lay][row-1][col+1]]
+    #                            except:
+    #                                pass
+    #
+    #                    else:
+    #                        try:
+    #                            if self.model_data.model_mesh3D[1][lay][row+1][col] == sim_zone:
+    #                                sim_heads += [head[interval][lay][row+1][col]]
+    #                        except:
+    #                            pass
+    #                        if west:
+    #                            try:
+    #                                if self.model_data.model_mesh3D[1][lay][row+1][col-1] == sim_zone:
+    #                                    sim_heads += [head[interval][lay][row+1][col-1]]
+    #                            except:
+    #                                pass
+    #                        else:
+    #                            try:
+    #                                if self.model_data.model_mesh3D[1][lay][row+1][col+1] == sim_zone:
+    #                                    sim_heads += [head[interval][lay][row+1][col+1]]
+    #                            except:
+    #                                pass
+    #
+    #
+    #                    if west:
+    #                        try:
+    #                            if self.model_data.model_mesh3D[1][lay][row][col-1] == sim_zone:
+    #                                sim_heads += [head[interval][lay][row][col-1]]
+    #                        except:
+    #                            pass
+    #                    else:
+    #                        try:
+    #                            if self.model_data.model_mesh3D[1][lay][row][col+1] == sim_zone:
+    #                                sim_heads += [head[interval][lay][row][col+1]]
+    #                        except:
+    #                            pass
+    
+                        sim_conc = np.mean(sim_conc)
+                        f.write('%f\n' % sim_conc)
+                    # end for
+                # end if
+                
     def compareAllObs(self):
 
         concobj = self.importConcs()
@@ -2955,9 +3027,11 @@ class MT3DPostProcess(object):
         # modelmap.plot_bc(plotAll=True)
         # modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
 
-        modelmap.plot_bc('RIV')
-        modelmap.plot_bc('WEL')
-        modelmap.plot_bc('GHB')
+        modelmap.plot_bc('RIV', plotAll=True)
+        modelmap.plot_bc('WEL', plotAll=True)
+        modelmap.plot_bc('GHB', plotAll=True)
+        modelmap.plot_bc('SFR', plotAll=True)
+        modelmap.plot_bc('DRN', plotAll=True)
         # modelmap.plot_bc('DRN')
         ax.axes.xaxis.set_ticklabels([])
 
