@@ -1676,7 +1676,9 @@ class ModelParameters(object):
         
     def print_parameters(self):
         params = ["{} \n".format(key) for key in self.param.keys()]
-        print("List of parameters defined: \n {}".format(params))
+        params = sorted(params)
+        params_text = " ".join(params)
+        print("List of parameters defined: \n {}".format(params_text))
 
             
 class ModelObservations(object):
