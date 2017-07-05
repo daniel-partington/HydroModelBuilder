@@ -622,9 +622,9 @@ class ModflowModel(object):
                 sfr_location = self.model_data.observations.obs_group[obs_set]['locations']['seg_loc']
                 for zone in obs_df['zone'].unique():
                     if len(obs_df['zone'].unique()) == 1:
-                        zone_txt = obs_type
+                        zone_txt = obs_set
                     else:
-                        zone_txt = obs_type + zone
+                        zone_txt = obs_set + zone
                     # end if
                     with open(os.path.join(self.data_folder, 'observations_' + zone_txt + '.txt'), 'w') as f:
                         obs_df_zone = obs_df[obs_df['zone'] == zone]
@@ -2647,15 +2647,21 @@ class Radon_EC_simple(object):
 
 class MT3DPostProcess(object):
 
-    def __init__(self, mf_model):
+    def __init__(self, mf_model, mt_name=None):
         self.mf_model = mf_model
+        self.mt_name = mt_name
 
     def importConcs(self):
-        self.concobj = bf.UcnFile(self.mf_model.data_folder + 'MT3D001.UCN')
+        self.concobj = bf.UcnFile(os.path.join(self.mf_model.data_folder,'MT3D001.UCN'))
         return self.concobj
 
     def importSftConcs(self):
-        self.sft_conc
+        self.sft_conc = pd.read_csv(os.path.join(
+                            self.mf_model.data_folder,
+                            self.mt_name),
+                            delim_whitespace=True, 
+                            skiprows=1)
+        return self.sft_conc
 
     def ConcsByZone(self, concs):
 
@@ -2701,7 +2707,7 @@ class MT3DPostProcess(object):
                 continue
             self.obs_sim_zone += [[obs, sim, zone, x, y]]
 
-    def writeObservations(self):
+    def writeObservations(self, specimen):
 
         # Set model output arrays to None to initialise
         conc = None
@@ -2717,19 +2723,20 @@ class MT3DPostProcess(object):
             if obs_type not in ['concentration', 'EC', 'Radon']:
                 continue
             else:
-                if obs_type == 'concentration':
+                if (obs_type == 'concentration') & (specimen == 'C14'):
                     # Check if model outputs have already been imported and if not import
                     if not conc:
                         concobj = self.importConcs()
                         conc = concobj.get_alldata()  # (totim=times[0])
                     # end if
-                elif obs_type == 'EC':
-                    continue #^&*^&*^&*^&*^&*^&*^&*^&*^&*^*^&*^&*^&**&^*&^*&^*&
+                elif (obs_type == 'EC') & (specimen == 'EC'):
                     try:
-                        sft_conc
+                        sft_conc['TIME']
                     except:
                         sft_conc = self.importSftConcs()
                 elif obs_type == 'Radon':
+                    continue
+                else:
                     continue
                 # end if
 
@@ -2742,18 +2749,19 @@ class MT3DPostProcess(object):
             with open(data_folder + os.path.sep + 'observations_' + obs_set + '.txt', 'w') as f:
 
                 if obs_group[obs_set]['domain'] == 'stream':
-                    sft_location = self.model_data.observations.obs_group[obs_set]['locations']['seg_loc']
+                    sft_location = self.mf_model.model_data.observations.obs_group[obs_set]['locations']['seg_loc']
 
                     for observation in obs_df.index:
                         interval = int(obs_df['interval'].loc[observation])
                         name = obs_df['name'].loc[observation]
                         seg = sft_location.loc[name]
                         sft = sft_conc
+                        times = sft['TIME'].unique()
                         col_of_interest = obs_type
                         if obs_type == 'EC': 
                             col_of_interest = 'SFR-CONCENTRATION'
                         sim_conc = sft[(sft['SFR-NODE'] == seg) & \
-                                       (sft['time'] == interval)] \
+                                       (sft['TIME'] == times[interval])] \
                                        [col_of_interest]
                         f.write('%f\n' % sim_conc)
                 
