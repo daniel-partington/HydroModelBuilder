@@ -110,21 +110,22 @@ def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
     # End for
     return mesh3D_1
 
+
 def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
                              min_height, max_height):
     raster_set = {}
 
-    print hu_raster_path
+    print "HU Raster Path:", hu_raster_path
 
     for raster in hu_raster_files:
-        fname = os.path.join(hu_raster_path, raster) # + hu_ext
-        print 'Processing: ', fname    
-        ds = gdal.Open(fname, gdalconst.GA_ReadOnly)    
-        raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(), 
-                              ds.GetRasterBand(1).GetNoDataValue()] 
+        fname = os.path.join(hu_raster_path, raster)  # + hu_ext
+        print 'Processing: ', fname
+        ds = gdal.Open(fname, gdalconst.GA_ReadOnly)
+        raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(),
+                              ds.GetRasterBand(1).GetNoDataValue()]
 
         ds = gdal.Open(fname, gdalconst.GA_ReadOnly)
-        raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(), 
+        raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(),
                               ds.GetRasterBand(1).GetNoDataValue()]
 
         if raster == hu_raster_files[0]:
@@ -143,7 +144,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
         Input:
             data:    numpy array of any dimension
-            invalid: a logical array of same shape as 'data'. True cells set 
+            invalid: a logical array of same shape as 'data'. True cells set
                      where data value should be replaced.
                      If None (default), use: invalid  = np.isnan(data)
 
@@ -161,7 +162,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
         data = raster_set[raster][0]
         #invalid = np.ma.masked_array(data, data == raster_set[raster][1])
         #data[data==np.min(data)] = np.NAN
-        invalid = np.ma.masked_equal(data, np.min(data)) #raster_set[raster][1])
+        invalid = np.ma.masked_equal(data, np.min(data))  # raster_set[raster][1])
         raster_set[raster] += [invalid]
         a = fill(data, invalid=invalid.mask)
         raster_set[raster] += [a]
@@ -172,7 +173,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
         a = None
     # end for
 
-    #return raster_set
+    # return raster_set
 
     ###########################################################################
     ###########################################################################
@@ -197,7 +198,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 #    if diff.min() <= 0.:
 #        import sys
 #        sys.exit("Meshing error, thickness negative")
-#    
+#
 #    # Check overlay of layers:
 #    r_s_active_t_new = raster_set[hu_raster_files[2]][2]
 #    r_s_active_b_new = raster_set[hu_raster_files[3]][2]
@@ -214,14 +215,13 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 #    plt.colorbar()
 #    #print new_diff3.max(), new_diff3.min()
 #
-#    
 #
-#    return 
+#
+#    return
 
     ###########################################################################
     ###########################################################################
     ###########################################################################
-
 
     # Determine required number of layers based on
     # Note: this is integer division
@@ -426,18 +426,18 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
         for i in xrange(thickness.shape[0]):
             fig = plt.figure()
-            fig.add_subplot(1, 3, 1, aspect='equal')        
+            fig.add_subplot(1, 3, 1, aspect='equal')
             plt.imshow(mesh_zone_thickness[i], interpolation='none')
             print(i, mesh_zone_thickness[i].min(), mesh_zone_thickness[i].max())
             plt.title('Thickness in mesh: ' + hu_raster_files[i * 2])
             plt.colorbar()
-            fig.add_subplot(1, 3, 2, aspect='equal')        
-            plt.imshow(raster_thickness[i], interpolation='none')        
+            fig.add_subplot(1, 3, 2, aspect='equal')
+            plt.imshow(raster_thickness[i], interpolation='none')
             print(i, raster_thickness[i].min(), mesh_zone_thickness[i].max())
             plt.title('Thickness in raster')
             plt.colorbar()
-            fig.add_subplot(1, 3, 3, aspect='equal')        
-            plt.imshow(mesh_zone_thickness[i] - raster_thickness[i], interpolation='none')        
+            fig.add_subplot(1, 3, 3, aspect='equal')
+            plt.imshow(mesh_zone_thickness[i] - raster_thickness[i], interpolation='none')
             plt.title('Difference in thickness')
             plt.colorbar()
 
@@ -455,16 +455,16 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
         for i in xrange(thick_shape):
             fig = plt.figure()
-            fig.add_subplot(1, 3, 1, aspect='equal')        
+            fig.add_subplot(1, 3, 1, aspect='equal')
             plt.imshow(thickness2[i], interpolation='none')
             plt.title('Thickness in active cells: ', hu_raster_files[i * 2][0:5])
             plt.colorbar()
-            fig.add_subplot(1, 3, 2, aspect='equal')        
-            plt.imshow(thick_zero[i], interpolation='none')        
+            fig.add_subplot(1, 3, 2, aspect='equal')
+            plt.imshow(thick_zero[i], interpolation='none')
             plt.title('Areas where thickness is 0')
             plt.colorbar()
-            fig.add_subplot(1, 3, 3, aspect='equal')        
-            plt.imshow(zone_matrix[i], interpolation='none')        
+            fig.add_subplot(1, 3, 3, aspect='equal')
+            plt.imshow(zone_matrix[i], interpolation='none')
             plt.title('Zonal delineation')
             plt.colorbar()
 
@@ -498,13 +498,13 @@ if __name__ == "__main__":
     # "cps_2b_bb"]
 
     hu_raster_path = r"C:\Workspace\part0075\MDB modelling\testbox\00_Campaspe_Cascade\01_steady_state\structured_model_grid_1000m"
-    hu_raster_files = ["qa_1t_model_grid.tif", "qa_2b_model_grid.tif", \
-                       "utb_1t_model_grid.tif", "utb_2b_model_grid.tif", \
-                       "utqa_1t_model_grid.tif", "utqa_2b_model_grid.tif", \
-                       "utam_1t_model_grid.tif", "utam_2b_model_grid.tif", \
-                       "utaf_1t_model_grid.tif", "utaf_2b_model_grid.tif", \
-                       "lta_1t_model_grid.tif", "lta_2b_model_grid.tif", \
-                       "bse_1t_model_grid.tif", "bse_2b.tif_model_grid.tif" \
+    hu_raster_files = ["qa_1t_model_grid.tif", "qa_2b_model_grid.tif",
+                       "utb_1t_model_grid.tif", "utb_2b_model_grid.tif",
+                       "utqa_1t_model_grid.tif", "utqa_2b_model_grid.tif",
+                       "utam_1t_model_grid.tif", "utam_2b_model_grid.tif",
+                       "utaf_1t_model_grid.tif", "utaf_2b_model_grid.tif",
+                       "lta_1t_model_grid.tif", "lta_2b_model_grid.tif",
+                       "bse_1t_model_grid.tif", "bse_2b.tif_model_grid.tif"
                        ]
 
     dx = "1000m"
@@ -521,7 +521,7 @@ if __name__ == "__main__":
     # hu_ext = "_mb"
     vtk_out = 'Campaspe_all_model_mesh'
 
-    out_path = hu_raster_path #r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\testing\\"
+    out_path = hu_raster_path  # r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\testing\\"
 
     # Minimum thickness of cells
     min_height = 1
@@ -529,4 +529,4 @@ if __name__ == "__main__":
     max_height = 1000
 
     ret = map_raster_array_to_mesh(hu_raster_path, hu_raster_files,
-                             out_path, vtk_out, min_height, max_height)
+                                   out_path, vtk_out, min_height, max_height)
