@@ -44,8 +44,6 @@ class GWModelBuilder(object):
         :param GISInterface: instance of GISInterface, object to allow interactions with GIS data
         :param data_format: str, format of data files
         :param target_attr: list, target attributes
-
-        *** This list and every function description needs significant updating ...
         """
         # Define the constants for the model data types to use for checking input
         self.types = ModelBuilderType()
@@ -69,7 +67,6 @@ class GWModelBuilder(object):
         self.name = name
         self.model_type = model_type
         self.mesh_type = mesh_type
-
         self.units = {}
         if units != None:
             if type(units) == list:
@@ -614,6 +611,9 @@ class GWModelBuilder(object):
     # End read_poly()
 
     def _get_poly_name_and_obj(self, poly):
+        """
+        :param poly:
+        """
         if type(poly) is str:
             poly = self.read_poly(poly)
         # End if
