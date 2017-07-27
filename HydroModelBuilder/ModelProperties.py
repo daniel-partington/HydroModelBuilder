@@ -1,3 +1,6 @@
+import pandas as pd
+
+
 class ModelTime(object):
     """
     Class to set the temporal aspects of the model
