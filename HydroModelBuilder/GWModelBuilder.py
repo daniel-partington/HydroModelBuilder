@@ -2,6 +2,7 @@ import cPickle as pickle
 import os
 import shutil
 import sys
+from itertools import groupby as g
 
 import numpy as np
 import pandas as pd
@@ -28,9 +29,10 @@ class GWModelBuilder(object):
     from this class when it is packaged can be used with a separate model interface.
     """
 
-    def __init__(self, name=None, model_type=None, mesh_type=None,
-                 units=None, data_folder=None, out_data_folder=None, model_data_folder=None,
-                 GISInterface=None, data_format='binary', target_attr=None, **kwargs):
+    def __init__(self, name=None, model_type=None, mesh_type=None, units=None,
+                 data_folder=None, out_data_folder=None, model_data_folder=None,
+                 GISInterface=None, data_format='binary', target_attr=None,
+                 **kwargs):
         """
         :param name: str, model name.
         :param model_type: str, Type of model, e.g. MODFLOW (makes use of flopy), HGS (uses pyHGS ... which is not developed yet ;) ).
@@ -123,6 +125,12 @@ class GWModelBuilder(object):
         self.base_data_register = []
         self.gridded_data_register = []
 
+        # Temp object to store river mapping data
+        self.river_mapping = {}
+
+        # Object to handle all of the SFR specific data in pandas dataframes
+        self.mf_sfr_df = {}
+
         # Set default target attributes
         if target_attr is None:
             self.target_attr = [
@@ -160,7 +168,9 @@ class GWModelBuilder(object):
                 'gridded_data_register',
                 # Some necessary parameters for now which should be replaced later
                 'gridHeight',
-                'gridWidth'
+                'gridWidth',
+                'river_mapping',
+                'mf_sfr_df'
             ]
         else:
             self.target_attr = target_attr
@@ -521,6 +531,10 @@ class GWModelBuilder(object):
         """
         mesh3D_1 = self.model_mesh3D[1]
 
+        def most_common_oneliner(L):
+            return max(g(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
+        # End most_common_oneliner()
+
         # Clean up idle cells:
         (lay, row, col) = mesh3D_1.shape
         for p in xrange(passes):
@@ -560,12 +574,12 @@ class GWModelBuilder(object):
                                 # End if
                                 from itertools import groupby as g
 
-                                def most_common_oneliner(L):
-                                    return max(g(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
-
                                 most_common = most_common_oneliner(neighbours)
                                 if most_common != -1:
                                     target_zone[j][i] = most_common_oneliner(neighbours)
+                                # End if
+                            # End if
+                        # End if
 
                         # Check North, South, East, West zones
                         # If any condition is true, then continue on
@@ -575,8 +589,6 @@ class GWModelBuilder(object):
                             ((i < col - 1) and (target_zone[j][i + 1] != -1)) or  # East
                                 ((i > 0) and (target_zone[j][i - 1] != -1))):         # West
                             continue
-                        # End if
-
                         # End if
 
                         #  Check neighbours
@@ -591,7 +603,6 @@ class GWModelBuilder(object):
 
                         # None of the above conditions were true
                         target_zone[j][i] = -1
-
                     # End for
                 # End for
             # End for
@@ -620,9 +631,11 @@ class GWModelBuilder(object):
         tmp = cache.get((p1, p2), None)
         if tmp is not None:
             return tmp
+        # End if
 
         tmp = ((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)**0.5
         cache[(p1, p2)] = tmp
+
         return tmp
     # End _pointsdist()
 
@@ -641,6 +654,9 @@ class GWModelBuilder(object):
                     dist_min, closest_key = dist, key
                     if dist_min < half_grid_height:
                         break
+                    # End if
+                # End if
+            # End for
 
             cache[(centroid, dist_min)] = self.centroid2mesh2Dindex[closest_key]
 
@@ -653,7 +669,8 @@ class GWModelBuilder(object):
     # There is some repitition from above and this needs sorting out!!
     ###########################################################################
 
-    def create_river_dataframe(self, poly_file, surface_raster_file, plotting=False):
+    def create_river_dataframe(self, name, poly_file, surface_raster_file,
+                               plotting=False, avoid_collocation=False):
         poly_file = self.GISInterface.read_poly(poly_file)
         points_list, points_dict = self.GISInterface.polyline_explore(poly_file)
         points_dict = self._get_start_and_end_points_from_line_features(points_dict)
@@ -686,6 +703,7 @@ class GWModelBuilder(object):
             # End if
             lengths += [points_dist_collection([amalg_riv_points_collection[i - 1][-1]] +
                                                amalg_riv_points_collection[i])]
+        # End for
 
         surf_raster_fname = os.path.join(self.out_data_folder_grid, 'surf_raster_processed.pkl')
         if os.path.exists(surf_raster_fname):
@@ -729,8 +747,24 @@ class GWModelBuilder(object):
         # End for
 
         river_df = pd.DataFrame({'reach': riv_reach, 'strtop': riv_elevations})
+        # In case of hitting no data values replace these with nan
+        river_df.loc[river_df['strtop'] < 0, 'strtop'] = np.nan
+        # Then to fill the Nan values interpolate or drop??
+        river_df.dropna(inplace=True)
+
+        # Group the dataframe stream points by reach
         river_seg = river_df.groupby('reach').min()
         river_seg['rchlen'] = lengths
+        river_seg['amalg_riv_points'] = amalg_riv_points
+
+        # Check that order of elevations if from upstream to downstream ...
+        elev = river_seg['strtop'].tolist()
+        # Reorder the dataframe if this is the case
+        if elev[0] < elev[-1]:
+            river_seg = river_seg.reindex(index=river_seg.index[::-1])
+        # end if
+
+        # Now get the cumulative length along the stream
         river_seg['Cumulative Length'] = river_seg['rchlen'].cumsum()
 
         river_reach_elev = river_seg['strtop'].tolist()
@@ -766,42 +800,48 @@ class GWModelBuilder(object):
         # End for
 
         river_seg['slope'] = slopes
-        amalg_riv_points_naive_layer = [[0] + x for x in amalg_riv_points]
+
+        amalg_riv_points_naive_layer = [[0] + x for x in river_seg['amalg_riv_points'].tolist()]
         river_seg['k'] = [x[0] for x in amalg_riv_points_naive_layer]
-        river_seg['j'] = [x[1] for x in amalg_riv_points_naive_layer]
-        river_seg['i'] = [x[2] for x in amalg_riv_points_naive_layer]
-        river_seg['amalg_riv_points'] = amalg_riv_points
+        river_seg['i'] = [x[1] for x in amalg_riv_points_naive_layer]
+        river_seg['j'] = [x[2] for x in amalg_riv_points_naive_layer]
         river_seg['amalg_riv_points_collection'] = [amalg_riv_points_collection[x]
                                                     for x in range(len(amalg_riv_points_collection.keys()))]
-        self.river_mapping = river_seg
-    # End create_river_dataframe()
 
-    def get_closest_riv_segments(self, points):
+        self.river_mapping[name] = river_seg
+
+    def get_closest_riv_segments(self, name, points):
         '''
         Fuction to find the closest river segment defined in self.river_mapping
         for the points passed to the function.
 
         This function requires that self.river_mapping exists, which occurs
         after running "self.create_river_dataframe"
+
+        param:: name: Name given to stream or river when create_river_dataframe
+        was run
+        param:: points: points for which to find the closest to named river
+
         '''
         try:
-            self.river_mapping
+            self.river_mapping[name]
         except NameError:
             print("This function can only be run after running 'create_river_dataframe'")
         # End except
 
         river_points = []
-        amalg_riv_points = self.river_mapping['amalg_riv_points_collection'].tolist()
-        for i in range(self.river_mapping.shape[0]):
+        amalg_riv_points = self.river_mapping[name]['amalg_riv_points_collection'].tolist()
+        riv_len = self.river_mapping[name].shape[0]
+        for i in range(riv_len):
             river_points += amalg_riv_points[i]
         # End for
         closest = self.do_kdtree(np.array(river_points), np.array(points))
 
         river_seg_close = []
         for index in closest:
-            for i in range(self.river_mapping.shape[0]):
+            for i in range(riv_len):
                 if river_points[index] in amalg_riv_points[i]:
-                    river_seg_close += [i]
+                    river_seg_close += [i + 1]  # Note that seg is 1-based indexing so we add 1 here
                     continue
                 # End if
             # End for
@@ -1042,6 +1082,9 @@ class GWModelBuilder(object):
         return point_merge
     # End _points_merge()
 
+    def save_MODFLOW_SFR_dataframes(self, name, reach_df, seg_df):
+        self.mf_sfr_df[name] = MODFLOW_SFR_dataframes(reach_df, seg_df)
+
     ###########################################################################
     ###########################################################################
     ###########################################################################
@@ -1213,48 +1256,86 @@ class GWModelBuilder(object):
                 if self.observations.obs_group[key]['domain'] == 'porous':
                     points = [list(x) for x in self.observations.obs_group[
                         key]['locations'].to_records(index=False)]
-                    self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_3Dmesh(
-                        points, identifier=self.observations.obs_group[key]['locations'].index)
+                    self.observations.obs_group[key]['mapped_observations'] = \
+                        self.map_points_to_3Dmesh(points,
+                                                  identifier=self.observations
+                                                  .obs_group[key]
+                                                  ['locations'].index)
 
                     # Check that 'mapped_observations' are in active cells and if not then set
                     # the observation to inactive
-                    for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
-                        [k, j, i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
+                    for obs_loc in self.observations.obs_group[
+                            key]['mapped_observations'].keys():
+                        [k, j, i] = self.observations.obs_group[key] \
+                            ['mapped_observations'][obs_loc]
                         if self.model_mesh3D[1][k][j][i] in ignore:
                             self.observations.obs_group[key]['time_series'].loc[
-                                self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
+                                self.observations.obs_group[key]['time_series']
+                                ['name'] == obs_loc, 'active'] = False
                         else:
                             self.observations.obs_group[key]['time_series'].loc[
-                                self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'zone'] = "{}{}".format(key, int(self.model_mesh3D[1][k][j][i]))
-                        # End if
-                    # End for
+                                self.observations.obs_group[key]
+                                ['time_series']['name'] == obs_loc, 'zone'] \
+                                = "{}{}".format(key, int(
+                                    self.model_mesh3D[1][k][j][i]))
+
                 elif self.observations.obs_group[key]['domain'] == 'surface':
                     if self.observations.obs_group[key]['real']:
                         points = [list(x) for x in self.observations.obs_group[
                             key]['locations'].to_records(index=False)]
-                        self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_2Dmesh(
-                            points, identifier=self.observations.obs_group[key]['locations'].index)
+                        self.observations.obs_group[key]['mapped_observations'] \
+                            = self.map_points_to_2Dmesh(
+                                points,
+                                identifier=self.observations.obs_group[key]
+                            ['locations'].index)
 
                         # Check that 'mapped_observations' are in active cells and if not then set
                         # the observation to inactive
-                        for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
+                        for obs_loc in self.observations.obs_group[key][
+                                'mapped_observations'].keys():
                             [j, i] = self.observations.obs_group[
                                 key]['mapped_observations'][obs_loc]
                             if self.model_mesh3D[1][0][j][i] in ignore:
-                                self.observations.obs_group[key]['time_series'].loc[
-                                    self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'active'] = False
+                                self.observations.obs_group[key]['time_series'] \
+                                    .loc[self.observations
+                                         .obs_group[key]['time_series']['name'] ==
+                                         obs_loc, 'active'] = False
                             else:
-                                self.observations.obs_group[key]['time_series'].loc[
-                                    self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'zone'] = "{}{}".format(key, int(self.model_mesh3D[1][k][j][i]))
-                            # End if
-                        # End for
+                                self.observations.obs_group[key]['time_series'] \
+                                    .loc[self.observations
+                                         .obs_group[key]['time_series']['name'] ==
+                                         obs_loc, 'zone'] = \
+                                    "{}{}".format(key, int(
+                                        self.model_mesh3D[1][k][j][i]))
+                            # end if
+                        # end for
                     else:
                         self.observations.obs_group[key]['mapped_observations'] = {}
                         for index, loc in enumerate(self.observations.obs_group[key]['locations']):
                             self.observations.obs_group[key]['mapped_observations'][index] = loc
-                        # End for
-                    # End if
-                # End if
+                        # end for
+                    # end if
+                elif self.observations.obs_group[key]['domain'] == 'stream':
+                    if self.observations.obs_group[key]['real']:
+                        self.observations.obs_group[key]['mapped_observations'] = {}
+                        for index, loc in enumerate(self.observations.obs_group[key]['locations']):
+                            self.observations.obs_group[key]['mapped_observations'][index] = loc
+
+#                        for obs_loc in self.observations.obs_group[key][
+#                            'mapped_observations'].keys():
+#                            [j, i] = self.observations.obs_group[
+#                                key]['mapped_observations'][obs_loc]
+#                            self.observations.obs_group[key]['time_series'].loc[
+#                                self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'zone'] = "{}{}".format(key, int(self.model_mesh3D[1][k][j][i]))
+#                            # end if
+#                        # end for
+                    else:
+                        self.observations.obs_group[key]['mapped_observations'] = {}
+                        for index, loc in enumerate(self.observations.obs_group[key]['locations']):
+                            self.observations.obs_group[key]['mapped_observations'][index] = loc
+                        # end for
+                    # end if
+                # end if
                 ts = self.observations.obs_group[key]['time_series']
                 ts = ts[ts['active'] == True]
                 self.observations.obs_group[key]['time_series'] = ts
@@ -1307,8 +1388,11 @@ class GWModelBuilder(object):
             points = []
             values = []
             for key in points_dict:
-                points += [points_dict[key]]
-                values += [float(values_dataframe[key])]
+                try:
+                    values += [float(values_dataframe[key])]
+                    points += [points_dict[key]]
+                except:
+                    pass
 
         return interpolation.Interpolator(self.mesh_type, np.array(points), np.array(values),
                                           self.model_mesh_centroids, method=method, use=use,
@@ -1341,7 +1425,7 @@ class GWModelBuilder(object):
                 self.observations.obs_group[key]['time_series']['interval'] = 0
         else:
             for key in self.observations.obs_group.keys():
-                self.observations.obs_group[key]['time_series']['interval'] = self.observations.obs_group[key][
+                self.observations.obs_group[key]['time_series'].loc[:, 'interval'] = self.observations.obs_group[key][
                     'time_series'].apply(lambda row: self._findInterval(row, self.model_time.t['dateindex']), axis=1)
                 # remove np.nan values from the obs as they are not relevant
                 if self.observations.obs_group[key]['real']:
@@ -1384,10 +1468,26 @@ class GWModelBuilder(object):
                 print 'Parameters unchanged for : ', not_updated
     # End updateModelParameters()
 
-    def create_pilot_points(self, name):
-        self.pilot_points[name] = pilotpoints.PilotPoints(
-            output_directory=self.out_data_folder_grid, additional_name=name)
-    # End create_pilot_points()
+    def generate_update_report(self):
+        """"
+        Generate report on boundaries and properties that have been updated
+
+        For use in model running to report on which boundaries and properties
+        have been changed in the run scripts. Requires use of update commands
+        for both properties and boundaries to work, i.e.,
+            boundaries.update_boundary_array
+            update_model_properties
+
+        """
+        self.boundaries.generate_update_report()
+        self.properties.generate_update_report()
+
+    def create_pilot_points(self, name, linear=False):
+        if linear == False:
+            self.pilot_points[name] = pilotpoints.PilotPoints(
+                output_directory=self.out_data_folder_grid, additional_name=name)
+        else:
+            self.pilot_points[name] = PilotPointsLinear()
 
     def save_pilot_points(self):
         self.save_obj(self.pilot_points, os.path.join(self.out_data_folder_grid, 'pilot_points'))
@@ -1473,4 +1573,4 @@ class GWModelBuilder(object):
         self.writeRegister2file()
         self.save_mapped_dictionaries()
     # End __exit__()
-# End GWModelBuilder
+# End GWModelBuilder()

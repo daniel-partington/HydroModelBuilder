@@ -1,4 +1,5 @@
 import os
+import datetime
 
 import pandas as pd
 import numpy as np
@@ -6,11 +7,11 @@ import matplotlib.pyplot as plt
 
 import flopy
 import flopy.utils.binaryfile as bf
-
+from flopy.utils.sfroutputfile import SfrFile
 
 class ModflowModel(object):
 
-    def __init__(self, model_data, data_folder=None, verbose=True, **kwargs):
+    def __init__(self, model_data, data_folder=None, **kwargs):
         """
         :param name: model_data: Object containing all the data for the model
         """
@@ -22,9 +23,7 @@ class ModflowModel(object):
         else:
             self.data_folder = os.path.join(data_folder, 'model_' + self.name) + os.path.sep
         # end if
-
-        self.verbose = verbose
-
+       
 #        if stream_representation == None:
 #            self.stream_representation = 'RIV'
 #        elif stream_representation not in ['RIV', 'STR', 'SFR']:
@@ -46,7 +45,8 @@ class ModflowModel(object):
         self.xul = self.model_data.model_boundary[0]
         self.yul = self.model_data.model_boundary[3]
 
-        self.headtol = 1E-6
+        self.headtol = 1E-3 # 1E-6
+        self.fluxtol = 1.0E4
 
         if self.model_data.model_time.t['steady_state'] == True:
             self.nper = 1
@@ -61,7 +61,7 @@ class ModflowModel(object):
                 x.total_seconds() / 86400. for x in self.model_data.model_time.t['intervals']]  # 365000
             self.nstp = 1  # 10
             self.steady = False
-            self.start_datetime = self.model_data.model_time.t['start_time']
+            self.start_datetime = self.model_data.model_time.t['dateindex'][0]
 
         # Initial data:
         # self.model_data.model_mesh3D[0][1:] + 20.
@@ -99,6 +99,8 @@ class ModflowModel(object):
                                             perlen=self.perlen,
                                             nstp=self.nstp,
                                             steady=self.steady)  # ,
+        if self.verbose:
+            if self.check: self.dis.check()
         # start_datetime = self.start_datetime)
     # End createDiscretisation()
 
@@ -114,13 +116,16 @@ class ModflowModel(object):
 
         self.bas = flopy.modflow.ModflowBas(self.mf, ibound=ibound, strt=strt)
 
+        if self.verbose:
+            if self.check: self.bas.check()
+
     # End setupBASPackage()
 
-    def setupNWTpackage(self, headtol):
+    def setupNWTpackage(self, headtol, fluxtol):
         # Specify NWT settings
         self.nwt = flopy.modflow.ModflowNwt(self.mf,
                                             headtol=headtol,  # 1E-4
-                                            fluxtol=1.0E1,  # 1.0E1
+                                            fluxtol=fluxtol,  # 1.0E1
                                             linmeth=2,
                                             iprnwt=1,
                                             ibotav=1,
@@ -148,15 +153,19 @@ class ModflowModel(object):
                                             hdry=-999.9,
                                             laywet=0,
                                             laytyp=1)
-
+        
     # end setupUPWpackage
 
     def createRIVpackage(self, lrcd=None):
         self.riv = flopy.modflow.ModflowRiv(self.mf, ipakcb=53, stress_period_data=lrcd)
+        if self.verbose:
+            if self.check: self.riv.check()
     # end createRIVpackage
 
     def createSTRpackage(self, STRvariables=None):
         self.str = flopy.modflow.ModflowStr(self.mf, ipakcb=53, stress_period_data=STRvariables)
+        if self.verbose:
+            if self.check: self.str.check()
     # end createSTRpackage
 
     def createSFRpackage(self, reach_data, segment_data):
@@ -166,7 +175,7 @@ class ModflowModel(object):
             transroute = True
         nstrm = reach_data.shape[0]
         nss = segment_data[0].shape[0]
-            
+        dataset_5 = {key:[nss, 0, 0] for key in segment_data.keys()}
         if self.verbose:
             print('SFR: Assuming units of model are m^3/d, change "const" if this is not true')
         # end if
@@ -192,7 +201,7 @@ class ModflowModel(object):
             segment_data=segment_data, # "Data Set 4b", dict with recarray of segment data for each stress period
             channel_geometry_data=None, # "Data Set 6d", Can ignore for now, but necessary if icalc is > 1
             channel_flow_data=None, # "Data Set 6e"
-            dataset_5={0: [nss, 0, 0]}, # This is not required unless one wants to mod printing across stress periods 
+            dataset_5=dataset_5, # This is not required unless one wants to mod printing across stress periods 
             reachinput=True,  
             transroute=transroute,
             tabfiles=False, 
@@ -201,10 +210,10 @@ class ModflowModel(object):
             unit_number=None, # Leave as None and let flopy define unit_number
             filenames=None # Leave as None and let flopy define output names
             )
+        
         if self.verbose:
-            print(self.sfr.check())
+            if self.check: self.sfr.check()
         # end if
-        #self.sfr.plot(key='iseg')
     # end createSFRpackage        
 
     def createGagepackage(self, gages, files=None):
@@ -214,20 +223,28 @@ class ModflowModel(object):
             files += ['Gage.gag{}'.format(x) for x in range(len(gages))]
         # end if
         self.gage = flopy.modflow.ModflowGage(self.mf, numgage=len(gages), gage_data=gages, filenames=None)
+        if self.verbose:
+            if self.check: self.gage.check()
     # end createGagepackage
 
     def createDRNpackage(self, lrcsc=None):
         self.drn = flopy.modflow.ModflowDrn(self.mf, ipakcb=53, stress_period_data=lrcsc)
+        if self.verbose:
+            if self.check: self.drn.check()
     # end createDRNpackage
 
     def createGHBpackage(self, lrcsc=None):
         self.ghb = flopy.modflow.ModflowGhb(self.mf, ipakcb=53, stress_period_data=lrcsc)
+        if self.verbose:
+            if self.check: self.ghb.check()
     # end createGHBpackage
 
     def createRCHpackage(self, rchrate=None):
         # Add RCH package to the MODFLOW model to represent recharge
         # rchrate  = 1.0E-3 * np.random.rand(self.nrow, self.ncol)
         self.rch = flopy.modflow.ModflowRch(self.mf, ipakcb=53, rech=rchrate, nrchop=3)
+        if self.verbose:
+            if self.check: self.rch.check()
     # end createRCHpackage
 
     def createWELpackage(self, lrcq=None):
@@ -237,7 +254,8 @@ class ModflowModel(object):
         #lrcq = {}
         # lrcq[0] = [[0, 7, 7, -100.]] # layer, row, column, flux
         self.wel = flopy.modflow.ModflowWel(self.mf, ipakcb=53, stress_period_data=lrcq)
-
+        if self.verbose:
+            if self.check: self.wel.check()
     # end createWElpackage
 
     def createOCpackage(self):
@@ -262,14 +280,16 @@ class ModflowModel(object):
         self.mf.write_input()
     # end finaliseModel
 
-    def buildMODFLOW(self, transport=False, write=True):
+    def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False):
 
         self.mf = flopy.modflow.Modflow(self.name, exe_name=self.executable,
                                         model_ws=self.data_folder, version='mfnwt')
+        self.verbose = verbose
+        self.check = check
 
         self.createDiscretisation()
         self.setupBASPackage(self.nlay, self.nrow, self.ncol)
-        self.setupNWTpackage(self.headtol)
+        self.setupNWTpackage(self.headtol, self.fluxtol)
         self.setupUPWpackage()
         self.createOCpackage()
 
@@ -330,6 +350,9 @@ class ModflowModel(object):
         if write == True:
             self.finaliseModel()
 
+        if self.verbose:
+            if self.check: self.checkMODFLOW()
+
     # End buildMODFLOW()
 
     def checkMODFLOW(self):
@@ -340,8 +363,13 @@ class ModflowModel(object):
 
         success, buff = self.mf.run_model(silent=silent)
         if not success:
-            raise Exception('MODFLOW did not terminate normally.')
-        # End if
+            #raise Exception('MODFLOW did not terminate normally.')
+            convergence = self.checkConvergence(fail=True)
+        else:
+            convergence = self.checkConvergence()
+        # end if            
+        return convergence
+
     # End runMODFLOW()
 
     #**************************************************************************
@@ -352,7 +380,7 @@ class ModflowModel(object):
     #**************************************************************************
     #**************************************************************************
 
-    def checkConvergence(self, path=None, name=None):
+    def checkConvergence(self, path=None, name=None, fail=False):
         converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP",  # Clear statement of model fail in list file
                                  " PERCENT DISCREPANCY =         200.00",  # Convergence but extreme discrepancy in results
                                  " NaN "  # Something big went wrong but somehow convergence was reached?
@@ -360,36 +388,44 @@ class ModflowModel(object):
         if path:
             with open(os.path.join(path, name) + '.list', 'r') as f:
                 list_file = f.read()
-            for converge_fail in converge_fail_options:
-                if converge_fail in list_file:
-                    print "*** Convergence failure ***"
-                    import datetime
-                    now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
-                    with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
-                        fail.write("Model did not converge, @ %s" %
-                                   datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-                        fail.write("Error: \n {}".format(converge_fail))
-                    return False
-                # end if
-            # end for
-            return True
-
         else:
             with open(os.path.join(self.data_folder, self.name + '.list'), 'r') as f:
                 list_file = f.read()
-            for converge_fail in converge_fail_options:
-                if converge_fail in list_file:
-                    print "*** Convergence failure ***"
-                    import datetime
-                    now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
-                    with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
-                        fail.write("Model did not converge, @ %s" %
-                                   datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-                        fail.write("Error: \n {}".format(converge_fail))
-                    return False
-                # end if
-            # end for
-            return True
+
+        for converge_fail in converge_fail_options:
+            if converge_fail in list_file:
+                print "*** Convergence failure ***"
+                now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
+                with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
+                    fail.write("Model did not converge, @ %s" %
+                               datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                    fail.write("Error: \n {}".format(converge_fail))
+                return False
+            # end if
+            if fail == True:
+                print "*** Model run failure ***"
+                now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
+                with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
+                    fail.write("Model did not run, @ %s" %
+                               datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                    fail.write("Error: \n {}".format('MODFLOW did not terminate normally'))
+                return False
+            # end if
+        # end for
+        return True
+
+#            for converge_fail in converge_fail_options:
+#                if converge_fail in list_file:
+#                    print "*** Convergence failure ***"
+#                    now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
+#                    with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
+#                        fail.write("Model did not converge, @ %s" %
+#                                   datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+#                        fail.write("Error: \n {}".format(converge_fail))
+#                    return False
+#                # end if
+#            # end for
+#            return True
 
     #**************************************************************************
     #**************************************************************************
@@ -399,13 +435,57 @@ class ModflowModel(object):
     #**************************************************************************
     #**************************************************************************
 
+    def Calculate_Rn_from_SFR_with_simple_model(self, df, Ini_cond, Rn_decay=0.181):
+        '''
+        Use a simple model to calculate Radon concentrations in the stream
+        based on outputs from the SFR package and using some other data that 
+        is required as arguments to this function.
+        
+        In particular the df is a pandas dataframe that should contain the output
+        from the sfr package which can be imported via the sfroutputfile util
+        from flopy. The other parameters required are:
+            
+
+        Ini_Cond = Ini_cond # 3 item list containing Initial flow, radon and ec concentrations 
+        Rn_decay = Rn_decay # constant for Radon decay
+        # Dataframe variables
+        df['HZ_poro'] # Hyporheic zone porosity
+        df['HZ_Prod_Rate'] # Hyporheic zone radon production rate
+        df['HZ_RTime'] # Hyporheic zone residence time
+        df['R_depth_HZ'] # Depth of the hyporheic zone
+        df['GTV'] # Gas transfer velocity
+        df['GW_Rn_conc'] # Groundwater radon concentration
+        df['GW_EC'] # Groundwater EC
+        df['Trib_EC'] # EC of the inflowing tributary water if present
+        df['Trib_Rn'] # Radon concentration of inflowing tributary water if present
+        df['dx'] # Reach length
+            
+        '''
+        try:
+            self.sfr
+        except:
+            print("SFR package not activated in current model")
+            return
+        # end try
+
+        #from flopy.utils import sfroutputfile
+        #sfr = sfroutputfile.SfrFile(os.path.join(self.data_folder, self.sfr.file_name[0] + '.out'))
+        #sfr_df = sfr.get_dataframe()
+        #sfr_info = self.model_data.river_mapping['Campaspe']
+        #cum_len = sfr_info['Cumulative Length'].tolist()
+        #sfr_df['Cumulative Length'] = cum_len * (sfr_df['time'].max() + 1)
+
+        FlRnEC = Radon_EC_simple(df, Ini_cond, Rn_decay=Rn_decay)
+        Flow, Rn, EC = FlRnEC.Fl_Rn_EC_simul()
+        return Flow, Rn, EC
+
     def getFinalHeads(self, filename):
         headobj = bf.HeadFile(filename)
         times = headobj.get_times()
         head = headobj.get_data(totim=times[-1])
         return head
 
-    def getRiverFlux(self, name):
+    def getRivFlux(self, name):
         cbbobj = self.importCbb()
         riv_flux = cbbobj.get_data(text='RIVER LEAKAGE', full3D=True)
         times = cbbobj.get_times()
@@ -432,7 +512,7 @@ class ModflowModel(object):
 
         return riv_exchange
 
-    def getRiverFluxNodes(self, nodes):
+    def getRivFluxNodes(self, nodes):
         cbbobj = self.importCbb()
         riv_flux = cbbobj.get_data(text='RIVER LEAKAGE', full3D=True)
         times = cbbobj.get_times()
@@ -511,7 +591,8 @@ class ModflowModel(object):
 
         # Set model output arrays to None to initialise
         head = None
-
+        sfr_df = None
+        stream_options = ['stage', 'depth', 'discharge']
         # Write observation to file
         for obs_set in self.model_data.observations.obs_group.keys():
             obs_type = self.model_data.observations.obs_group[obs_set]['obs_type']
@@ -522,107 +603,155 @@ class ModflowModel(object):
                     headobj = self.importHeads()
                     #times = headobj.get_times()
                     head = headobj.get_alldata()  # (totim=times[0])
-            elif obs_type == 'stage':
-                #stage = self.importStage()
-                pass
-            elif obs_type == 'discharge':
-                pass
+            elif obs_type in stream_options:
+                try:
+                    self.sfr_df
+                except:
+                    sfr_df = self.importSfrOut()                
+                # end except
             else:
                 continue
             # end if
-
             # if self.model_data.observations.obs_group[obs_set]['real']
 
             obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
-            zoned = self.model_data.observations.obs_group[obs_set]['by_zone']            
             obs_df = obs_df[obs_df['active'] == True]
             sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
 
-            # with open(self.data_folder + os.path.sep + 'observations_'+
-            # self.model_data.name +'.txt', 'w') as f:
-            for zone in obs_df['zone'].unique():
-                with open(self.data_folder + os.path.sep + 'observations_' + zone + '.txt', 'w') as f:
-                    obs_df_zone = obs_df[obs_df['zone'] == zone]
-                    for observation in obs_df_zone.index:
-                        interval = int(obs_df_zone['interval'].loc[observation])
-                        name = obs_df_zone['name'].loc[observation]
-                        x = self.model_data.observations.obs_group[
-                            obs_set]['locations']['Easting'].loc[name]
-                        y = self.model_data.observations.obs_group[
-                            obs_set]['locations']['Northing'].loc[name]
-                        (x_cell, y_cell) = self.model_data.mesh2centroid2Dindex[
-                            (sim_map_dict[name][1], sim_map_dict[name][2])]
-                        west = True
-                        north = True
-                        (lay, row, col) = [sim_map_dict[name][0],
-                                           sim_map_dict[name][1], sim_map_dict[name][2]]
-                        
-                        sim_heads = [head[interval][lay][row][col]]
-    
-    #                    if x > x_cell:
-    #                        west = False
-    #                        west_diff = x-x_cell
-    #                    if y < y_cell:
-    #                        north = False
-    #                        north_diff = y - y_cell
-    #
-    #                    sim_zone = self.model_data.model_mesh3D[1][lay][row][col]
-    #
-    #                    if north:
-    #                        try:
-    #                            if self.model_data.model_mesh3D[1][lay][row-1][col] == sim_zone:
-    #                                sim_heads += [head[interval][lay][row-1][col]]
-    #                        except IndexError as e:
-    #                            print e.mmsg
-    #                        if west:
-    #                            try:
-    #                                if self.model_data.model_mesh3D[1][lay][row-1][col-1] == sim_zone:
-    #                                    sim_heads += [head[interval][lay][row-1][col-1]]
-    #                             except IndexError as e:
-    #                                 print e.mmsg
-    #                        else:
-    #                            try:
-    #                                if self.model_data.model_mesh3D[1][lay][row-1][col+1] == sim_zone:
-    #                                    sim_heads += [head[interval][lay][row-1][col+1]]
-    #                            except:
-    #                                pass
-    #
-    #                    else:
-    #                        try:
-    #                            if self.model_data.model_mesh3D[1][lay][row+1][col] == sim_zone:
-    #                                sim_heads += [head[interval][lay][row+1][col]]
-    #                        except:
-    #                            pass
-    #                        if west:
-    #                            try:
-    #                                if self.model_data.model_mesh3D[1][lay][row+1][col-1] == sim_zone:
-    #                                    sim_heads += [head[interval][lay][row+1][col-1]]
-    #                            except:
-    #                                pass
-    #                        else:
-    #                            try:
-    #                                if self.model_data.model_mesh3D[1][lay][row+1][col+1] == sim_zone:
-    #                                    sim_heads += [head[interval][lay][row+1][col+1]]
-    #                            except:
-    #                                pass
-    #
-    #
-    #                    if west:
-    #                        try:
-    #                            if self.model_data.model_mesh3D[1][lay][row][col-1] == sim_zone:
-    #                                sim_heads += [head[interval][lay][row][col-1]]
-    #                        except:
-    #                            pass
-    #                    else:
-    #                        try:
-    #                            if self.model_data.model_mesh3D[1][lay][row][col+1] == sim_zone:
-    #                                sim_heads += [head[interval][lay][row][col+1]]
-    #                        except:
-    #                            pass
-    
-                        sim_head = np.mean(sim_heads)
-                        f.write('%f\n' % sim_head)
+            if obs_type in stream_options:
+                sfr_location = self.model_data.observations.obs_group[obs_set]['locations']['seg_loc']
+                for zone in obs_df['zone'].unique():
+                    if len(obs_df['zone'].unique()) == 1:
+                        zone_txt = obs_set
+                    else:
+                        zone_txt = obs_set + zone
+                    # end if
+                    with open(os.path.join(self.data_folder, 'observations_' + zone_txt + '.txt'), 'w') as f:
+                        obs_df_zone = obs_df[obs_df['zone'] == zone]
+                        for observation in obs_df_zone.index:
+                            interval = int(obs_df_zone['interval'].loc[observation])
+                            name = obs_df_zone['name'].loc[observation]
+                            seg = sfr_location.loc[name]
+                            sfr = sfr_df
+                            col_of_interest = obs_type
+                            if obs_type == 'discharge': 
+                                col_of_interest = 'Qout'
+                            sim_obs = sfr[(sfr['segment'] == seg) & \
+                                            (sfr['time'] == interval)] \
+                                           [col_of_interest]
+                            f.write('%f\n' % sim_obs)                
+                
 
+            if obs_type == 'head':
+                for zone in obs_df['zone'].unique():
+                    if len(obs_df['zone'].unique()) == 1:
+                        zone_txt = 'head'
+                    else:
+                        zone_txt = zone
+                    with open(os.path.join(self.data_folder, 'observations_' + zone_txt + '.txt'), 'w') as f:
+                        obs_df_zone = obs_df[obs_df['zone'] == zone]
+                        for observation in obs_df_zone.index:
+                            interval = int(obs_df_zone['interval'].loc[observation])
+                            name = obs_df_zone['name'].loc[observation]
+        #                    x = self.model_data.observations.obs_group[
+        #                        obs_set]['locations']['Easting'].loc[name]
+        #                    y = self.model_data.observations.obs_group[
+        #                        obs_set]['locations']['Northing'].loc[name]
+                            (x_cell, y_cell) = self.model_data.mesh2centroid2Dindex[
+                                (sim_map_dict[name][1], sim_map_dict[name][2])]
+        #                    west = True
+        #                    north = True
+                            (lay, row, col) = [sim_map_dict[name][0],
+                                               sim_map_dict[name][1], sim_map_dict[name][2]]
+                            
+                            sim_heads = [head[interval][lay][row][col]]
+        
+        #                    if x > x_cell:
+        #                        west = False
+        #                        west_diff = x-x_cell
+        #                    if y < y_cell:
+        #                        north = False
+        #                        north_diff = y - y_cell
+        #
+        #                    sim_zone = self.model_data.model_mesh3D[1][lay][row][col]
+        #
+        #                    if north:
+        #                        try:
+        #                            if self.model_data.model_mesh3D[1][lay][row-1][col] == sim_zone:
+        #                                sim_heads += [head[interval][lay][row-1][col]]
+        #                        except IndexError as e:
+        #                            print e.mmsg
+        #                        if west:
+        #                            try:
+        #                                if self.model_data.model_mesh3D[1][lay][row-1][col-1] == sim_zone:
+        #                                    sim_heads += [head[interval][lay][row-1][col-1]]
+        #                             except IndexError as e:
+        #                                 print e.mmsg
+        #                        else:
+        #                            try:
+        #                                if self.model_data.model_mesh3D[1][lay][row-1][col+1] == sim_zone:
+        #                                    sim_heads += [head[interval][lay][row-1][col+1]]
+        #                            except:
+        #                                pass
+        #
+        #                    else:
+        #                        try:
+        #                            if self.model_data.model_mesh3D[1][lay][row+1][col] == sim_zone:
+        #                                sim_heads += [head[interval][lay][row+1][col]]
+        #                        except:
+        #                            pass
+        #                        if west:
+        #                            try:
+        #                                if self.model_data.model_mesh3D[1][lay][row+1][col-1] == sim_zone:
+        #                                    sim_heads += [head[interval][lay][row+1][col-1]]
+        #                            except:
+        #                                pass
+        #                        else:
+        #                            try:
+        #                                if self.model_data.model_mesh3D[1][lay][row+1][col+1] == sim_zone:
+        #                                    sim_heads += [head[interval][lay][row+1][col+1]]
+        #                            except:
+        #                                pass
+        #
+        #
+        #                    if west:
+        #                        try:
+        #                            if self.model_data.model_mesh3D[1][lay][row][col-1] == sim_zone:
+        #                                sim_heads += [head[interval][lay][row][col-1]]
+        #                        except:
+        #                            pass
+        #                    else:
+        #                        try:
+        #                            if self.model_data.model_mesh3D[1][lay][row][col+1] == sim_zone:
+        #                                sim_heads += [head[interval][lay][row][col+1]]
+        #                        except:
+        #                            pass
+        
+                            sim_head = np.mean(sim_heads)
+                            f.write('%f\n' % sim_head)
+                        # end for
+
+
+    def plotRiverFromRiverSegData(self, ax, names=None, **kwargs):
+        river_mapping = self.model_data.river_mapping
+        if names != None:
+            keys = [i for i in names if i in river_mapping.keys()]
+            not_a_key = [j for j in names if j not in river_mapping.keys()]
+            if len(not_a_key) == 0:
+                print("Bad names passed that are not in dict: {}".format(not_a_key))
+        else:
+            keys = river_mapping.keys()
+        # end if
+        for key in keys:
+            river_seg = river_mapping[key]
+            all_riv = [] 
+            for x in river_seg['amalg_riv_points_collection']:
+                all_riv += x        
+            # end for
+            x = [x[0] for x in all_riv]
+            y = [y[1] for y in all_riv]
+            ax.plot(x, y, **kwargs)
+        # end for
     def getObservation(self, obs, interval, obs_set):
         # Set model output arrays to None to initialise
         head = None
@@ -706,10 +835,25 @@ class ModflowModel(object):
             self.headobj = bf.HeadFile(self.data_folder + self.name + '.hds')
             return self.headobj
 
+    def importSfrOut(self, path=None, name=None, ext='.sfr.out'):
+        if path:
+            sfrout = SfrFile(os.path.join(path, name + ext))
+            self.sfr_df = sfrout.get_dataframe()
+        else:
+            sfrout = SfrFile(os.path.join(self.data_folder, self.name + ext))
+            self.sfr_df = sfrout.get_dataframe()
+        # end if
+        return self.sfr_df
+
     def importCbb(self):
         self.cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
         return self.cbbobj
 
+    def SFRoutput_plot(self):
+        sfrout = SfrFile(self.data_folder + self.name + '.sfr.out')
+        sfr_df = sfrout.get_dataframe()
+        sfr_df
+    
     def waterBalance(self, plot=True, nper=0):
 
         cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
@@ -1057,6 +1201,7 @@ class ModflowModel(object):
         # modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
 
         modelmap.plot_bc('RIV')
+        modelmap.plot_bc('SFR')
         modelmap.plot_bc('WEL')
         modelmap.plot_bc('GHB')
         # modelmap.plot_bc('DRN')
@@ -1554,17 +1699,19 @@ class ModflowModel(object):
         # Next we create an instance of the ModelMap class
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
         modelmap.plot_ibound()
+        self.plotRiverFromRiverSegData(ax)
         #linecollection = modelmap.plot_grid()
 
         # modelmap.plot_bc('WEL')
-        modelmap.plot_bc('RIV')
+        modelmap.plot_bc('RIV', plotAll=True)
+        modelmap.plot_bc('SFR', plotAll=True)
         ax.axes.xaxis.set_ticklabels([])
 
         #linecollection = modelmap.plot_grid()
 
         #print(np.amin(head[head != -999.99]))
         vmin = np.round(np.amin(head[head != -999.99]))
-        vmax = 150  # np.amax(head)
+        vmax = np.amax(head)
         cmap = 'jet'
 
         ax = fig.add_subplot(2, 4, 2, aspect='equal')
@@ -1573,9 +1720,8 @@ class ModflowModel(object):
         modelmap.plot_ibound()
         max_head = np.amax(head)
         min_head = np.amin(head)
-        print max_head
 
-        levels = np.arange(vmin, vmax, 1)
+        levels = np.arange(vmin, vmax, 10)
 
         #array = modelmap.plot_array(head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
         array = modelmap.contour_array(head[0], masked_values=[-999.98999023, max_head,
@@ -1584,6 +1730,7 @@ class ModflowModel(object):
         #modelmap.plot_discharge(frf, fff, head=head)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
+        self.plotRiverFromRiverSegData(ax)
         cbar_ax2 = fig.add_axes([0.43, 0.525, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax2)
 
@@ -1596,6 +1743,7 @@ class ModflowModel(object):
                                                                min_head], alpha=0.9, vmin=vmin, vmax=vmax, cmap=cmap, levels=levels)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
+        self.plotRiverFromRiverSegData(ax)
         cbar_ax1 = fig.add_axes([0.67, 0.525, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax1)
 
@@ -1608,6 +1756,7 @@ class ModflowModel(object):
                                                                min_head], alpha=0.9, vmin=vmin, vmax=vmax, cmap=cmap, levels=levels)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
+        self.plotRiverFromRiverSegData(ax)
         cbar_ax5 = fig.add_axes([0.91, 0.525, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax5)
 
@@ -1623,6 +1772,7 @@ class ModflowModel(object):
         end = end // 1000 * 1000 - 1000
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+        self.plotRiverFromRiverSegData(ax)
 
         cbar_ax3 = fig.add_axes([0.19, 0.055, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax3)
@@ -1637,6 +1787,7 @@ class ModflowModel(object):
         ax.yaxis.set_ticklabels([])
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+        self.plotRiverFromRiverSegData(ax)
 
         cbar_ax4 = fig.add_axes([0.43, 0.055, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax4)
@@ -1648,6 +1799,7 @@ class ModflowModel(object):
         #modelmap.plot_discharge(frf[5], fff[5])
         array = modelmap.contour_array(head[5], masked_values=[-999.98999023, max_head,
                                                                min_head], alpha=0.9, vmin=vmin, vmax=vmax, cmap=cmap, levels=levels)
+        self.plotRiverFromRiverSegData(ax)
         ax.yaxis.set_ticklabels([])
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
@@ -1745,7 +1897,6 @@ class ModflowModel(object):
         modelmap.plot_ibound()
         max_head = np.amax(head)
         min_head = np.amin(head)
-        print max_head
 
         levels = np.arange(vmin, vmax, 1)
 
@@ -1769,8 +1920,6 @@ class ModflowModel(object):
 
     def viewHeads2(self):
 
-        import flopy.utils.binaryfile as bf
-        import pandas as pd
         #import matplotlib.ticker as plticker
         # Create the headfile object
         headobj = bf.HeadFile(self.data_folder + self.name + '.hds')
@@ -1821,7 +1970,7 @@ class ModflowModel(object):
         wat_bal_df = pd.DataFrame(water_bal_summed_values, water_bal_summed_titles)
         wat_bal_df.columns = ['Flux m^3/d']
         wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.]
-        print wat_bal_df
+        #print wat_bal_df
 
         #x = np.linspace(self.model_data.model_boundary[0], self.model_data.model_boundary[1], self.ncol)
         #y = np.linspace(self.model_data.model_boundary[2], self.model_data.model_boundary[3], self.nrow)
@@ -1843,11 +1992,13 @@ class ModflowModel(object):
         # modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
 
         # modelmap.plot_bc('WEL')
-        modelmap.plot_bc('RIV')
+        modelmap.plot_bc('RIV', plotAll=True)
+        modelmap.plot_bc('SFR', plotAll=True)
         try:
-            modelmap.plot_bc('GHB')
+            modelmap.plot_bc('GHB', plotAll=True)
         except:
             pass
+        self.plotRiverFromRiverSegData(ax)
         ax.axes.xaxis.set_ticklabels([])
 
         #linecollection = modelmap.plot_grid()
@@ -1859,15 +2010,18 @@ class ModflowModel(object):
         min_head = np.amin(head)
         array = modelmap.plot_array(
             head, masked_values=[-999.98999023, max_head, min_head], alpha=0.5)
+        self.plotRiverFromRiverSegData(ax)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
         cbar_ax2 = fig.add_axes([0.43, 0.525, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax2)
 
         ax = fig.add_subplot(2, 4, 3, aspect='equal')
-        ax.set_title('Riv exchange')
+        ax.set_title('Murray exchange')
+        modelmap.plot_ibound()
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
-        river_flux = modelmap.plot_array(water_balance['RIVER LEAKAGE'][0], alpha=0.5)
+        river_flux = modelmap.plot_array(water_balance['RIVER LEAKAGE'].sum(axis=0), alpha=0.5)
+        self.plotRiverFromRiverSegData(ax)
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
 
@@ -1879,17 +2033,51 @@ class ModflowModel(object):
             12.5715 / ((wat_bal_df.max()[0] - wat_bal_df.min()[0]) / float(wat_bal_df.shape[1])))
 
         ax = fig.add_subplot(2, 4, 4, aspect=aspect)
-        ax.set_title('Water Balance')
-        wat_bal_df.plot(kind='bar', ax=plt.gca())
-        ax.grid(True)
-        gridlines = ax.get_xgridlines()  # + ax.get_ygridlines()
-        for line in gridlines:
-            line.set_linestyle('-')
+        modelmap.plot_ibound()
+        ax.set_title('Campaspe exchange')
+        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        river_flux = modelmap.plot_array(water_balance['STREAM LEAKAGE'].sum(axis=0), alpha=0.5)
+        self.plotRiverFromRiverSegData(ax)
+        ax.xaxis.set_ticklabels([])
+        ax.yaxis.set_ticklabels([])
+
+        cbar_ax1 = fig.add_axes([0.92, 0.525, 0.01, 0.42])
+        fig.colorbar(river_flux, cax=cbar_ax1)
+
+        # Setup params to get water balance aspect ratio looking nice
+        aspect = float(
+            12.5715 / ((wat_bal_df.max()[0] - wat_bal_df.min()[0]) / float(wat_bal_df.shape[1])))
+
+        ax = fig.add_subplot(2, 4, 8, aspect=aspect)
+        modelmap.plot_ibound()
+        ax.set_title('GW under Murray')
+        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
+        river_flux = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'].sum(axis=0), alpha=0.5)
+        self.plotRiverFromRiverSegData(ax)
+        ax.xaxis.set_ticklabels([])
+        ax.yaxis.set_ticklabels([])
+
+        cbar_ax1 = fig.add_axes([0.92, 0.055, 0.01, 0.42])
+        fig.colorbar(river_flux, cax=cbar_ax1)
+
+        # Setup params to get water balance aspect ratio looking nice
+        aspect = float(
+            12.5715 / ((wat_bal_df.max()[0] - wat_bal_df.min()[0]) / float(wat_bal_df.shape[1])))
+
+#        ax.set_title('Water Balance')
+#        wat_bal_df.plot(kind='bar', ax=plt.gca())
+#        ax.grid(True)
+#        gridlines = ax.get_xgridlines()  # + ax.get_ygridlines()
+#        for line in gridlines:
+#            line.set_linestyle('-')
 
         ax = fig.add_subplot(2, 4, 5, aspect='equal')
         ax.set_title('Rainfall recharge')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         recharge = modelmap.plot_array(water_balance['RECHARGE'][0], masked_values=[0.], alpha=0.5)
+        self.plotRiverFromRiverSegData(ax)
         # print water_balance['RECHARGE'][0]
         # print np.mean(water_balance['RECHARGE'][0])
         # print np.max(water_balance['RECHARGE'][0])
@@ -1907,10 +2095,12 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 6, aspect='equal')
         ax.set_title('Surface elevation')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         elev = self.mf.dis.top.array
         #ibound_mask = np.ma.masked_where(self.model_data.model_mesh3D[1][0] == -1, self.model_data.model_mesh3D[1][0])
         elev = np.ma.masked_where(self.model_data.model_mesh3D[1][0] == 0, elev)
         elevation = modelmap.plot_array(elev, alpha=0.5)
+        self.plotRiverFromRiverSegData(ax)
         ax.yaxis.set_ticklabels([])
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
@@ -1946,8 +2136,13 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 7, aspect='equal')
         ax.set_title('Pressure Head')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
+        pressure = head[0] - elev
+        #pressure_min = np.std(pressure)
+        #pressure_max =                
         storage = modelmap.plot_array(
-            head[0] - elev, masked_values=[0.], alpha=0.5, vmin=-50, vmax=50)
+            pressure, masked_values=[x for x in np.unique(pressure) if x > 0.], alpha=0.5) #, vmin=-50, vmax=50)
+        self.plotRiverFromRiverSegData(ax)
         ax.yaxis.set_ticklabels([])
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
@@ -1991,8 +2186,6 @@ class ModflowModel(object):
 
     def viewGHB(self):
 
-        import flopy.utils.binaryfile as bf
-        import pandas as pd
         #import matplotlib.ticker as plticker
         # Create the headfile object
         headobj = bf.HeadFile(self.data_folder + self.name + '.hds')
@@ -2042,7 +2235,7 @@ class ModflowModel(object):
         wat_bal_df = pd.DataFrame(water_bal_summed_values, water_bal_summed_titles)
         wat_bal_df.columns = ['Flux m^3/d']
         wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.]
-        print wat_bal_df
+        #print wat_bal_df
 
         #x = np.linspace(self.model_data.model_boundary[0], self.model_data.model_boundary[1], self.ncol)
         #y = np.linspace(self.model_data.model_boundary[2], self.model_data.model_boundary[3], self.nrow)
@@ -2076,6 +2269,7 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 2, aspect='equal')
         ax.set_title('Riv flux')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         # modelmap.plot_ibound(alpha=1)
         max_val = np.amax(water_balance['RIVER LEAKAGE'][0])
         min_val = np.amin(water_balance['RIVER LEAKAGE'][0])
@@ -2101,6 +2295,7 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 3, aspect='equal')
         ax.set_title('GHB layer 2')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         # modelmap.plot_grid()
         river_flux = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][
                                          1], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
@@ -2114,13 +2309,13 @@ class ModflowModel(object):
         aspect = float(
             12.5715 / ((wat_bal_df.max()[0] - wat_bal_df.min()[0]) / float(wat_bal_df.shape[1])))
 
-        ax = fig.add_subplot(2, 4, 4, aspect=aspect)
-        ax.set_title('Water Balance')
-        wat_bal_df.plot(kind='bar', ax=plt.gca())
-        ax.grid(True)
-        gridlines = ax.get_xgridlines()  # + ax.get_ygridlines()
-        for line in gridlines:
-            line.set_linestyle('-')
+#        ax = fig.add_subplot(2, 4, 4, aspect=aspect)
+#        ax.set_title('Water Balance')
+#        wat_bal_df.plot(kind='bar', ax=plt.gca())
+#        ax.grid(True)
+#        gridlines = ax.get_xgridlines()  # + ax.get_ygridlines()
+#        for line in gridlines:
+#            line.set_linestyle('-')
 
         max_val = np.amax(water_balance['HEAD DEP BOUNDS'][2])
         min_val = np.amin(water_balance['HEAD DEP BOUNDS'][2])
@@ -2132,6 +2327,7 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 5, aspect='equal')
         ax.set_title('GHB layer 3')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         recharge = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][2], masked_values=[
                                        0.], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
         # print water_balance['RECHARGE'][0]
@@ -2158,6 +2354,7 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 6, aspect='equal')
         ax.set_title('GHB layer 4')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         elevation = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][
                                         3], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
         ax.yaxis.set_ticklabels([])
@@ -2203,6 +2400,7 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 7, aspect='equal')
         ax.set_title('GHB layer 5')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap.plot_ibound()
         storage = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][
                                       5], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
         ax.yaxis.set_ticklabels([])
@@ -2373,15 +2571,97 @@ class MT3DModel(object):
         # End if
     # End runMT3D()
 
+class Radon_EC_simple(object):
+    
+    def __init__(self, df, Ini_cond, Rn_decay=0.181, units='m,d'):
+        self.Ini_Cond = Ini_cond # 3 item list containing Initial flow, radon and ec concentrations 
+        self.Rn_decay = Rn_decay # constant for Radon decay
+        self.units = units # units being used ... not really used yet!
+        # Dataframe variables
+        self.HZ_Poro = df['HZ_poro'].tolist() # Hyporheic zone porosity
+        self.HZ_Prod_Rate = df['HZ_Prod_Rate'].tolist() # Hyporheic zone radon production rate
+        self.HZ_RTime = df['HZ_RTime'].tolist() # Hyporheic zone residence time
+        self.R_depth_HZ = df['R_depth_HZ'].tolist() 
+        self.GTV = df['GTV'].tolist() # Gas transfer velocity
+        self.GW_Rn_conc = df['GW_Rn_conc'].tolist() # Groundwater radon concentration
+        self.GW_EC = df['GW_EC'].tolist() # Groundwater EC
+        self.Trib_EC = df['Trib_EC'].tolist() 
+        self.Trib_Rn = df['Trib_Rn'].tolist() 
+        self.dx = df['dx'].tolist()
+        # Variables inherited from the output of SFR package
+        self.Evap_Rate = df['Qet'].tolist() # Evaporation rate
+        self.Trib_inflow = df['Qovr'].tolist() 
+        try:
+            self.R_Pump = df['R_pump'].tolist() 
+        except:
+            self.R_Pump = [0.] * df.shape[0]
+        # end try            
+        self.R_depth = df['depth'].tolist() 
+        self.R_width = df['width'].tolist() 
+        self.GW_inflow = (df['Qaquifer'] * -1.).tolist()
+        
+    def Fl_Rn_EC_simul(self):
+
+        # Specify radon decay constant
+        Rn_decay = self.Rn_decay
+        # Initialise temp vars
+        Flow_temp = self.Ini_Cond[0]
+        Rn_temp = self.Ini_Cond[1]
+        EC_temp = self.Ini_Cond[2]
+        Fl_simul = [Flow_temp]
+        Rn_simul = [Rn_temp]
+        EC_simul = [EC_temp]
+        
+        # Calculate simulated Radon and EC for the 
+        for i in range(len(self.dx) - 1):
+            # Steady state stream flow calculation ... check against modelled
+            # as this won't consider rate of change in storage
+            Flow_temp += self.GW_inflow[i] - self.Evap_Rate[i] - \
+                         self.R_Pump[i] + self.Trib_inflow[i]
+            # Radon concentration calculation based on steady state stream flow
+            if self.GW_inflow[i] < 0.:
+                GW_Rn_conc_adj = Rn_temp
+            else:
+                GW_Rn_conc_adj = self.GW_Rn_conc[i]
+            # end if    
+            Rn_temp  += 1. / (Flow_temp) * (
+                        self.GW_inflow[i] * (GW_Rn_conc_adj - Rn_temp) + \
+                        self.Trib_inflow[i] * (self.Trib_Rn[i] - Rn_temp) + \
+                        Rn_temp * (self.Evap_Rate[i] - self.dx[i] *  
+                        self.R_width[i] * (self.GTV[i] + self.R_depth[i] * Rn_decay)) + \
+                        self.dx[i] * self.HZ_Poro[i] / (1 + Rn_decay * self.HZ_RTime[i]) * 
+                        self.R_width[i] * self.R_depth_HZ[i] * (self.HZ_Prod_Rate[i] - Rn_temp))
+            if Rn_temp < 0:
+                Rn_temp = 0.
+            # EC calculation based on steady state stream flow
+            EC_temp  += 1 / (Flow_temp) * (
+                        self.GW_inflow[i] * (self.GW_EC[1] - EC_temp) + \
+                        self.Trib_inflow[i] * (self.Trib_EC[i] - EC_temp) + \
+                        EC_temp * self.Evap_Rate[i])
+            
+            Fl_simul.append(Flow_temp)
+            Rn_simul.append(Rn_temp)
+            EC_simul.append(EC_temp)
+        
+        return Fl_simul, Rn_simul, EC_simul
 
 class MT3DPostProcess(object):
 
-    def __init__(self, mf_model):
+    def __init__(self, mf_model, mt_name=None):
         self.mf_model = mf_model
+        self.mt_name = mt_name
 
     def importConcs(self):
-        self.concobj = bf.UcnFile(self.mf_model.data_folder + 'MT3D001.UCN')
+        self.concobj = bf.UcnFile(os.path.join(self.mf_model.data_folder,'MT3D001.UCN'))
         return self.concobj
+
+    def importSftConcs(self):
+        self.sft_conc = pd.read_csv(os.path.join(
+                            self.mf_model.data_folder,
+                            self.mt_name),
+                            delim_whitespace=True, 
+                            skiprows=1)
+        return self.sft_conc
 
     def ConcsByZone(self, concs):
 
@@ -2427,10 +2707,11 @@ class MT3DPostProcess(object):
                 continue
             self.obs_sim_zone += [[obs, sim, zone, x, y]]
 
-    def writeObservations(self):
+    def writeObservations(self, specimen):
 
         # Set model output arrays to None to initialise
         conc = None
+        sft_conc = None
         data_folder = self.mf_model.data_folder
         model_data = self.mf_model.model_data
         obs_group = self.mf_model.model_data.observations.obs_group
@@ -2439,15 +2720,25 @@ class MT3DPostProcess(object):
         for obs_set in model_data.observations.obs_group.keys():
             obs_type = obs_group[obs_set]['obs_type']
             # Import the required model outputs for processing
-            if obs_type != 'concentration':
+            if obs_type not in ['concentration', 'EC', 'Radon']:
                 continue
             else:
-                # if obs_type == 'concentration':
-                # Check if model outputs have already been imported and if not import
-                if not conc:
-                    concobj = self.importConcs()
-                    conc = concobj.get_alldata()  # (totim=times[0])
-            # end if
+                if (obs_type == 'concentration') & (specimen == 'C14'):
+                    # Check if model outputs have already been imported and if not import
+                    if not conc:
+                        concobj = self.importConcs()
+                        conc = concobj.get_alldata()  # (totim=times[0])
+                    # end if
+                elif (obs_type == 'EC') & (specimen == 'EC'):
+                    try:
+                        sft_conc['TIME']
+                    except:
+                        sft_conc = self.importSftConcs()
+                elif obs_type == 'Radon':
+                    continue
+                else:
+                    continue
+                # end if
 
             obs_df = obs_group[obs_set]['time_series']
             obs_df = obs_df[obs_df['active'] == True]
@@ -2457,83 +2748,103 @@ class MT3DPostProcess(object):
             # +'_transport.txt', 'w') as f:
             with open(data_folder + os.path.sep + 'observations_' + obs_set + '.txt', 'w') as f:
 
-                for observation in obs_df.index:
-                    interval = int(obs_df['interval'].loc[observation])
-                    name = obs_df['name'].loc[observation]
-                    x = obs_group[obs_set]['locations']['Easting'].loc[name]
-                    y = obs_group[obs_set]['locations']['Northing'].loc[name]
-                    (x_cell, y_cell) = model_data.mesh2centroid2Dindex[
-                        (sim_map_dict[name][1], sim_map_dict[name][2])]
-                    west = True
-                    north = True
-                    (lay, row, col) = [sim_map_dict[name][0],
-                                       sim_map_dict[name][1], sim_map_dict[name][2]]
-                    sim_conc = [conc[interval][lay][row][col]]
+                if obs_group[obs_set]['domain'] == 'stream':
+                    sft_location = self.mf_model.model_data.observations.obs_group[obs_set]['locations']['seg_loc']
 
-#                    if x > x_cell:
-#                        west = False
-#                        west_diff = x-x_cell
-#                    if y < y_cell:
-#                        north = False
-#                        north_diff = y - y_cell
-#
-#                    sim_zone = self.model_data.model_mesh3D[1][lay][row][col]
-#
-#                    if north:
-#                        try:
-#                            if self.model_data.model_mesh3D[1][lay][row-1][col] == sim_zone:
-#                                sim_heads += [head[interval][lay][row-1][col]]
-#                        except IndexError as e:
-#                            print e.mmsg
-#                        if west:
-#                            try:
-#                                if self.model_data.model_mesh3D[1][lay][row-1][col-1] == sim_zone:
-#                                    sim_heads += [head[interval][lay][row-1][col-1]]
-#                             except IndexError as e:
-#                                 print e.mmsg
-#                        else:
-#                            try:
-#                                if self.model_data.model_mesh3D[1][lay][row-1][col+1] == sim_zone:
-#                                    sim_heads += [head[interval][lay][row-1][col+1]]
-#                            except:
-#                                pass
-#
-#                    else:
-#                        try:
-#                            if self.model_data.model_mesh3D[1][lay][row+1][col] == sim_zone:
-#                                sim_heads += [head[interval][lay][row+1][col]]
-#                        except:
-#                            pass
-#                        if west:
-#                            try:
-#                                if self.model_data.model_mesh3D[1][lay][row+1][col-1] == sim_zone:
-#                                    sim_heads += [head[interval][lay][row+1][col-1]]
-#                            except:
-#                                pass
-#                        else:
-#                            try:
-#                                if self.model_data.model_mesh3D[1][lay][row+1][col+1] == sim_zone:
-#                                    sim_heads += [head[interval][lay][row+1][col+1]]
-#                            except:
-#                                pass
-#
-#
-#                    if west:
-#                        try:
-#                            if self.model_data.model_mesh3D[1][lay][row][col-1] == sim_zone:
-#                                sim_heads += [head[interval][lay][row][col-1]]
-#                        except:
-#                            pass
-#                    else:
-#                        try:
-#                            if self.model_data.model_mesh3D[1][lay][row][col+1] == sim_zone:
-#                                sim_heads += [head[interval][lay][row][col+1]]
-#                        except:
-#                            pass
-
-                    sim_conc = np.mean(sim_conc)
-                    f.write('%f\n' % sim_conc)
-
+                    for observation in obs_df.index:
+                        interval = int(obs_df['interval'].loc[observation])
+                        name = obs_df['name'].loc[observation]
+                        seg = sft_location.loc[name]
+                        sft = sft_conc
+                        times = sft['TIME'].unique()
+                        col_of_interest = obs_type
+                        if obs_type == 'EC': 
+                            col_of_interest = 'SFR-CONCENTRATION'
+                        sim_conc = sft[(sft['SFR-NODE'] == seg) & \
+                                       (sft['TIME'] == times[interval])] \
+                                       [col_of_interest]
+                        f.write('%f\n' % sim_conc)
+                
+                if obs_group[obs_set]['domain'] == 'porous':
+                    for observation in obs_df.index:
+                        interval = int(obs_df['interval'].loc[observation])
+                        name = obs_df['name'].loc[observation]
+    #                    x = obs_group[obs_set]['locations']['Easting'].loc[name]
+    #                    y = obs_group[obs_set]['locations']['Northing'].loc[name]
+                        (x_cell, y_cell) = model_data.mesh2centroid2Dindex[
+                            (sim_map_dict[name][1], sim_map_dict[name][2])]
+    #                    west = True
+    #                    north = True
+                        (lay, row, col) = [sim_map_dict[name][0],
+                                           sim_map_dict[name][1], sim_map_dict[name][2]]
+                        sim_conc = [conc[interval][lay][row][col]]
+    
+    #                    if x > x_cell:
+    #                        west = False
+    #                        west_diff = x-x_cell
+    #                    if y < y_cell:
+    #                        north = False
+    #                        north_diff = y - y_cell
+    #
+    #                    sim_zone = self.model_data.model_mesh3D[1][lay][row][col]
+    #
+    #                    if north:
+    #                        try:
+    #                            if self.model_data.model_mesh3D[1][lay][row-1][col] == sim_zone:
+    #                                sim_heads += [head[interval][lay][row-1][col]]
+    #                        except IndexError as e:
+    #                            print e.mmsg
+    #                        if west:
+    #                            try:
+    #                                if self.model_data.model_mesh3D[1][lay][row-1][col-1] == sim_zone:
+    #                                    sim_heads += [head[interval][lay][row-1][col-1]]
+    #                             except IndexError as e:
+    #                                 print e.mmsg
+    #                        else:
+    #                            try:
+    #                                if self.model_data.model_mesh3D[1][lay][row-1][col+1] == sim_zone:
+    #                                    sim_heads += [head[interval][lay][row-1][col+1]]
+    #                            except:
+    #                                pass
+    #
+    #                    else:
+    #                        try:
+    #                            if self.model_data.model_mesh3D[1][lay][row+1][col] == sim_zone:
+    #                                sim_heads += [head[interval][lay][row+1][col]]
+    #                        except:
+    #                            pass
+    #                        if west:
+    #                            try:
+    #                                if self.model_data.model_mesh3D[1][lay][row+1][col-1] == sim_zone:
+    #                                    sim_heads += [head[interval][lay][row+1][col-1]]
+    #                            except:
+    #                                pass
+    #                        else:
+    #                            try:
+    #                                if self.model_data.model_mesh3D[1][lay][row+1][col+1] == sim_zone:
+    #                                    sim_heads += [head[interval][lay][row+1][col+1]]
+    #                            except:
+    #                                pass
+    #
+    #
+    #                    if west:
+    #                        try:
+    #                            if self.model_data.model_mesh3D[1][lay][row][col-1] == sim_zone:
+    #                                sim_heads += [head[interval][lay][row][col-1]]
+    #                        except:
+    #                            pass
+    #                    else:
+    #                        try:
+    #                            if self.model_data.model_mesh3D[1][lay][row][col+1] == sim_zone:
+    #                                sim_heads += [head[interval][lay][row][col+1]]
+    #                        except:
+    #                            pass
+    
+                        sim_conc = np.mean(sim_conc)
+                        f.write('%f\n' % sim_conc)
+                    # end for
+                # end if
+                
     def compareAllObs(self):
 
         concobj = self.importConcs()
@@ -2724,9 +3035,11 @@ class MT3DPostProcess(object):
         # modelmap.plot_bc(plotAll=True)
         # modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
 
-        modelmap.plot_bc('RIV')
-        modelmap.plot_bc('WEL')
-        modelmap.plot_bc('GHB')
+        modelmap.plot_bc('RIV', plotAll=True)
+        modelmap.plot_bc('WEL', plotAll=True)
+        modelmap.plot_bc('GHB', plotAll=True)
+        modelmap.plot_bc('SFR', plotAll=True)
+        modelmap.plot_bc('DRN', plotAll=True)
         # modelmap.plot_bc('DRN')
         ax.axes.xaxis.set_ticklabels([])
 

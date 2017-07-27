@@ -196,19 +196,19 @@ class GDALInterface(GISInterface):
         """
         rasters = {}
 
-#        print path
-#        print "============"
-#        import sys
-#        sys.exit()
-
         for raster in files:
             rst = os.path.join(self.out_data_folder, raster + '_reproj.tif')
             if os.path.isfile(rst):
                 ds = gdal.Open(rst, gdalconst.GA_ReadOnly)
                 self._test_osgeo_load(ds, rst)
             else:
-                ds = gdal.Open(os.path.join(path, raster), gdalconst.GA_ReadOnly)
-
+                if path:
+                    ds = gdal.Open(os.path.join(path, raster), gdalconst.GA_ReadOnly)
+                else:
+                    path = ""
+                    ds = gdal.Open(raster, gdalconst.GA_ReadOnly)
+                # end if
+                
                 # Check raster GCS
                 prj = ds.GetProjection()
                 srs = osr.SpatialReference(wkt=prj)
@@ -261,6 +261,8 @@ class GDALInterface(GISInterface):
         
         if epsg_to == None:
             epsg_to = self.pcs_EPSG
+        else:
+            epsg_to = "EPSG:{}".format(epsg_to)
         # end if
         if bounds == None:
             (xmin, xmax, ymin, ymax) = self.model_mesh.GetLayer().GetExtent()
@@ -270,7 +272,7 @@ class GDALInterface(GISInterface):
         if resample_method == None:
             resample_method = 'near'
         
-        command = "gdalwarp -overwrite -t_srs EPSG:{} ".format(epsg_to) + \
+        command = "gdalwarp -overwrite -t_srs {} ".format(epsg_to) + \
                   " -te " + " {0} {1} {2} {3} ".format(xmin, ymin, xmax, ymax) + \
                   '"' + infile + '" "' + outfile + \
                   '" -r {}'.format(resample_method)

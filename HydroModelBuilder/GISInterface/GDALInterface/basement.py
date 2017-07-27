@@ -11,7 +11,14 @@ import numpy as np
 from osgeo import gdal, gdalconst, osr
 
 
-def create_basement_bottom(hu_raster_path, surface_raster_file, basement_top_raster_file, basement_bot_raster_file, output_path, raster_driver='GTiff'):
+def create_basement_bottom(hu_raster_path,
+                           surface_raster_file, 
+                           basement_top_raster_file, 
+                           basement_bot_raster_file, 
+                           output_path, raster_driver='GTiff',
+                           plot_results=False,
+                           min_thickness=10.0, max_thickness=100.0,
+                           upper_bound= 250.0, lower_bound=0.0):
     # Read in data from surface to array
 
     surface_rst_pth = os.path.join(hu_raster_path, surface_raster_file)
@@ -31,10 +38,10 @@ def create_basement_bottom(hu_raster_path, surface_raster_file, basement_top_ras
     def thickness_rule(top, bottom, cache={}):
         # Applying the same rule as in Hocking
         # i.e. 100m thick or 10m thick if >250m and linearly vary in between
-        min_thickness = 10.0
-        max_thickness = 100.0
-        upper_bound = 250.0
-        lower_bound = 0.0
+#        min_thickness = 10.0
+#        max_thickness = 100.0
+#        upper_bound = 250.0
+#        lower_bound = 0.0
 
         diff = top - bottom
         thickness = cache.get(diff, None)
@@ -42,7 +49,8 @@ def create_basement_bottom(hu_raster_path, surface_raster_file, basement_top_ras
             if diff > lower_bound and diff < upper_bound:
                 thickness = np.interp(diff,
                                       [lower_bound, upper_bound],
-                                      [min_thickness, max_thickness])
+                                      [max_thickness, min_thickness])
+                                      #[min_thickness, max_thickness])
             elif diff >= upper_bound:
                 thickness = min_thickness
             elif diff == lower_bound:
@@ -77,16 +85,26 @@ def create_basement_bottom(hu_raster_path, surface_raster_file, basement_top_ras
         outRaster.SetProjection(src_cs.ExportToWkt())
         outband.FlushCache()
 
+    if plot_results:
+        import matplotlib.pyplot as plt
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 2, 1)
+        plt.imshow(surf_array - basetop_array)
+        plt.colorbar()
+        ax = fig.add_subplot(1, 2, 2)
+        plt.imshow(basetop_array - basebot_array)
+        plt.colorbar()
+
     array2raster(os.path.join(output_path, basement_bot_raster_file + '.tif'), basetop_geotransform,
                  basetop_NODATA, src_cs, basebot_array, raster_driver)
 
 if __name__ == "__main__":
     # r"C:\Workspace\part0075\MDB modelling\Campaspe_model\GIS\GIS_preprocessed\Hydrogeological_Unit_Layers\\"
-    hu_raster_path = r"C:\Workspace\part0075\MDB modelling\VAF_v2.0_ESRI_GRID\ESRI_GRID\Preprocessed_data\Hydrogeological_Unit_Layers\\"
+    hu_raster_path = r"C:\Workspace\part0075\MDB modelling\ESRI_GRID\Preprocessed_data\Hydrogeological_Unit_Layers\\"
     output_path = hu_raster_path
     surface_raster_file = "sur_1t_mb"
     basement_top_raster_file = "bse_1t_mb"
     basement_bot_raster_file = "bse_2b_mb"
     raster_driver = 'GTiff'
     create_basement_bottom(hu_raster_path, surface_raster_file, basement_top_raster_file,
-                           basement_bot_raster_file, output_path, raster_driver=raster_driver)
+                           basement_bot_raster_file, output_path, raster_driver=raster_driver, plot_results=True)

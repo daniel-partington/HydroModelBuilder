@@ -574,12 +574,14 @@ def mesh3DToVtk(mesh_array, grid_info, val_array, val_name, out_path, vtk_out):
                                    [np.fliplr(mesh)], ["zone", val_name], 
                                    [np.fliplr(zone_matrix), np.fliplr(val_array)], 
                                    out_path, vtk_out)
+
+
     
 if __name__ == "__main__":
 
     from HydroModelBuilder.GWModelManager import GWModelManager
 
-    resolution = 2000
+    resolution = 5000
     zone_map = {1: 'qa', 2: 'utb', 3: 'utqa', 4: 'utam', 5: 'utaf', 6: 'lta', 
                 7: 'bse'}
     HGU_map = {'bse':'Bedrock', 'utb':'Newer Volcanics Basalts', 
@@ -619,7 +621,8 @@ if __name__ == "__main__":
                    skip=skip, 
             skip_active=skip_active,
             zone_prop_dict={0:30.0, 1:2.0, 2:2.0, 3:50.0, 4:45.0, 5:30.0, 6:10.0},
-            add_noise=True
+            #zone_prop_dict={0:0.2, 1:0.3, 2:0.4, 3:0.5, 4:0.6, 5:0.2, 6:0.10},
+            add_noise=False
             )
 
     pp.write_settings_fig()
@@ -631,24 +634,13 @@ if __name__ == "__main__":
     if resolution == 1000:
         search_radius = [30000, 20000, 20000, 20000, 20000, 20000, 20000]
     else:
-        search_radius = [30000, 20000, 20000, 20000, 20000, 20000, 20000]
-
-#    search_radius = [30000, 20000, 20000, 20000, 20000, 20000, 20000]
+        search_radius = [30000, 20000, 40000, 20000, 40000, 50000, 20000]
 
     pp.setup_pilot_points_by_zones(mesh_array, zones, search_radius)    
 
     pp.generate_cov_mat_by_zones(zones)
     
     pp.run_pyfac2real_by_zones(zones)
-#    for zone in range(zones):
-#        print('There are {0} points in zone: {1}'.format(pp.num_ppoints_by_zone[zone], zone))
-#        
-##        run_fac2real(fac2real_exe, instruct_fname='fac2real{}.in'.format(zone))
-#        pp.run_pyfac2real(pp_fname="points{}.pts".format(zone),
-#                          factors_fname="factors{}.dat".format(zone), 
-#                          out_fname="values{}.ref".format(zone),
-#                          upper_lim=1.0e+6, lower_lim=1.0e-6)
-
 
     hk = pp.val_array
 
@@ -692,7 +684,8 @@ if __name__ == "__main__":
         modelmap = flopy.plot.ModelMap(model=modflow_model.mf) 
         array = modelmap.plot_array(a[3][key], masked_values=[0], alpha=0.8, cmap='gray', vmin=0, vmax=2)
         #modelmap.plot_grid()    
-        array = modelmap.plot_array(hk[key], masked_values=[1E6, 0], alpha=1.0)#, 
+        #array = modelmap.plot_array(hk[key], masked_values=[1E6, 0], alpha=1.0)#, 
+        array = modelmap.plot_array(hk[key], masked_values=[0], alpha=1.0)#, 
                                     #vmin=vmin, vmax=vmax)
         #array = modelmap.plot_array(vals, masked_values=[1E6], alpha=1.0)#, 
                                     #vmin=vmin, vmax=vmax)
