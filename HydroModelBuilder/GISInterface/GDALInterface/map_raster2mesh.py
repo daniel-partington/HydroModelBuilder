@@ -440,6 +440,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             plt.imshow(mesh_zone_thickness[i] - raster_thickness[i], interpolation='none')
             plt.title('Difference in thickness')
             plt.colorbar()
+        # End for
 
     tester = False
     if tester == True:
@@ -452,6 +453,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
         for i in xrange(thick_shape):
             thickness2[i] = np.ma.masked_where((zone_matrix[i] < 0), thickness[i])
             thick_zero[i] = np.ma.masked_where((zone_matrix[i] != 0), thickness[i])
+        # End for
 
         for i in xrange(thick_shape):
             fig = plt.figure()
@@ -467,17 +469,11 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             plt.imshow(zone_matrix[i], interpolation='none')
             plt.title('Zonal delineation')
             plt.colorbar()
-
-    # for i in range(zone_matrix.shape[0]):
-    #    plt.figure()
-    #    plt.imshow(zone_matrix[i], interpolation='none')
+        # End for
 
     if np.any(thickness < 0.):
         print 'issues'
-
-    # for i in range(mesh.shape[0]):
-    #    plt.figure()
-    #    plt.imshow(mesh[i], interpolation='none')
+    # End if
 
     grid_info = [ncol, nrow, delc, delr, x0, y0]
     array2Vtk.build_vtk_from_array(grid_info, np.fliplr(mesh), ["z_elev"], [np.fliplr(mesh)], [
@@ -486,6 +482,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
                                    out_path, vtk_out)
 
     return mesh, zone_matrix, grid_info
+# End map_raster_array_to_mesh()
 
 
 if __name__ == "__main__":

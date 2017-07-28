@@ -735,14 +735,14 @@ class GWModelBuilder(object):
         river_points = []
         amalg_riv_points = self.river_mapping[name]['amalg_riv_points_collection'].tolist()
         riv_len = self.river_mapping[name].shape[0]
-        for i in range(riv_len):
+        for i in xrange(riv_len):
             river_points += amalg_riv_points[i]
         # End for
         closest = self.do_kdtree(np.array(river_points), np.array(points))
 
         river_seg_close = []
         for index in closest:
-            for i in range(riv_len):
+            for i in xrange(riv_len):
                 if river_points[index] in amalg_riv_points[i]:
                     river_seg_close += [i + 1]  # Note that seg is 1-based indexing so we add 1 here
                     continue
@@ -892,32 +892,22 @@ class GWModelBuilder(object):
 
         :returns: tuple,
         """
+        # TO CHECK
         amalg_riv_points = []
         amalg_riv_points_collection = {}
         counter = 0
         for index, point in enumerate(point2mesh_map2):
+            amalg_riv_points_collection[counter] = amalg_riv_points_collection.get(counter, [])
             if index == 0:
                 amalg_riv_points += [point]
-                try:
-                    amalg_riv_points_collection[counter] += [point_merge[index]]
-                except:
-                    amalg_riv_points_collection[counter] = [point_merge[index]]
-                continue
             elif point != amalg_riv_points[-1]:
                 # if point not in amalg_riv_points:  # Apply this test to avoid passing through same cell twice!
                 amalg_riv_points += [point]
                 counter += 1
-                try:
-                    amalg_riv_points_collection[counter] += [point_merge[index]]
-                except:
-                    amalg_riv_points_collection[counter] = [point_merge[index]]
-            else:
-                try:
-                    amalg_riv_points_collection[counter] += [point_merge[index]]
-                except:
-                    amalg_riv_points_collection[counter] = [point_merge[index]]
-
+                amalg_riv_points_collection[counter] = amalg_riv_points_collection.get(counter, [])
             # End if
+
+            amalg_riv_points_collection[counter] += [point_merge[index]]
         # End for
 
         return amalg_riv_points, amalg_riv_points_collection
@@ -965,11 +955,13 @@ class GWModelBuilder(object):
         '''
         Merge points from multiple feature into one continuous line
 
-        :param points_dict:
+        :param points_dict: dict,
         '''
+        # TO CHECK
         point_merge = points_dict[0][0:-1]
-        for _ in points_dict.keys()[1:]:
-            for key in points_dict.keys()[1:]:
+        points_after_first = points_dict.keys()[1:]
+        for _ in points_after_first:
+            for key in points_after_first:
                 if points_dict[key][-1]['start'] == point_merge[-1]:
                     point_merge += points_dict[key][0:-1]
                     continue
