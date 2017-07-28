@@ -9,6 +9,7 @@ import pandas as pd
 from more_itertools import unique_everseen
 from scipy import spatial
 
+from ModelInterface.ModelInterface import ModelInterface
 from ModelProperties import (ArrayOrdering, ModelBoundaries, ModelBuilderType,
                              ModelFeature, ModelInitialConditions,
                              ModelObservations, ModelParameters,
@@ -47,27 +48,12 @@ class GWModelBuilder(object):
         """
         # Define the constants for the model data types to use for checking input
         self.types = ModelBuilderType()
-        try:
-            # -- tests to alert user to incorrect inputs ...
-            assert model_type in self.types.model_types, "Model types must be of type: {}".format(
-                self.types.model_types)
-            assert mesh_type in self.types.mesh_types, "'Mesh types must be of type: {}".format(
-                self.types.mesh_types)
-            assert data_format in self.types.data_formats, "Data format must be of type: {}".format(
-                self.types.data_formats)
-        except AssertionError as e:
-            import traceback
-            _, _, tb = sys.exc_info()
-            # traceback.print_tb(tb) # Fixed format
-            tb_info = traceback.extract_tb(tb)
-            filename, line, func, text = tb_info[-1]
-            sys.exit("An error occured in {} on line {} with the message '{}'".format(filename, line, e))
-        # End try
-
+        self.types.check_type(model_type, mesh_type, data_format)
         self.name = name
         self.model_type = model_type
         self.mesh_type = mesh_type
-        self.units = {}
+        self.ModelInterface = ModelInterface(model_type, self.types)
+
         if units != None:
             if type(units) == list:
                 self.set_units(length=units[0], time=units[1], mass=units[2])
@@ -204,26 +190,8 @@ class GWModelBuilder(object):
         :param time: str, time unit
         :param mass: str, mass unit
         """
-        if length in self.types.length:
-            self.units['length'] = length
-        else:
-            print 'Length unit not recognised, please use one of: ', self.types.length
-            print 'Default unit "m" is set'
-        # End if
-
-        if time in self.types.time:
-            self.units['time'] = time
-        else:
-            print 'Time unit not recognised, please use one of: ', self.types.time
-            print 'Default unit "s" is set'
-        # End if
-
-        if mass in self.types.mass:
-            self.units['mass'] = mass
-        else:
-            print 'Mass unit not recognised, please use one of: ', self.types.mass
-            print 'Default unit "kg" is set'
-        # End if
+        self.ModelInterface.set_units(length, time, mass)
+        self.units = {"length": length, "time": time, "mass": mass}
     # End set_units()
 
     def check_for_existing(self, fn):
@@ -234,65 +202,16 @@ class GWModelBuilder(object):
 
         :param fn:
         """
-        filename_suffixes = ['_model', '_grid']
-        for suffix in filename_suffixes:
-            if os.path.isfile(os.path.join(self.out_data_folder, fn[:-4] +
-                                           suffix + fn[-4:])):
-                print 'found processed file'
-            # End if
-        # End for
+        self.ModelInterface.check_for_existing(fn)
     # End check_for_existing()
 
-    def save_array(self, filename, array):
-        if self.data_format == self.types.data_formats[0]:  # if it is 'ascii'
-            np.savetxt(filename, array)
-        elif self.data_format == self.types.data_formats[1]:  # if it is 'binary'
-            np.save(filename, array)
-        else:
-            print 'Data format not recognised, use "binary" or "ascii"'
-        # End if
-    # End save_array()
-
-    def load_array(self, array_file):
-        if array_file.endswith('txt'):
-            return np.loadtxt(array_file)
-        elif array_file.endswith('npy') or array_file.endswith('npz'):
-            return np.load(array_file)
-        else:
-            raise TypeError('File type not recognised as "txt", "npy" or "npz" \n {}'.format(array_file))
-        # End if
-    # End load_array()
-
     def save_dataframe(self, filename, df):
-        df.to_hdf(filename + '.h5', 'table')
+        self.ModelInterface.save_dataframe(filename, df)
     # End save_dataframe()
 
     def load_dataframe(self, filename):
-        if filename.endswith('.h5'):
-            return pd.read_hdf(filename, 'table')
-        else:
-            raise TypeError('File type not recognised as "h5": {}'.format(filename))
-        # End if
+        return self.ModelInterface.load_dataframe(filename)
     # End load_dataframe()
-
-    def save_obj(self, obj, filename):
-        with open(filename + '.pkl', 'wb') as f:
-            pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
-        # End with
-    # End save_obj()
-
-    def load_obj(self, filename):
-        if filename.endswith('.pkl'):
-            with open(filename, 'rb') as f:
-                print f
-                print filename
-                p = pickle.load(f)
-                return p
-            # End with
-        else:
-            raise TypeError('File type not recognised as "pkl": {}'.format(filename))
-        # End if
-    # End load_obj()
 
     def flush(self, mode=None):
         if mode == 'data':
@@ -373,10 +292,8 @@ class GWModelBuilder(object):
         (xmin, xmax, ymin, ymax) = self.model_boundary[0:4]
         gridHeight = gridHeight
 
-        # get rows
-        rows = int((ymax - ymin) / gridHeight) + 1
-        # get columns
-        cols = int((xmax - xmin) / gridHeight) + 1
+        rows = int((ymax - ymin) / gridHeight) + 1  # get rows
+        cols = int((xmax - xmin) / gridHeight) + 1  # get columns
 
         # Nasty workaround until I find out why extent is wrong:
         (xmin, xmax, ymin, ymax) = self.model_mesh.GetLayer().GetExtent()
@@ -390,15 +307,12 @@ class GWModelBuilder(object):
 
         X, Y = np.meshgrid(x, y)
         self.model_mesh_centroids = (X, Y)
-
         self.centroid2mesh2Dindex = {}
         self.mesh2centroid2Dindex = {}
         if self.mesh_type == 'structured' and self.array_ordering.array_order == 'UL_RowColumn':
-            for row in xrange(rows):
-                for col in xrange(cols):
-                    self.centroid2mesh2Dindex[(x[col], y[row])] = [row, col]
-                    self.mesh2centroid2Dindex[(row, col)] = [x[col], y[row]]
-                # End for
+            for row, col in [(r, c) for r in xrange(rows) for c in xrange(cols)]:
+                self.centroid2mesh2Dindex[(x[col], y[row])] = [row, col]
+                self.mesh2centroid2Dindex[(row, col)] = [x[col], y[row]]
             # End for
         # End if
 
@@ -425,17 +339,14 @@ class GWModelBuilder(object):
         self.model_mesh3D_centroids = (X, Y, self.model_mesh3D[0])
         self.centroid2mesh3Dindex = {}
         if self.mesh_type == 'structured' and self.array_ordering.array_order == 'UL_RowColumn':
-            for lay in xrange(lays - 1):
-                for row in xrange(rows):
-                    for col in xrange(cols):
-                        self.centroid2mesh3Dindex[(
-                            x[col],
-                            y[row],
-                            (self.model_mesh3D[0][lay][row][col] +
-                             self.model_mesh3D[0][lay + 1][row][col]) / 2.
-                        )] = [lay, row, col]
-                    # End for
-                # End for
+            for lay, row, col in [(lay, row, col) for lay in xrange(lays - 1)
+                                  for row in xrange(rows) for col in xrange(cols)]:
+                self.centroid2mesh3Dindex[(
+                    x[col],
+                    y[row],
+                    (self.model_mesh3D[0][lay][row][col] +
+                     self.model_mesh3D[0][lay + 1][row][col]) / 2.
+                )] = [lay, row, col]
             # End for
         # End if
         return self.model_mesh3D_centroids
@@ -505,13 +416,12 @@ class GWModelBuilder(object):
         zone_pth = p_j(self.out_data_folder_grid, 'zone_matrix.npy')
         if os.path.isfile(mesh_pth) & os.path.isfile(zone_pth) & ~force:
             print 'Using previously generated mesh'
-            self.model_mesh3D = self.load_array(
-                mesh_pth), self.load_array(zone_pth)
+            self.model_mesh3D = self.ModelInterface.load_array(mesh_pth), self.ModelInterface.load_array(zone_pth)
         else:
             self.model_mesh3D = self.GISInterface.build_3D_mesh_from_rasters(
                 raster_files, raster_path, minimum_thickness, maximum_thickness)
-            self.save_array(mesh_pth, self.model_mesh3D[0])
-            self.save_array(zone_pth, self.model_mesh3D[1])
+            self.ModelInterface.save_array(mesh_pth, self.model_mesh3D[0])
+            self.ModelInterface.save_array(zone_pth, self.model_mesh3D[1])
         # End if
 
         self.build_centroids_array3D()  # Build 3D centroids array
@@ -534,75 +444,68 @@ class GWModelBuilder(object):
 
         # Clean up idle cells:
         (lay, row, col) = mesh3D_1.shape
-        for p in xrange(passes):
-            for k in xrange(lay):
-                for j in xrange(row):
-                    for i in xrange(col):
-                        cell_zone = mesh3D_1[k][j][i]
-                        if cell_zone == -1:
-                            continue
-                        # End if
+        for p, k, j, i in [(p_i, k_i, j_i, i_i) for p_i in xrange(passes)
+                           for k_i in xrange(lay) for j_i in xrange(row) for i_i in xrange(col)]:
+            cell_zone = mesh3D_1[k][j][i]
+            if cell_zone == -1:
+                continue
+            # End if
 
-                        target_zone = mesh3D_1[k]
-                        # Assimilate cell if surrounded by four of the same
-                        if assimilate:
-                            if (((j > 0) and (target_zone[j - 1][i] != cell_zone)) and       # North
-                                # South
-                                ((j < row - 1) and (target_zone[j + 1][i] != cell_zone)) and
-                                ((i < col - 1) and (target_zone[j][i + 1] != cell_zone)) and  # East
-                                ((i > 0) and (target_zone[j][i - 1] != cell_zone)) and       # West
-                                # North-East
-                                ((j > 0) and (i < col - 1) and (target_zone[j - 1][i + 1] != cell_zone)) and
-                                # South-East
-                                ((j < row - 1) and (i < col - 1) and (target_zone[j + 1][i + 1] != cell_zone)) and
-                                # North-West
-                                ((j > 0) and (i > 0) and (target_zone[j - 1][i - 1] != cell_zone)) and
-                                    ((j < row - 1) and (i > 0) and (target_zone[j + 1][i - 1] != cell_zone))):          # South-West
+            target_zone = mesh3D_1[k]
+            # Assimilate cell if surrounded by four of the same
+            if assimilate:
+                north = ((j > 0) and (target_zone[j - 1][i] != cell_zone))
+                south = ((j < row - 1) and (target_zone[j + 1][i] != cell_zone))
+                east = ((i < col - 1) and (target_zone[j][i + 1] != cell_zone))
+                west = ((i > 0) and (target_zone[j][i - 1] != cell_zone))
+                north_east = ((j > 0) and (i < col - 1) and (target_zone[j - 1][i + 1] != cell_zone))
+                south_east = ((j < row - 1) and (i < col - 1) and (target_zone[j + 1][i + 1] != cell_zone))
+                north_west = ((j > 0) and (i > 0) and (target_zone[j - 1][i - 1] != cell_zone))
+                south_west = ((j < row - 1) and (i > 0) and (target_zone[j + 1][i - 1] != cell_zone))
+                if (north and south and
+                        east and west and
+                        north_east and south_east and
+                        north_west and south_west):
+                    neighbours = []
+                    if j > 0:
+                        neighbours += [target_zone[j - 1][i]]
+                    if j < row - 1:
+                        neighbours += [target_zone[j + 1][i]]
+                    if i < col - 1:
+                        neighbours += [target_zone[j][i + 1]]
+                    if i > 0:
+                        neighbours += [target_zone[j][i - 1]]
+                    # End if
 
-                                neighbours = []
-                                if j > 0:
-                                    neighbours += [target_zone[j - 1][i]]
-                                if j < row - 1:
-                                    neighbours += [target_zone[j + 1][i]]
-                                if i < col - 1:
-                                    neighbours += [target_zone[j][i + 1]]
-                                if i > 0:
-                                    neighbours += [target_zone[j][i - 1]]
-                                # End if
-                                from itertools import groupby as g
+                    most_common = most_common_oneliner(neighbours)
+                    if most_common != -1:
+                        target_zone[j][i] = most_common_oneliner(neighbours)
+                    # End if
+                # End if
+            # End if
 
-                                most_common = most_common_oneliner(neighbours)
-                                if most_common != -1:
-                                    target_zone[j][i] = most_common_oneliner(neighbours)
-                                # End if
-                            # End if
-                        # End if
+            # Check North, South, East, West zones
+            # If any condition is true, then continue on
+            # Otherwise, set the cell to -1
+            if (((j > 0) and (target_zone[j - 1][i] != -1)) or       # North
+                ((j < row - 1) and (target_zone[j + 1][i] != -1)) or  # South
+                ((i < col - 1) and (target_zone[j][i + 1] != -1)) or  # East
+                    ((i > 0) and (target_zone[j][i - 1] != -1))):         # West
+                continue
+            # End if
 
-                        # Check North, South, East, West zones
-                        # If any condition is true, then continue on
-                        # Otherwise, set the cell to -1
-                        if (((j > 0) and (target_zone[j - 1][i] != -1)) or       # North
-                            ((j < row - 1) and (target_zone[j + 1][i] != -1)) or  # South
-                            ((i < col - 1) and (target_zone[j][i + 1] != -1)) or  # East
-                                ((i > 0) and (target_zone[j][i - 1] != -1))):         # West
-                            continue
-                        # End if
+            #  Check neighbours
+            # if k > 0:
+            #    cell_above_zone = MM.GW_build[name].model_mesh3D[1][k-1][j][i]
+            #    if cell_above_zone != -1: #cell_zone:
+            #        cell_active = True
+            # if k < lay - 1:
+            #    cell_below_zone = MM.GW_build[name].model_mesh3D[1][k+1][j][i]
+            #    if cell_below_zone != -1: # == cell_zone:
+            #        cell_active = True
 
-                        #  Check neighbours
-                        # if k > 0:
-                        #    cell_above_zone = MM.GW_build[name].model_mesh3D[1][k-1][j][i]
-                        #    if cell_above_zone != -1: #cell_zone:
-                        #        cell_active = True
-                        # if k < lay - 1:
-                        #    cell_below_zone = MM.GW_build[name].model_mesh3D[1][k+1][j][i]
-                        #    if cell_below_zone != -1: # == cell_zone:
-                        #        cell_active = True
-
-                        # None of the above conditions were true
-                        target_zone[j][i] = -1
-                    # End for
-                # End for
-            # End for
+            # None of the above conditions were true
+            target_zone[j][i] = -1
         # End for
     # End reclassIsolatedCells()
 
@@ -708,7 +611,7 @@ class GWModelBuilder(object):
         surf_raster_fname = os.path.join(self.out_data_folder_grid, 'surf_raster_processed.pkl')
         if os.path.exists(surf_raster_fname):
             print(" --- Using previously processed surface raster data --- ")
-            sr_array, point2surf_raster_map = self.load_obj(surf_raster_fname)
+            sr_array, point2surf_raster_map = self.ModelInterface.load_obj(surf_raster_fname)
         else:
             surf_raster_info = self.get_raster_info(surface_raster_file)
             srm = surf_raster_info['metadata']
@@ -724,7 +627,7 @@ class GWModelBuilder(object):
             for index, point in enumerate(point_merge):
                 point2surf_raster_map += [surf_centroids[0][tuple(surf_raster_points[closest_srp[index]])]]
             sr_array = surf_raster_info['array']
-            self.save_obj([sr_array, point2surf_raster_map], surf_raster_fname[:-4])
+            self.ModelInterface.save_obj([sr_array, point2surf_raster_map], surf_raster_fname[:-4])
         # End if
 
         riv_elevations = [sr_array[x[0]][x[1]] for x in point2surf_raster_map]
@@ -762,7 +665,7 @@ class GWModelBuilder(object):
         # Reorder the dataframe if this is the case
         if elev[0] < elev[-1]:
             river_seg = river_seg.reindex(index=river_seg.index[::-1])
-        # end if
+        # End if
 
         # Now get the cumulative length along the stream
         river_seg['Cumulative Length'] = river_seg['rchlen'].cumsum()
@@ -1084,6 +987,7 @@ class GWModelBuilder(object):
 
     def save_MODFLOW_SFR_dataframes(self, name, reach_df, seg_df):
         self.mf_sfr_df[name] = MODFLOW_SFR_dataframes(reach_df, seg_df)
+    # End save_MODFLOW_SFR_dataframes()
 
     ###########################################################################
     ###########################################################################
@@ -1093,8 +997,8 @@ class GWModelBuilder(object):
         poly_name, polyline_obj = self._get_poly_name_and_obj(polyline_obj)
         if os.path.exists(os.path.join(self.out_data_folder_grid, poly_name + '_mapped.pkl')):
             print "Using previously mapped polyline to grid object"
-            self.polyline_mapped[poly_name] = self.load_obj(os.path.join(self.out_data_folder_grid,
-                                                                         poly_name + '_mapped.pkl'))
+            self.polyline_mapped[poly_name] = self.ModelInterface.load_obj(os.path.join(self.out_data_folder_grid,
+                                                                                        poly_name + '_mapped.pkl'))
         else:
             temp = []
             self.polyline_mapped[poly_name] = self.GISInterface.map_polyline_to_grid(polyline_obj)
@@ -1109,7 +1013,7 @@ class GWModelBuilder(object):
                 temp += [[grid_loc, item[0]]]
             # End for
             self.polyline_mapped[poly_name] = temp
-            self.save_obj(temp, os.path.join(self.out_data_folder_grid, poly_name + '_mapped'))
+            self.ModelInterface.save_obj(temp, os.path.join(self.out_data_folder_grid, poly_name + '_mapped'))
         # End if
         self.gridded_data_register += [poly_name]
     # End map_polyline_to_grid()
@@ -1119,8 +1023,8 @@ class GWModelBuilder(object):
         poly_name, polygon_obj = self._get_poly_name_and_obj(polygon_obj)
         if os.path.exists(os.path.join(self.out_data_folder_grid, poly_name + '_mapped.pkl')):
             print "Using previously mapped polygons to grid object"
-            self.polygons_mapped[poly_name] = self.load_obj(os.path.join(self.out_data_folder_grid,
-                                                                         poly_name + '_mapped.pkl'))
+            self.polygons_mapped[poly_name] = self.ModelInterface.load_obj(os.path.join(self.out_data_folder_grid,
+                                                                                        poly_name + '_mapped.pkl'))
         else:
             self.polygons_mapped[poly_name] = \
                 self.GISInterface.map_polygon_to_grid(polygon_obj,
@@ -1131,9 +1035,9 @@ class GWModelBuilder(object):
                                                       bounds=self.model_mesh.GetLayer().GetExtent(),
                                                       feature_name=feature_name)
 
-            self.save_obj(self.polygons_mapped[poly_name],
-                          os.path.join(self.out_data_folder_grid,
-                                       poly_name + '_mapped'))
+            self.ModelInterface.save_obj(self.polygons_mapped[poly_name],
+                                         os.path.join(self.out_data_folder_grid,
+                                                      poly_name + '_mapped'))
         # End if
 
         self.gridded_data_register += [poly_name]
@@ -1147,8 +1051,8 @@ class GWModelBuilder(object):
         point_name, points_obj = self._get_poly_name_and_obj(points_obj)
         if os.path.exists(os.path.join(self.out_data_folder_grid, point_name + '_mapped.pkl')):
             print "Using previously mapped points to grid object"
-            self.points_mapped[point_name] = self.load_obj(os.path.join(self.out_data_folder_grid,
-                                                                        point_name + '_mapped.pkl'))
+            self.points_mapped[point_name] = self.ModelInterface.load_obj(os.path.join(self.out_data_folder_grid,
+                                                                                       point_name + '_mapped.pkl'))
         else:
             temp = []
             self.points_mapped[point_name] = self.GISInterface.map_points_to_grid(
@@ -1165,7 +1069,7 @@ class GWModelBuilder(object):
                 temp += [[grid_loc, item[0]]]
 
             self.points_mapped[point_name] = temp
-            self.save_obj(temp, os.path.join(self.out_data_folder_grid, point_name + '_mapped'))
+            self.ModelInterface.save_obj(temp, os.path.join(self.out_data_folder_grid, point_name + '_mapped'))
 
         self.gridded_data_register += [point_name]
     # End map_points_to_grid()
@@ -1248,9 +1152,7 @@ class GWModelBuilder(object):
         """
         This is a function to map the obs locations to the nearest node in the
         mesh
-
         """
-
         if method == 'nearest':
             for key in self.observations.obs_group:
                 if self.observations.obs_group[key]['domain'] == 'porous':
@@ -1275,26 +1177,22 @@ class GWModelBuilder(object):
                         else:
                             self.observations.obs_group[key]['time_series'].loc[
                                 self.observations.obs_group[key]
-                                ['time_series']['name'] == obs_loc, 'zone'] \
-                                = "{}{}".format(key, int(
-                                    self.model_mesh3D[1][k][j][i]))
+                                ['time_series']['name'] == obs_loc, 'zone'] = \
+                                "{}{}".format(key, int(self.model_mesh3D[1][k][j][i]))
+                        # End if
 
                 elif self.observations.obs_group[key]['domain'] == 'surface':
                     if self.observations.obs_group[key]['real']:
                         points = [list(x) for x in self.observations.obs_group[
                             key]['locations'].to_records(index=False)]
-                        self.observations.obs_group[key]['mapped_observations'] \
-                            = self.map_points_to_2Dmesh(
-                                points,
-                                identifier=self.observations.obs_group[key]
-                            ['locations'].index)
+                        self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_2Dmesh(
+                            points,
+                            identifier=self.observations.obs_group[key]['locations'].index)
 
                         # Check that 'mapped_observations' are in active cells and if not then set
                         # the observation to inactive
-                        for obs_loc in self.observations.obs_group[key][
-                                'mapped_observations'].keys():
-                            [j, i] = self.observations.obs_group[
-                                key]['mapped_observations'][obs_loc]
+                        for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
+                            [j, i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
                             if self.model_mesh3D[1][0][j][i] in ignore:
                                 self.observations.obs_group[key]['time_series'] \
                                     .loc[self.observations
@@ -1307,35 +1205,27 @@ class GWModelBuilder(object):
                                          obs_loc, 'zone'] = \
                                     "{}{}".format(key, int(
                                         self.model_mesh3D[1][k][j][i]))
-                            # end if
-                        # end for
+                            # End if
+                        # End for
                     else:
                         self.observations.obs_group[key]['mapped_observations'] = {}
                         for index, loc in enumerate(self.observations.obs_group[key]['locations']):
                             self.observations.obs_group[key]['mapped_observations'][index] = loc
-                        # end for
-                    # end if
+                        # End for
+                    # End if
                 elif self.observations.obs_group[key]['domain'] == 'stream':
                     if self.observations.obs_group[key]['real']:
                         self.observations.obs_group[key]['mapped_observations'] = {}
                         for index, loc in enumerate(self.observations.obs_group[key]['locations']):
                             self.observations.obs_group[key]['mapped_observations'][index] = loc
-
-#                        for obs_loc in self.observations.obs_group[key][
-#                            'mapped_observations'].keys():
-#                            [j, i] = self.observations.obs_group[
-#                                key]['mapped_observations'][obs_loc]
-#                            self.observations.obs_group[key]['time_series'].loc[
-#                                self.observations.obs_group[key]['time_series']['name'] == obs_loc, 'zone'] = "{}{}".format(key, int(self.model_mesh3D[1][k][j][i]))
-#                            # end if
-#                        # end for
+                        # End for
                     else:
                         self.observations.obs_group[key]['mapped_observations'] = {}
                         for index, loc in enumerate(self.observations.obs_group[key]['locations']):
                             self.observations.obs_group[key]['mapped_observations'][index] = loc
-                        # end for
-                    # end if
-                # end if
+                        # End for
+                    # End if
+                # End if
                 ts = self.observations.obs_group[key]['time_series']
                 ts = ts[ts['active'] == True]
                 self.observations.obs_group[key]['time_series'] = ts
@@ -1344,6 +1234,9 @@ class GWModelBuilder(object):
     # End map_obs_loc2mesh3D()
 
     def getXYpairs(self, points_obj, feature_id=None):
+        """
+        TODO: docs
+        """
         return self.GISInterface.getXYpairs(points_obj, feature_id=feature_id)
     # End getXYpairs()
 
@@ -1368,6 +1261,9 @@ class GWModelBuilder(object):
     # End point_values_from_raster()
 
     def map_points_to_raster_layers(self, points, depths, rasters):
+        """
+        TODO: docs
+        """
         # create boolean array
         len_list = len(points)
         layers = len(rasters) / 2  # Intentional integer division
@@ -1379,7 +1275,9 @@ class GWModelBuilder(object):
     def interpolate_points2mesh(self, points_obj, values_dataframe, feature_id=None,
                                 method='nearest', use='griddata',
                                 function='multiquadric', epsilon=2):
-
+        """
+        TODO: docs
+        """
         if isinstance(points_obj, list) or isinstance(points_obj, np.ndarray):
             points = points_obj
             values = values_dataframe
@@ -1401,6 +1299,9 @@ class GWModelBuilder(object):
 
     @staticmethod
     def _findInterval(row, times):
+        """
+        TODO: docs
+        """
         key_time = row['datetime']
         lower_time = times[0]
         for period, time in enumerate(times):
@@ -1439,6 +1340,9 @@ class GWModelBuilder(object):
     # End map_obs2model_times()
 
     def updateModelParameters(self, fname, verbose=True):
+        """
+        TODO: docs
+        """
         with open(fname, 'r') as f:
             text = f.readlines()
             # Remove header
@@ -1477,34 +1381,51 @@ class GWModelBuilder(object):
         for both properties and boundaries to work, i.e.,
             boundaries.update_boundary_array
             update_model_properties
-
         """
         self.boundaries.generate_update_report()
         self.properties.generate_update_report()
+    # End generate_update_report()
 
     def create_pilot_points(self, name, linear=False):
+        """
+        TODO: docs
+        """
         if linear == False:
             self.pilot_points[name] = pilotpoints.PilotPoints(
                 output_directory=self.out_data_folder_grid, additional_name=name)
         else:
             self.pilot_points[name] = PilotPointsLinear()
+        # End if
+    # End create_pilot_points()
 
     def save_pilot_points(self):
-        self.save_obj(self.pilot_points, os.path.join(self.out_data_folder_grid, 'pilot_points'))
+        """
+        TODO: docs
+        """
+        self.ModelInterface.save_obj(self.pilot_points, os.path.join(self.out_data_folder_grid, 'pilot_points'))
     # End save_pilot_points()
 
     def load_pilot_points(self, fname):
-        pp = self.load_obj(fname)
+        """
+        TODO: docs
+        """
+        pp = self.ModelInterface.load_obj(fname)
         for key in pp.keys():
             self.pilot_points[key] = pp[key]
         # End for
     # End load_pilot_points()
 
     def add2register(self, addition):
+        """
+        TODO: docs
+        """
         self.model_register += addition
     # End add2register()
 
     def writeRegister2file(self):
+        """
+        TODO: docs
+        """
         with open(os.path.join(self.out_data_folder, 'model_register.dat')) as f:
             for item in self.model_register:
                 f.write(item)
@@ -1523,6 +1444,11 @@ class GWModelBuilder(object):
     def mesh3DToVtk(self, val_array, val_name, out_path, vtk_out):
         '''
         Function to write the mesh array
+
+        :param val_array:
+        :param val_name:
+        :param out_path:
+        :param vtk_out:
         '''
         from HydroModelBuilder.GISInterface.GDALInterface import array2Vtk
         nrow, ncol = self.model_mesh3D[1][0].shape
@@ -1556,15 +1482,14 @@ class GWModelBuilder(object):
 
         This will not include any GIS type objects
         """
-
         target_attr = self.target_attr
         packaged_model = {k: self.__dict__[k] for k in self.__dict__ if k in target_attr}
 
         # Hack to fix up model boundary which contains a gdal object as well:
         packaged_model['model_boundary'] = packaged_model['model_boundary'][0:4]
 
-        self.save_obj(packaged_model, os.path.join(self.out_data_folder_grid,
-                                                   self.name + '_packaged'))
+        self.ModelInterface.save_obj(packaged_model, os.path.join(self.out_data_folder_grid,
+                                                                  self.name + '_packaged'))
     # End package_model()
 
     ###########################################################################

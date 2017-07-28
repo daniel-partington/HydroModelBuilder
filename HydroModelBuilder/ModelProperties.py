@@ -329,6 +329,25 @@ class ModelBuilderType(object):
         self.time = ['s', 'h', 'd', 'w', 'y']
         self.mass = ['mg', 'g', 'kg']
     # End __init__()
+
+    def check_type(self, model_type, mesh_type, data_format):
+        try:
+            # -- tests to alert user to incorrect inputs ...
+            assert model_type in self.model_types, "Model types must be of type: {}".format(
+                self.model_types)
+            assert mesh_type in self.mesh_types, "'Mesh types must be of type: {}".format(
+                self.mesh_types)
+            assert data_format in self.data_formats, "Data format must be of type: {}".format(
+                self.data_formats)
+        except AssertionError as e:
+            import traceback
+            import sys
+            _, _, tb = sys.exc_info()
+            # traceback.print_tb(tb) # Fixed format
+            tb_info = traceback.extract_tb(tb)
+            filename, line, func, text = tb_info[-1]
+            sys.exit("An error occured in {} on line {} with the message '{}'".format(filename, line, e))
+        # End try
 # End ModelBuilderType()
 
 
