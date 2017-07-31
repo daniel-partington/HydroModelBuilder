@@ -152,7 +152,7 @@ class GWModelManager(object):
         self.GW_build[self.models] = GWModelBuilder(name=packaged_model['name'],
                                                     model_type=packaged_model['model_type'],
                                                     mesh_type=packaged_model['mesh_type'],
-                                                    units=packaged_model['units'],
+                                                    units=packaged_model['_units'],
                                                     data_folder=packaged_model['data_folder'],
                                                     out_data_folder=packaged_model['out_data_folder'],
                                                     model_data_folder=packaged_model['model_data_folder'],

@@ -10,6 +10,7 @@ from more_itertools import unique_everseen
 from scipy import spatial
 
 from ModelInterface.ModelInterface import ModelInterface
+from ModelInterface.ModelMesh import MeshGenerator
 from ModelProperties import (ArrayOrdering, ModelBoundaries, ModelBuilderType,
                              ModelFeature, ModelInitialConditions,
                              ModelObservations, ModelParameters,
@@ -52,7 +53,7 @@ class GWModelBuilder(object):
         self.name = name
         self.model_type = model_type
         self.mesh_type = mesh_type
-        self.ModelInterface = ModelInterface(model_type, self.types)
+        self.ModelInterface = ModelInterface(model_type, self.types, data_format)
 
         if units != None:
             if type(units) == list:
@@ -92,6 +93,8 @@ class GWModelBuilder(object):
         self.model_mesh = None
         self.model_mesh_centroids = None
         self.mesh2centroid2Dindex = None
+        self.centroid2mesh2Dindex = None
+        self.centroid2mesh3Dindex = None
         self.model_mesh3D = None
         self.model_mesh3D_centroids = None
         self.model_layers = None
@@ -132,7 +135,7 @@ class GWModelBuilder(object):
                 'observations',
                 'initial_conditions',
                 'out_data_folder_grid',
-                'model_boundary',
+                '_model_boundary',
                 'boundary_poly_file',
                 'boundary_data_file',
                 'model_time',
@@ -172,7 +175,125 @@ class GWModelBuilder(object):
                 # End if
             # End for
         # End if
+
+        self.MeshGen = MeshGenerator(self.ModelInterface, self.GISInterface)
+        self.update_meshgen()
     # End __init__()
+
+    @property
+    def model_mesh_centroids(self):
+        return self.MeshGen.model_mesh_centroids
+    # End model_mesh_centroids()
+
+    @model_mesh_centroids.setter
+    def model_mesh_centroids(self, val):
+        self._model_mesh_centroids = val
+        if hasattr(self, 'MeshGen'):
+            self.MeshGen.model_mesh_centroids = val
+        # End if
+    # End model_mesh_centroids()
+
+    @property
+    def mesh_type(self):
+        return self.MeshGen.mesh_type
+    # End mesh_type()
+
+    @mesh_type.setter
+    def mesh_type(self, val):
+        self._mesh_type = val
+        if hasattr(self, 'MeshGen'):
+            self.MeshGen._mesh_type = val
+        # End if
+    # End mesh_type()
+
+    @property
+    def model_mesh(self):
+        return self.MeshGen.model_mesh
+    # End model_mesh3D()
+
+    @model_mesh.setter
+    def model_mesh(self, val):
+        self._model_mesh = val
+        if hasattr(self, 'MeshGen'):
+            self.MeshGen.model_mesh = val
+        # End if
+    # End model_mesh3D()
+
+    @property
+    def model_mesh3D(self):
+        return self.MeshGen.model_mesh3D
+    # End model_mesh3D()
+
+    @model_mesh3D.setter
+    def model_mesh3D(self, val):
+        self._model_mesh3D = val
+        if hasattr(self, 'MeshGen'):
+            self.MeshGen.model_mesh = val
+        # End if
+    # End model_mesh3D()
+
+    @property
+    def mesh2centroid2Dindex(self):
+        return self.MeshGen.mesh2centroid2Dindex
+    # End mesh2centroid2Dindex()
+
+    @mesh2centroid2Dindex.setter
+    def mesh2centroid2Dindex(self, val):
+        self._mesh2centroid2Dindex = val
+        if hasattr(self, 'MeshGen'):
+            self.MeshGen.centroid2mesh3Dindex = val
+        # End if
+    # End mesh2centroid2Dindex()
+
+    @property
+    def centroid2mesh2Dindex(self):
+        return self.MeshGen.centroid2mesh2Dindex
+    # End centroid2mesh2Dindex()
+
+    @centroid2mesh2Dindex.setter
+    def centroid2mesh2Dindex(self, val):
+        self._centroid2mesh2Dindex = val
+        if hasattr(self, 'MeshGen'):
+            self.MeshGen.centroid2mesh2Dindex = val
+        # End if
+    # End centroid2mesh2Dindex()
+
+    @property
+    def centroid2mesh3Dindex(self):
+        return self.MeshGen.centroid2mesh3Dindex
+    # End centroid2mesh2Dindex()
+
+    @centroid2mesh3Dindex.setter
+    def centroid2mesh3Dindex(self, val):
+        self._centroid2mesh3Dindex = val
+        if hasattr(self, 'MeshGen'):
+            self.MeshGen.centroid2mesh3Dindex = val
+        # End if
+    # End centroid2mesh2Dindex()
+
+    @property
+    def model_boundary(self):
+        return self.MeshGen.model_boundary
+    # End model_boundary()
+
+    @model_boundary.setter
+    def model_boundary(self, val):
+        self._model_boundary = val
+        if hasattr(self, 'MeshGen'):
+            self.MeshGen.model_boundary = val
+        # End if
+    # End model_boundary()
+
+    def update_meshgen(self):
+        self.MeshGen.model_boundary = self._model_boundary
+        self.MeshGen.model_mesh_centroids = self._model_mesh_centroids
+        self.MeshGen.mesh2centroid2Dindex = self._mesh2centroid2Dindex
+        self.MeshGen.centroid2mesh2Dindex = self._centroid2mesh2Dindex
+        self.MeshGen.centroid2mesh3Dindex = self._centroid2mesh3Dindex
+        self.MeshGen.model_mesh3D = self._model_mesh3D
+        self.MeshGen.model_mesh = self._model_mesh
+        self.MeshGen.mesh_type = self._mesh_type
+    # End update_meshgen()
 
     def updateGISinterface(self):
         for key, value in self.__dict__.items():
@@ -191,7 +312,7 @@ class GWModelBuilder(object):
         :param mass: str, mass unit
         """
         self.ModelInterface.set_units(length, time, mass)
-        self.units = {"length": length, "time": time, "mass": mass}
+        self._units = {"length": length, "time": time, "mass": mass}
     # End set_units()
 
     def check_for_existing(self, fn):
@@ -214,29 +335,7 @@ class GWModelBuilder(object):
     # End load_dataframe()
 
     def flush(self, mode=None):
-        if mode == 'data':
-            folder = self.out_data_folder
-        elif mode == 'model':
-            folder = self.model_data_folder
-        else:
-            raise ValueError('Expected mode to be either "data" or "model" but got: {}'.format(mode))
-        # End if
-
-        if folder == None:
-            raise ValueError('No folder set, so no flushing')
-        # End if
-        for the_file in os.listdir(folder):
-            file_path = os.path.join(folder, the_file)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-                # End if
-            except Exception as e:
-                print(e)
-            # End try
-        # End for
+        self.ModelInterface.flush(mode)
     # End flush()
 
     def set_model_boundary_from_corners(self, xmin, xmax, ymin, ymax):
@@ -288,35 +387,7 @@ class GWModelBuilder(object):
 
         :param gridHeight: float, height of grid cells
         """
-
-        (xmin, xmax, ymin, ymax) = self.model_boundary[0:4]
-        gridHeight = gridHeight
-
-        rows = int((ymax - ymin) / gridHeight) + 1  # get rows
-        cols = int((xmax - xmin) / gridHeight) + 1  # get columns
-
-        # Nasty workaround until I find out why extent is wrong:
-        (xmin, xmax, ymin, ymax) = self.model_mesh.GetLayer().GetExtent()
-        (xmin2, xmax2, ymin2, ymax2) = (xmin, xmin + cols * gridHeight, ymax - rows * gridHeight, ymax)
-
-        x = np.linspace(xmin2 + gridHeight / 2.0, xmax2 - gridHeight / 2.0, cols)
-        # y = np.linspace(ymin+gridHeight/2.0, ymax-gridHeight/2.0, rows)
-        # To put it in MODFLOW ordering ... need to invoke the array ordering here
-        # to handle automatically
-        y = np.linspace(ymax2 - gridHeight / 2.0, ymin2 + gridHeight / 2.0, rows)
-
-        X, Y = np.meshgrid(x, y)
-        self.model_mesh_centroids = (X, Y)
-        self.centroid2mesh2Dindex = {}
-        self.mesh2centroid2Dindex = {}
-        if self.mesh_type == 'structured' and self.array_ordering.array_order == 'UL_RowColumn':
-            for row, col in [(r, c) for r in xrange(rows) for c in xrange(cols)]:
-                self.centroid2mesh2Dindex[(x[col], y[row])] = [row, col]
-                self.mesh2centroid2Dindex[(row, col)] = [x[col], y[row]]
-            # End for
-        # End if
-
-        return self.model_mesh_centroids
+        return self.MeshGen.build_centroids_array(gridHeight, self.array_ordering)
     # End build_centroids_array()
 
     def build_centroids_array3D(self):
@@ -327,29 +398,7 @@ class GWModelBuilder(object):
         2. Creates a dictionary with centroids as key and lay row col as entries
         If key isn't found then it returns nearest centroid
         """
-        (X, Y) = self.model_mesh_centroids
-        (lays, rows, cols) = self.model_mesh3D[0].shape
-
-        x = X[0]
-        y = [y[0] for y in Y]
-
-        X = np.asarray([X] * (lays - 1))
-        Y = np.asarray([Y] * (lays - 1))
-
-        self.model_mesh3D_centroids = (X, Y, self.model_mesh3D[0])
-        self.centroid2mesh3Dindex = {}
-        if self.mesh_type == 'structured' and self.array_ordering.array_order == 'UL_RowColumn':
-            for lay, row, col in [(lay, row, col) for lay in xrange(lays - 1)
-                                  for row in xrange(rows) for col in xrange(cols)]:
-                self.centroid2mesh3Dindex[(
-                    x[col],
-                    y[row],
-                    (self.model_mesh3D[0][lay][row][col] +
-                     self.model_mesh3D[0][lay + 1][row][col]) / 2.
-                )] = [lay, row, col]
-            # End for
-        # End if
-        return self.model_mesh3D_centroids
+        return self.MeshGen.build_centroids_array3D(self.array_ordering)
     # build_centroids_array3D()
 
     def define_structured_mesh(self, gridHeight, gridWidth):
@@ -411,20 +460,8 @@ class GWModelBuilder(object):
         :param maximum_thickness: float, maximum thickness
         :param force: bool, if True, forces a rebuild of the mesh
         """
-        p_j = os.path.join
-        mesh_pth = p_j(self.out_data_folder_grid, 'model_mesh.npy')
-        zone_pth = p_j(self.out_data_folder_grid, 'zone_matrix.npy')
-        if os.path.isfile(mesh_pth) & os.path.isfile(zone_pth) & ~force:
-            print 'Using previously generated mesh'
-            self.model_mesh3D = self.ModelInterface.load_array(mesh_pth), self.ModelInterface.load_array(zone_pth)
-        else:
-            self.model_mesh3D = self.GISInterface.build_3D_mesh_from_rasters(
-                raster_files, raster_path, minimum_thickness, maximum_thickness)
-            self.ModelInterface.save_array(mesh_pth, self.model_mesh3D[0])
-            self.ModelInterface.save_array(zone_pth, self.model_mesh3D[1])
-        # End if
-
-        self.build_centroids_array3D()  # Build 3D centroids array
+        self.MeshGen.build_3D_mesh_from_rasters(self.out_data_folder_grid, self.array_ordering, raster_files,
+                                                raster_path, minimum_thickness, maximum_thickness, force)
     # End build_3D_mesh_from_rasters()
 
     def reclassIsolatedCells(self, passes=1, assimilate=False):
@@ -436,77 +473,7 @@ class GWModelBuilder(object):
         :param passes: int, number of passes to do
         :param assimilate: bool, whether to assimilate or not if surrounded by four of the same.
         """
-        mesh3D_1 = self.model_mesh3D[1]
-
-        def most_common_oneliner(L):
-            return max(g(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
-        # End most_common_oneliner()
-
-        # Clean up idle cells:
-        (lay, row, col) = mesh3D_1.shape
-        for p, k, j, i in [(p_i, k_i, j_i, i_i) for p_i in xrange(passes)
-                           for k_i in xrange(lay) for j_i in xrange(row) for i_i in xrange(col)]:
-            cell_zone = mesh3D_1[k][j][i]
-            if cell_zone == -1:
-                continue
-            # End if
-
-            target_zone = mesh3D_1[k]
-            # Assimilate cell if surrounded by four of the same
-            if assimilate:
-                north = ((j > 0) and (target_zone[j - 1][i] != cell_zone))
-                south = ((j < row - 1) and (target_zone[j + 1][i] != cell_zone))
-                east = ((i < col - 1) and (target_zone[j][i + 1] != cell_zone))
-                west = ((i > 0) and (target_zone[j][i - 1] != cell_zone))
-                north_east = ((j > 0) and (i < col - 1) and (target_zone[j - 1][i + 1] != cell_zone))
-                south_east = ((j < row - 1) and (i < col - 1) and (target_zone[j + 1][i + 1] != cell_zone))
-                north_west = ((j > 0) and (i > 0) and (target_zone[j - 1][i - 1] != cell_zone))
-                south_west = ((j < row - 1) and (i > 0) and (target_zone[j + 1][i - 1] != cell_zone))
-                if (north and south and
-                        east and west and
-                        north_east and south_east and
-                        north_west and south_west):
-                    neighbours = []
-                    if j > 0:
-                        neighbours += [target_zone[j - 1][i]]
-                    if j < row - 1:
-                        neighbours += [target_zone[j + 1][i]]
-                    if i < col - 1:
-                        neighbours += [target_zone[j][i + 1]]
-                    if i > 0:
-                        neighbours += [target_zone[j][i - 1]]
-                    # End if
-
-                    most_common = most_common_oneliner(neighbours)
-                    if most_common != -1:
-                        target_zone[j][i] = most_common_oneliner(neighbours)
-                    # End if
-                # End if
-            # End if
-
-            # Check North, South, East, West zones
-            # If any condition is true, then continue on
-            # Otherwise, set the cell to -1
-            if (((j > 0) and (target_zone[j - 1][i] != -1)) or       # North
-                ((j < row - 1) and (target_zone[j + 1][i] != -1)) or  # South
-                ((i < col - 1) and (target_zone[j][i + 1] != -1)) or  # East
-                    ((i > 0) and (target_zone[j][i - 1] != -1))):         # West
-                continue
-            # End if
-
-            #  Check neighbours
-            # if k > 0:
-            #    cell_above_zone = MM.GW_build[name].model_mesh3D[1][k-1][j][i]
-            #    if cell_above_zone != -1: #cell_zone:
-            #        cell_active = True
-            # if k < lay - 1:
-            #    cell_below_zone = MM.GW_build[name].model_mesh3D[1][k+1][j][i]
-            #    if cell_below_zone != -1: # == cell_zone:
-            #        cell_active = True
-
-            # None of the above conditions were true
-            target_zone[j][i] = -1
-        # End for
+        self.MeshGen.reclassIsolatedCells(passes, assimilate)
     # End reclassIsolatedCells()
 
     def read_poly(self, filename, path=None, poly_type='polyline'):
@@ -542,28 +509,13 @@ class GWModelBuilder(object):
         return tmp
     # End _pointsdist()
 
-    def _hacky_centroid_to_mesh(self, centroid, dist_min, cache={}):
+    def _hacky_centroid_to_mesh(self, centroid, dist_min):
         """
         Nasty (and slow!) workaround due to minor mismatch in centroids from mesh and separate
         generation in this class. Perhaps better to actually define this array in fishnet when
         define_structured_mesh is called
         """
-        closest_key = cache.get((centroid, dist_min), None)
-        if closest_key is None:
-            half_grid_height = self.gridHeight / 2.0
-            for key in self.centroid2mesh2Dindex:
-                dist = self._pointsdist(centroid, key)
-                if dist < dist_min:
-                    dist_min, closest_key = dist, key
-                    if dist_min < half_grid_height:
-                        break
-                    # End if
-                # End if
-            # End for
-
-            cache[(centroid, dist_min)] = self.centroid2mesh2Dindex[closest_key]
-
-        return self.centroid2mesh2Dindex[closest_key]
+        return self.MeshGen._hacky_centroid_to_mesh(self.gridHeight, centroid, dist_min, self._pointsdist)
     # End _hacky_centroid_to_mesh()
 
     ###########################################################################
@@ -572,34 +524,36 @@ class GWModelBuilder(object):
     # There is some repitition from above and this needs sorting out!!
     ###########################################################################
 
+    def _dist(self, p1, p2):
+        return np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+    # End dist()
+
     def create_river_dataframe(self, name, poly_file, surface_raster_file,
                                plotting=False, avoid_collocation=False):
         poly_file = self.GISInterface.read_poly(poly_file)
         points_list, points_dict = self.GISInterface.polyline_explore(poly_file)
         points_dict = self._get_start_and_end_points_from_line_features(points_dict)
         point_merge = self._points_merge(points_dict)
-        closest = self._points2mesh(point_merge)
+        closest = self.do_kdtree(np.array(self.centroid2mesh2Dindex.keys()), point_merge)
         point2mesh_map, point2mesh_map2 = self._points2mesh_map(point_merge, closest)
         amalg_riv_points, amalg_riv_points_collection = self._amalgamate_points(point2mesh_map2, point_merge)
         # Do test and report any cell jumps more than 1 up, down, left, right
         self._naive_cell_ordering_test(amalg_riv_points)
 
-        def dist(p1, p2):
-            return np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
-        # End dist()
+        dist = self._dist
 
         def points_dist_collection(points):
             dist_total = 0
-            for index in range(len(points)):
+            for index in xrange(len(points)):
                 if index == 0:
                     pass
                 else:
-                    dist_total += dist(points[index], points[index - 1])
+                    dist_total += _dist(points[index], points[index - 1])
             return dist_total
         # End points_dist_collection()
 
         lengths = []
-        for i in range(len(amalg_riv_points_collection.keys())):
+        for i in xrange(len(amalg_riv_points_collection.keys())):
             if i == 0:
                 lengths += [points_dist_collection(amalg_riv_points_collection[i])]
                 continue
@@ -721,10 +675,8 @@ class GWModelBuilder(object):
         This function requires that self.river_mapping exists, which occurs
         after running "self.create_river_dataframe"
 
-        param:: name: Name given to stream or river when create_river_dataframe
-        was run
-        param:: points: points for which to find the closest to named river
-
+        :param name: str, Name given to stream or river when create_river_dataframe was run
+        :param points: list, points for which to find the closest to named river
         '''
         try:
             self.river_mapping[name]
@@ -840,10 +792,7 @@ class GWModelBuilder(object):
         current = 0.0
         carryover = 0.0
 
-        def dist(p1, p2):
-            return np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
-        # End dist()
-
+        dist = self._dist
         for index, points in enumerate(point2mesh_map2):
             index_next = index + 1
             # Stop at the last iteration
@@ -921,8 +870,8 @@ class GWModelBuilder(object):
         :returns: tuple
         """
         points_array = np.array(points)
-        centroids = self.centroid2mesh2Dindex  # .keys()
-        model_mesh_points = np.array(self.centroid2mesh2Dindex.keys())
+        centroids = self.centroid2mesh2Dindex
+        model_mesh_points = np.array(centroids.keys())
 
         point2mesh_map = {}
         for index, point in enumerate(points_array):
@@ -936,11 +885,6 @@ class GWModelBuilder(object):
 
         return point2mesh_map, point2mesh_map2
     # End _points2mesh_map()
-
-    def _points2mesh(self, points):
-        return self.do_kdtree(np.array(self.centroid2mesh2Dindex.keys()),
-                              np.array(points))
-    # End _points2mesh()
 
     def _get_start_and_end_points_from_line_features(self, points_dict):
         """
@@ -1118,26 +1062,7 @@ class GWModelBuilder(object):
         corresponding entry containing the i, j and k reference of the nearest
         cell center to the given point
         '''
-        model_mesh_points = np.array(self.centroid2mesh3Dindex.keys())
-
-        if type(points) == list:
-            points = np.array(points)
-        # End if
-
-        closest = self.do_kdtree(model_mesh_points, points)
-
-        point2mesh_map = {}
-        for index, point in enumerate(points):
-            if identifier[0]:
-                point2mesh_map[identifier[index]] = self.centroid2mesh3Dindex[
-                    tuple(model_mesh_points[closest[index]])]
-            else:
-                point2mesh_map[point] = self.centroid2mesh3Dindex[
-                    tuple(model_mesh_points[closest[index]])]
-            # End if
-        # End for
-
-        return point2mesh_map
+        return self.MeshGen.map_points_to_3Dmesh(self.do_kdtree, points, identifier)
     # End map_points_to_3Dmesh()
 
     def map_obs_loc2mesh3D(self, method='nearest', ignore=[-1]):
@@ -1145,84 +1070,7 @@ class GWModelBuilder(object):
         This is a function to map the obs locations to the nearest node in the
         mesh
         """
-        if method == 'nearest':
-            for key in self.observations.obs_group:
-                if self.observations.obs_group[key]['domain'] == 'porous':
-                    points = [list(x) for x in self.observations.obs_group[
-                        key]['locations'].to_records(index=False)]
-                    self.observations.obs_group[key]['mapped_observations'] = \
-                        self.map_points_to_3Dmesh(points,
-                                                  identifier=self.observations
-                                                  .obs_group[key]
-                                                  ['locations'].index)
-
-                    # Check that 'mapped_observations' are in active cells and if not then set
-                    # the observation to inactive
-                    for obs_loc in self.observations.obs_group[
-                            key]['mapped_observations'].keys():
-                        [k, j, i] = self.observations.obs_group[key] \
-                            ['mapped_observations'][obs_loc]
-                        if self.model_mesh3D[1][k][j][i] in ignore:
-                            self.observations.obs_group[key]['time_series'].loc[
-                                self.observations.obs_group[key]['time_series']
-                                ['name'] == obs_loc, 'active'] = False
-                        else:
-                            self.observations.obs_group[key]['time_series'].loc[
-                                self.observations.obs_group[key]
-                                ['time_series']['name'] == obs_loc, 'zone'] = \
-                                "{}{}".format(key, int(self.model_mesh3D[1][k][j][i]))
-                        # End if
-
-                elif self.observations.obs_group[key]['domain'] == 'surface':
-                    if self.observations.obs_group[key]['real']:
-                        points = [list(x) for x in self.observations.obs_group[
-                            key]['locations'].to_records(index=False)]
-                        self.observations.obs_group[key]['mapped_observations'] = self.map_points_to_2Dmesh(
-                            points,
-                            identifier=self.observations.obs_group[key]['locations'].index)
-
-                        # Check that 'mapped_observations' are in active cells and if not then set
-                        # the observation to inactive
-                        for obs_loc in self.observations.obs_group[key]['mapped_observations'].keys():
-                            [j, i] = self.observations.obs_group[key]['mapped_observations'][obs_loc]
-                            if self.model_mesh3D[1][0][j][i] in ignore:
-                                self.observations.obs_group[key]['time_series'] \
-                                    .loc[self.observations
-                                         .obs_group[key]['time_series']['name'] ==
-                                         obs_loc, 'active'] = False
-                            else:
-                                self.observations.obs_group[key]['time_series'] \
-                                    .loc[self.observations
-                                         .obs_group[key]['time_series']['name'] ==
-                                         obs_loc, 'zone'] = \
-                                    "{}{}".format(key, int(
-                                        self.model_mesh3D[1][k][j][i]))
-                            # End if
-                        # End for
-                    else:
-                        self.observations.obs_group[key]['mapped_observations'] = {}
-                        for index, loc in enumerate(self.observations.obs_group[key]['locations']):
-                            self.observations.obs_group[key]['mapped_observations'][index] = loc
-                        # End for
-                    # End if
-                elif self.observations.obs_group[key]['domain'] == 'stream':
-                    if self.observations.obs_group[key]['real']:
-                        self.observations.obs_group[key]['mapped_observations'] = {}
-                        for index, loc in enumerate(self.observations.obs_group[key]['locations']):
-                            self.observations.obs_group[key]['mapped_observations'][index] = loc
-                        # End for
-                    else:
-                        self.observations.obs_group[key]['mapped_observations'] = {}
-                        for index, loc in enumerate(self.observations.obs_group[key]['locations']):
-                            self.observations.obs_group[key]['mapped_observations'][index] = loc
-                        # End for
-                    # End if
-                # End if
-                ts = self.observations.obs_group[key]['time_series']
-                ts = ts[ts['active'] == True]
-                self.observations.obs_group[key]['time_series'] = ts
-            # End for
-        # End if
+        self.MeshGen.map_obs_loc2mesh3D(self.observations, self.do_kdtree, method, ignore)
     # End map_obs_loc2mesh3D()
 
     def getXYpairs(self, points_obj, feature_id=None):
@@ -1474,14 +1322,8 @@ class GWModelBuilder(object):
 
         This will not include any GIS type objects
         """
-        target_attr = self.target_attr
-        packaged_model = {k: self.__dict__[k] for k in self.__dict__ if k in target_attr}
-
-        # Hack to fix up model boundary which contains a gdal object as well:
-        packaged_model['model_boundary'] = packaged_model['model_boundary'][0:4]
-
-        self.ModelInterface.save_obj(packaged_model, os.path.join(self.out_data_folder_grid,
-                                                                  self.name + '_packaged'))
+        self.ModelInterface.package_model(self.out_data_folder_grid, self.name + '_packaged',
+                                          self.__dict__, self.target_attr)
     # End package_model()
 
     ###########################################################################

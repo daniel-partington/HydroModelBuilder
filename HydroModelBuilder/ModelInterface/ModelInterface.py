@@ -1,4 +1,7 @@
 import cPickle as pickle
+import os
+import shutil
+import sys
 
 import numpy as np
 import pandas as pd
@@ -11,12 +14,13 @@ class ModelInterface(object):
     groundater models, e.g. MODFLOW and HGS
     """
 
-    def __init__(self, model_type, types):
+    def __init__(self, model_type, types, data_format):
         """
         :param model_type: str, Type of model being used.
         """
         self.model_type = model_type
         self.types = types
+        self.data_format = data_format
         self.units = {}
     # End __init__()
 
@@ -116,5 +120,47 @@ class ModelInterface(object):
             raise TypeError('File type not recognised as "pkl": {}'.format(filename))
         # End if
     # End load_obj()
+
+    def flush(self, mode=None):
+        if mode == 'data':
+            folder = self.out_data_folder
+        elif mode == 'model':
+            folder = self.model_data_folder
+        else:
+            raise ValueError('Expected mode to be either "data" or "model" but got: {}'.format(mode))
+        # End if
+
+        if folder == None:
+            raise ValueError('No folder set, so no flushing')
+        # End if
+        for the_file in os.listdir(folder):
+            file_path = os.path.join(folder, the_file)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+                # End if
+            except Exception as e:
+                print(e)
+            # End try
+        # End for
+    # End flush()
+
+    def package_model(self, out_dir, name, attrs, target_attrs):
+        """
+        Option to save all important attributes of model class to allow quick
+        loading and manipulation of model without separate data and grid generation
+        building scripts
+
+        This will not include any GIS type objects
+        """
+        packaged_model = {k: attrs[k] for k in attrs if k in target_attrs}
+
+        # Hack to fix up model boundary which contains a gdal object as well:
+        packaged_model['_model_boundary'] = packaged_model['_model_boundary'][0:4]
+
+        self.save_obj(packaged_model, os.path.join(out_dir, name))
+    # End package_model()
 
 # End ModelInterface()
