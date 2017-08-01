@@ -1,5 +1,3 @@
-import sys
-
 import cPickle as pickle
 
 from HydroModelBuilder.GWModelBuilder import GWModelBuilder
@@ -10,7 +8,6 @@ class GWModelManager(object):
     """
     Class in which groundwater model lives including functions to build and
     run the model.
-
     """
 
     def __init__(self, model_directory=None):
@@ -64,15 +61,16 @@ class GWModelManager(object):
     def save_obj(self, obj, filename):
         with open(filename + '.pkl', 'wb') as f:
             pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+        # End with
+    # End save_obj()
 
     def load_obj(self, filename):
-        if filename[-4:] == '.pkl':
+        if filename.endswith('pkl'):
             with open(filename, 'rb') as f:
                 return pickle.load(f)
         else:
-            print 'File type not recognised as "pkl"'
-            sys.exit(1)
-        # end if
+            raise TypeError('File type not recognised as "pkl"')
+        # End if
 
     def build_model_database(self):
         pass
@@ -126,13 +124,13 @@ class GWModelManager(object):
         differences = list(set(original_param_names) - set(params_new.keys()))
         if len(differences) > 0:
             print 'The following parameters were no matched: ', differences
-        # end if
+        # End if
         for key in params_new.keys():
             if key not in original_param_names:
                 print 'Parameter name passed not matched, hence not assigned: ', key
             elif key in original_param_names:
                 self.GW_build[model_name].parameters.param[key] = params_new[key]
-            # end if
+            # End if
         # end for
 
     def setupPEST(self, model_name, directory=None, csv_copy=False, excel_copy=False, models_ID=None):
@@ -143,7 +141,7 @@ class GWModelManager(object):
         params = self.GW_build[model_name].parameters.param
         obs = self.GW_build[model_name].observations.obs
         obs_grp = self.GW_build[model_name].observations.obs_group
-        print self.GW_build[model_name]
+        print "Model for PEST: ", self.GW_build[model_name]
         self.PEST = PESTInterface(name=name, directory=directory, csv_copy=csv_copy,
                                   excel_copy=excel_copy, params=params, obs=obs, obs_grp=obs_grp, models_ID=models_ID)
 
@@ -154,27 +152,16 @@ class GWModelManager(object):
         self.GW_build[self.models] = GWModelBuilder(name=packaged_model['name'],
                                                     model_type=packaged_model['model_type'],
                                                     mesh_type=packaged_model['mesh_type'],
-                                                    units=packaged_model['units'],
+                                                    units=packaged_model['_units'],
                                                     data_folder=packaged_model['data_folder'],
-                                                    out_data_folder=packaged_model[
-                                                        'out_data_folder'],
-                                                    model_data_folder=packaged_model[
-                                                        'model_data_folder'],
+                                                    out_data_folder=packaged_model['out_data_folder'],
+                                                    model_data_folder=packaged_model['model_data_folder'],
                                                     GISInterface=None,
                                                     data_format=packaged_model['data_format'],
                                                     target_attr=self.target_attr)
 
         # Rename model in dictionary by it's model builder name
         self.GW_build[packaged_model['name']] = self.GW_build.pop(self.models)
-        # Load in all of the objects except for GIS objects to the model builder class
-
-        # self.GW_build[self.models].name = packaged_model['name']
-        # self.GW_build[self.models].model_type = packaged_model['model_type']
-        # self.GW_build[self.models].mesh_type = packaged_model['mesh_type']
-        # self.GW_build[self.models].data_format = packaged_model['data_format']
-        # self.GW_build[self.models].out_data_folder = packaged_model['out_data_folder']
-        # self.GW_build[self.models].data_folder = packaged_model['data_folder']
-        # self.GW_build[self.models].out_data_folder = packaged_model['out_data_folder']
 
         ref_pkg_model = self.GW_build[packaged_model['name']]
 

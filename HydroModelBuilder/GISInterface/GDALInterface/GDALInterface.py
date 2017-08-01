@@ -7,7 +7,6 @@ import numpy as np
 # Import the GDAL classes
 from osgeo import gdal, gdalconst, ogr, osr
 
-
 # Import spatial processing functions that use GDAL
 import basement
 import create_buffer
@@ -19,8 +18,6 @@ import polygon2points
 import polygon2raster
 import raster2polygon
 import reproject
-
-
 # Import the GIS interface
 from HydroModelBuilder.GISInterface.GISInterface import GISInterface
 
@@ -100,14 +97,14 @@ class GDALInterface(GISInterface):
             # End if
         # End if
 
-        if self.mesh_type == 'structured':
+        if self._mesh_type == 'structured':
             # should only be 1 feature in the layer for the bounding polygon!!!
             for feature in layer:
                 geom = feature.GetGeometryRef()
                 xmin, xmax, ymin, ymax = geom.GetEnvelope()
                 self.model_boundary = [xmin, xmax, ymin, ymax, self.projected_coordinate_system]
             # End for
-        elif self.mesh_type == 'unstructured':
+        elif self._mesh_type == 'unstructured':
             sys.exit('Mesh type "unstructured" unsupported at the moment')
         # End if
 
@@ -208,7 +205,7 @@ class GDALInterface(GISInterface):
                     path = ""
                     ds = gdal.Open(raster, gdalconst.GA_ReadOnly)
                 # end if
-                
+
                 # Check raster GCS
                 prj = ds.GetProjection()
                 srs = osr.SpatialReference(wkt=prj)
@@ -253,12 +250,13 @@ class GDALInterface(GISInterface):
         raster['array'] = raster_band.ReadAsArray()
         cols = raster_band.XSize
         rows = raster_band.YSize
-        raster['metadata'] = {'cols':cols, 'rows':rows, 'nodata':no_data, 'ulx':ulx, 'uly':uly, 'pixel_x':x_pixel, 'pixel_y':-y_pixel} 
+        raster['metadata'] = {'cols': cols, 'rows': rows, 'nodata': no_data,
+                              'ulx': ulx, 'uly': uly, 'pixel_x': x_pixel, 'pixel_y': -y_pixel}
         return raster
 
-    def raster_reproject_by_grid(self, infile, outfile, epsg_to=None, 
+    def raster_reproject_by_grid(self, infile, outfile, epsg_to=None,
                                  bounds=None, resample_method=None):
-        
+
         if epsg_to == None:
             epsg_to = self.pcs_EPSG
         else:
@@ -268,21 +266,21 @@ class GDALInterface(GISInterface):
             (xmin, xmax, ymin, ymax) = self.model_mesh.GetLayer().GetExtent()
         else:
             (xmin, xmax, ymin, ymax) = bounds
-        # end if     
+        # end if
         if resample_method == None:
             resample_method = 'near'
-        
+
         command = "gdalwarp -overwrite -t_srs {} ".format(epsg_to) + \
                   " -te " + " {0} {1} {2} {3} ".format(xmin, ymin, xmax, ymax) + \
                   '"' + infile + '" "' + outfile + \
                   '" -r {}'.format(resample_method)
-        
+
         try:
             print(subprocess.check_output(command, shell=True))
         except subprocess.CalledProcessError as e:
             print(e)
         # end try
-        
+
     def map_rasters_to_grid(self, raster_files, raster_path, raster_driver=None):
         """
         Map the rasters in raster_collection to the model grid
@@ -302,7 +300,7 @@ class GDALInterface(GISInterface):
         """
         simplified_raster_array = {}
 
-        if self.mesh_type == 'structured':
+        if self._mesh_type == 'structured':
             new_files = [os.path.join(self.out_data_folder_grid, raster +
                                       '_model_grid.tif') for raster in raster_files]
             new_files_exist = [os.path.isfile(os.path.join(self.out_data_folder_grid,
@@ -355,11 +353,11 @@ class GDALInterface(GISInterface):
                         pixel_spacing=pixel_spacing,
                         src_cs=None,
                         dst_cs=self.projected_coordinate_system,
-                        reproj_method=gdal.GRA_NearestNeighbour, # Changed fomr  GRA_Bilinear
+                        reproj_method=gdal.GRA_NearestNeighbour,  # Changed fomr  GRA_Bilinear
                         create_copy=True,
                         copy_dest=os.path.join(self.out_data_folder_grid,
-                                               raster + '_model_grid.tif'), #.bil'),
-                        raster_driver="GTiff", #"EHdr",
+                                               raster + '_model_grid.tif'),  # .bil'),
+                        raster_driver="GTiff",  # "EHdr",
                         set_bounds=set_bounds)
                     # for bands in mapped_raster.GetBandCount:
                     simplified_raster_array[raster] = mapped_raster.GetRasterBand(1).ReadAsArray()
@@ -369,25 +367,25 @@ class GDALInterface(GISInterface):
 
             return simplified_raster_array
 
-        elif self.mesh_type == 'unstructured':
+        elif self._mesh_type == 'unstructured':
             pass
 
         else:
-            print 'Something went wrong ... mesh type is not recognised: %s' % self.mesh_type
+            print 'Something went wrong ... mesh type is not recognised: %s' % self._mesh_type
 
     def get_raster_array(self, raster_fname, band=1):
         ds = gdal.Open(raster_fname)
         raster_band = ds.GetRasterBand(band)
         array = raster_band.ReadAsArray()
-        return array    
-    
-    def map_raster_to_regular_grid_return_array(self, raster_fname, 
+        return array
+
+    def map_raster_to_regular_grid_return_array(self, raster_fname,
                                                 resample_method='near'):
-        
+
         if not os.path.exists(raster_fname):
             sys.exit("File {} does not exist".format(raster_fname))
         # end if
-        (xmin, xmax, ymin, ymax) = self.model_mesh.GetLayer().GetExtent()        
+        (xmin, xmax, ymin, ymax) = self.model_mesh.GetLayer().GetExtent()
         epsg_to = self.pcs_EPSG
         pixel_spacing = self.gridHeight
         if os.path.sep in raster_fname:
@@ -402,9 +400,9 @@ class GDALInterface(GISInterface):
             command = "gdalwarp -overwrite -t_srs {} ".format(epsg_to) + \
                       " -tr {} {} ".format(str(pixel_spacing), str(pixel_spacing)) + \
                       " -te " + " {0} {1} {2} {3} ".format(xmin, ymin, xmax, ymax) + \
-                     '"' + raster_fname + '" "' + new_raster_fname + \
-                     '" -r {}'.format(resample_method)
-    
+                '"' + raster_fname + '" "' + new_raster_fname + \
+                '" -r {}'.format(resample_method)
+
             try:
                 print(subprocess.check_output(command, shell=True))
             except subprocess.CalledProcessError as e:
@@ -648,7 +646,7 @@ class GDALInterface(GISInterface):
 
         return point_values_from_raster.get_point_values_from_raster(points, raster_obj)
 
-    def create_line_string_from_points(self, points, file_in, file_out, 
+    def create_line_string_from_points(self, points, file_in, file_out,
                                        driver_name='ESRI Shapefile'):
         '''
         Function to convert set of points into a linestring and write to shapefile
@@ -656,22 +654,22 @@ class GDALInterface(GISInterface):
         shp1 = ogr.Open(file_in)
         layer1 = shp1.GetLayer(0)
         srs = layer1.GetSpatialRef()
-        
+
         driver = ogr.GetDriverByName(driver_name)
         dstshp = driver.CreateDataSource(file_out)
         dstlayer = dstshp.CreateLayer('mylayer', srs, geom_type=ogr.wkbLineString)
-    
+
         line = ogr.Geometry(ogr.wkbLineString)
         for point in points:
             line.AddPoint(*point)
         # end for
-        featureDefn = dstlayer.GetLayerDefn()        
+        featureDefn = dstlayer.GetLayerDefn()
         lineFeature = ogr.Feature(featureDefn)
         lineFeature.SetGeometry(line)
-        dstlayer.CreateFeature(lineFeature)    
+        dstlayer.CreateFeature(lineFeature)
         lineFeature.Destroy
         dstshp.Destroy
-        dstshp = None           
+        dstshp = None
 
     def polyline_explore(self, poly_file):
         '''
@@ -694,7 +692,7 @@ class GDALInterface(GISInterface):
             if index in range(count):
                 points_dict[index] = geom.GetPoints()
                 points_all += geom.GetPoints()
-    
+
         return points_all, points_dict
 
     def _linestring2points(self, linestring):
@@ -705,7 +703,7 @@ class GDALInterface(GISInterface):
 
     def polyline_explore_2(self, poly_file):
         '''
-        Function to extract points from multi-linestring  
+        Function to extract points from multi-linestring
         '''
         poly_ds = ogr.Open(poly_file)
         poly_layer = poly_ds.GetLayer()
@@ -714,7 +712,7 @@ class GDALInterface(GISInterface):
             geom = feat.GetGeometryRef()
             for geo in geom:
                 points_all += self._linestring2points(geo.ExportToWkt())
-    
+
         return points_all
 
     def map_points_to_raster_layers(self, points, depths, rasters, points_layer):
