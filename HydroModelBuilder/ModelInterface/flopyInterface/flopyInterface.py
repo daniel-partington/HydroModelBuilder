@@ -824,7 +824,10 @@ class ModflowModel(object):
 
             fig.subplots_adjust(left=0.1, right=0.9, bottom=0.35, top=0.95, wspace=0.1, hspace=0.12)
             plt.show()
-
+        else:
+            return wat_bal_df
+        # end if
+        
     def waterBalanceTS(self, plot=True):
 
         cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
@@ -1057,6 +1060,61 @@ class ModflowModel(object):
         #fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
 
         plt.show()
+
+    def compareAllObs_metrics(self, to_file=False):
+
+        headobj = self.importHeads()
+        times = headobj.get_times()
+
+        scatterx = []
+        scattery = []
+        obs_sim_zone_all = []
+
+        # The definition of obs_sim_zone looks like:
+        # self.obs_sim_zone += [[obs, sim, zone, x, y]]
+
+        for i in range(self.model_data.model_time.t['steps']):
+            head = headobj.get_data(totim=times[i])
+            self.CompareObserved('head', head, nper=i)
+            obs_sim_zone_all += self.obs_sim_zone
+
+        scatterx = np.array([h[0] for h in obs_sim_zone_all])
+        scattery = np.array([h[1] for h in obs_sim_zone_all])
+ 
+        sum1 = 0.
+        sum2 = 0.
+
+        if len(scatterx) != 0:
+
+            mean = np.mean(scatterx)
+            for i in range(len(scatterx)):
+                num1 = (scatterx[i] - scattery[i])
+                num2 = (scatterx[i] - mean)
+                sum1 += num1 ** np.float64(2.)
+                sum2 += num2 ** np.float64(2.)
+
+            ME = 1 - sum1 / sum2
+
+            # for PBIAS
+            def pbias(simulated, observed):
+                return np.sum(simulated - observed) * 100 / np.sum(observed)
+
+            PBIAS = pbias(scattery, scatterx)
+
+            # For rmse
+            def rmse(simulated, observed):
+                return np.sqrt(((simulated - observed) ** 2).mean())
+
+            RMSE = rmse(scattery, scatterx)
+
+        if to_file:
+            with open(os.path.join(self.data_folder, 'Head_Obs_Model_Measures.txt'), 'w') as f:
+                f.write('ME PBIAS RMSE\n')                
+                f.write('{} {} {}'.format(ME, PBIAS, RMSE))                
+
+            
+        return ME, PBIAS, RMSE
+
 
     def viewHeadsByZone(self, nper='all'):
 
