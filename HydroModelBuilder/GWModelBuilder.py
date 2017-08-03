@@ -52,7 +52,7 @@ class GWModelBuilder(object):
         self.types.check_type(model_type, mesh_type, data_format)
         self.name = name
         self.model_type = model_type
-        self.mesh_type = mesh_type
+        self._mesh_type = mesh_type
         self.ModelInterface = ModelInterface(model_type, self.types, data_format)
 
         if units != None:
@@ -85,16 +85,16 @@ class GWModelBuilder(object):
 
         # OTHER variables
         self.out_data_folder_grid = None
-        self.model_boundary = None
+        self._model_boundary = None
         self.data_boundary = None
         self.boundary_poly_file = None
         self.boundary_data_file = None
 
-        self.model_mesh = None
-        self.model_mesh_centroids = None
-        self.mesh2centroid2Dindex = None
-        self.centroid2mesh2Dindex = None
-        self.centroid2mesh3Dindex = None
+        self._model_mesh = None
+        self._model_mesh_centroids = None
+        self._mesh2centroid2Dindex = None
+        self._centroid2mesh2Dindex = None
+        self._centroid2mesh3Dindex = None
         self.model_mesh3D = None
         self.model_mesh3D_centroids = None
         self.model_layers = None
@@ -122,8 +122,8 @@ class GWModelBuilder(object):
             self.target_attr = [
                 'name',
                 'model_type',
-                'mesh_type',
-                'units',
+                '_mesh_type',
+                '_units',
                 'data_folder',
                 'out_data_folder',
                 'model_data_folder',
@@ -139,9 +139,9 @@ class GWModelBuilder(object):
                 'boundary_poly_file',
                 'boundary_data_file',
                 'model_time',
-                'model_mesh_centroids',
-                'mesh2centroid2Dindex',
-                'model_mesh3D',
+                '_model_mesh_centroids',
+                '_mesh2centroid2Dindex',
+                '_model_mesh3D',
                 'model_mesh3D_centroids',
                 'model_layers',
                 'model_features',
@@ -209,7 +209,7 @@ class GWModelBuilder(object):
     @property
     def model_mesh(self):
         return self.MeshGen.model_mesh
-    # End model_mesh3D()
+    # End model_mesh()
 
     @model_mesh.setter
     def model_mesh(self, val):
@@ -217,7 +217,7 @@ class GWModelBuilder(object):
         if hasattr(self, 'MeshGen'):
             self.MeshGen.model_mesh = val
         # End if
-    # End model_mesh3D()
+    # End model_mesh()
 
     @property
     def model_mesh3D(self):
@@ -285,6 +285,9 @@ class GWModelBuilder(object):
     # End model_boundary()
 
     def update_meshgen(self):
+        """
+        Update MeshGen properties forcibly.
+        """
         self.MeshGen.model_boundary = self._model_boundary
         self.MeshGen.model_mesh_centroids = self._model_mesh_centroids
         self.MeshGen.mesh2centroid2Dindex = self._mesh2centroid2Dindex
@@ -294,6 +297,21 @@ class GWModelBuilder(object):
         self.MeshGen.model_mesh = self._model_mesh
         self.MeshGen.mesh_type = self._mesh_type
     # End update_meshgen()
+
+    def update_meshprops(self):
+        """
+        Forcibly update self with MeshGen properties.
+        Can be removed once ModelBuilder and MeshGen are cleanly separated
+        """
+        self._model_boundary = self.MeshGen.model_boundary
+        self._model_mesh_centroids = self.MeshGen.model_mesh_centroids
+        self._mesh2centroid2Dindex = self.MeshGen.mesh2centroid2Dindex
+        self._centroid2mesh2Dindex = self.MeshGen.centroid2mesh2Dindex
+        self._centroid2mesh3Dindex = self.MeshGen.centroid2mesh3Dindex
+        self._model_mesh3D = self.MeshGen.model_mesh3D
+        self._model_mesh = self.MeshGen.model_mesh
+        self._mesh_type = self.MeshGen.mesh_type
+    # End update_meshprops()
 
     def updateGISinterface(self):
         for key, value in self.__dict__.items():
@@ -1322,6 +1340,7 @@ class GWModelBuilder(object):
 
         This will not include any GIS type objects
         """
+        self.update_meshprops()
         self.ModelInterface.package_model(self.out_data_folder_grid, self.name + '_packaged',
                                           self.__dict__, self.target_attr)
     # End package_model()
