@@ -1,10 +1,10 @@
 package:
-    name: HydroModelBuilder
+    name: hydromodelbuilder
     version: "0.2"
 
 source:
     git_url: https://github.com/daniel-partington/HydroModelBuilder.git
-    sha1: 4da7b80873e0eedb25be11be849a26220cad402c
+    sha1: a9221513feda93d35530ced0bcf1ff48fd570f1c
 
 build:
     number: 0
@@ -21,7 +21,6 @@ requirements:
     - numpy
     - pandas
     - openpyxl
-    - flopy
     - nose
   run:
     - gdal
@@ -30,7 +29,6 @@ requirements:
     - numpy
     - pandas
     - openpyxl
-    - flopy
     - nose
 
 about:
