@@ -81,15 +81,36 @@ class ModelBoundaries(object):
         self.bc[bc_name] = {}
         self.bc[bc_name]['bc_type'] = bc_type
         self.bc[bc_name]['bc_static'] = bc_static
+        self.bc[bc_name]['updated'] = False 
     # End create_model_boundary_condition()
+                
+    def associate_zonal_array_and_dict(self, bc_name, zonal_array, zonal_dict): 
+        self.bc[bc_name]['zonal_array'] = zonal_array 
+        self.bc[bc_name]['zonal_dict'] = zonal_dict 
 
     def assign_boundary_array(self, bc_name, bc_array):
         if bc_name in self.bc:
             self.bc[bc_name]['bc_array'] = bc_array
         else:
-            sys.exit('No boundary condition with name: {}'.format(bc_name))
+            raise ValueError('No boundary condition with name: {}'.format(bc_name))
         # End if
     # End assign_boundary_array()
+    
+    def update_boundary_array(self, bc_name, bc_array): 
+        if bc_name in self.bc: 
+            self.bc[bc_name]['bc_array'] = bc_array 
+            self.bc[bc_name]['updated'] = True 
+        else: 
+            raise ValueError('No boundary condition with name: {}'.format(bc_name)) 
+ 
+    def generate_update_report(self): 
+        print("The following bc's were updated: \n {}".format( 
+                [key for key in self.bc.keys()  
+                 if self.bc[key]['updated'] == True])) 
+        print("\nThe following bc's were NOT updated: \n {}\n".format( 
+                [key for key in self.bc.keys()  
+                 if self.bc[key]['updated'] == False]))     
+
 # End ModelBoundaries()
 
 
@@ -108,8 +129,10 @@ class ModelProperties(object):
         if prop_type in self.prop_types:
             self.properties[prop_type] = value
         else:
-            print("{} not in {}".format(prop_type, self.prop_types))
-            sys.exit('Property type not recognised')
+            raise TypeError("""
+                            {} not in {}
+                            Property type not recognised
+                            """.format(prop_type, self.prop_types))
         # End if
     # End assign_model_properties()
 # End ModelProperties()
