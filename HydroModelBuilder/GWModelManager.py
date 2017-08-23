@@ -20,8 +20,8 @@ class GWModelManager(object):
         self.target_attr = [
             'name',
             'model_type',
-            'mesh_type',
-            'units',
+            '_mesh_type',
+            '_units',
             'data_folder',
             'out_data_folder',
             'model_data_folder',
@@ -33,13 +33,13 @@ class GWModelManager(object):
             'observations',
             'initial_conditions',
             'out_data_folder_grid',
-            'model_boundary',
+            '_model_boundary',
             'boundary_poly_file',
             'boundary_data_file',
             'model_time',
-            'model_mesh_centroids',
-            'mesh2centroid2Dindex',
-            'model_mesh3D',
+            '_model_mesh_centroids',
+            '_mesh2centroid2Dindex',
+            '_model_mesh3D',
             'model_mesh3D_centroids',
             'model_layers',
             'model_features',
@@ -151,7 +151,7 @@ class GWModelManager(object):
         self.models += 1
         self.GW_build[self.models] = GWModelBuilder(name=packaged_model['name'],
                                                     model_type=packaged_model['model_type'],
-                                                    mesh_type=packaged_model['mesh_type'],
+                                                    mesh_type=packaged_model['_mesh_type'],
                                                     units=packaged_model['_units'],
                                                     data_folder=packaged_model['data_folder'],
                                                     out_data_folder=packaged_model['out_data_folder'],
@@ -164,10 +164,12 @@ class GWModelManager(object):
         self.GW_build[packaged_model['name']] = self.GW_build.pop(self.models)
 
         ref_pkg_model = self.GW_build[packaged_model['name']]
-
         for key in self.target_attr:
             setattr(ref_pkg_model, key, packaged_model[key])
         # End for
+
+        ref_pkg_model.update_meshgen()
+    # End load_GW_model()
 
     def load_GW_models(self, GW_models):
         for model in GW_models:
