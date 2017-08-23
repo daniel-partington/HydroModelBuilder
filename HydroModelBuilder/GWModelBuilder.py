@@ -548,7 +548,7 @@ class GWModelBuilder(object):
                 if index == 0:
                     pass
                 else:
-                    dist_total += _dist(points[index], points[index - 1])
+                    dist_total += dist(points[index], points[index - 1])
             return dist_total
         # End points_dist_collection()
 
@@ -562,7 +562,7 @@ class GWModelBuilder(object):
                                                amalg_riv_points_collection[i])]
         # End for
 
-        surf_raster_fname = os.path.join(self.out_data_folder_grid, 'surf_raster_processed.pkl')
+        surf_raster_fname = os.path.join(self.out_data_folder_grid, 'surf_raster_processed_{}.pkl'.format(name))
         if os.path.exists(surf_raster_fname):
             print(" --- Using previously processed surface raster data --- ")
             sr_array, point2surf_raster_map = self.ModelInterface.load_obj(surf_raster_fname)
@@ -576,6 +576,7 @@ class GWModelBuilder(object):
                                                                                      srm['pixel_y'],
                                                                                      srm['uly']))
             surf_raster_points = np.array(surf_centroids[0].keys())
+            
             closest_srp = self.do_kdtree(surf_raster_points, point_merge)
             point2surf_raster_map = []
             for index, point in enumerate(point_merge):
@@ -602,6 +603,8 @@ class GWModelBuilder(object):
                 riv_reach += [reach]
             # End if
         # End for
+        
+        print len(riv_reach), len(riv_elevations)
 
         river_df = pd.DataFrame({'reach': riv_reach, 'strtop': riv_elevations})
         # In case of hitting no data values replace these with nan
@@ -1234,7 +1237,7 @@ class GWModelBuilder(object):
             self.pilot_points[name] = pilotpoints.PilotPoints(
                 output_directory=self.out_data_folder_grid, additional_name=name)
         else:
-            self.pilot_points[name] = PilotPointsLinear()
+            self.pilot_points[name] = pilotpoints.PilotPointsLinear()
         # End if
     # End create_pilot_points()
 

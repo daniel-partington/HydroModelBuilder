@@ -18,6 +18,22 @@ import time
 
 import numpy as np
 
+class PilotPointsLinear(object): 
+    """ 
+    This class is used to handle linear "pilot points" in a simple fashion 
+    """ 
+    def __init__(self): 
+        pass 
+     
+    def set_uniform_points(self, length, num_points): 
+        self.length = length 
+        self.num_points = num_points 
+        self.points = [length / x for x in range(1, num_points)] + [0.] 
+        self.points = self.points[::-1] 
+ 
+    def interpolate_unknown_points_from_df_col(self, df_col, points_vals): 
+        return np.interp(df_col.tolist(), self.points, points_vals) 
+    
 class PilotPoints(object):
 
     def __init__(self, output_directory=None, additional_name=""):
