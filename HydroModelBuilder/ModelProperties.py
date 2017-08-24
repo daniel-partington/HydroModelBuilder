@@ -70,7 +70,7 @@ class ModelBoundaries(object):
     def __init__(self):
         self.bc = {}
         self.bc_types = ['river', 'river_flow', 'wells', 'recharge', 'rainfall',
-                         'head', 'drain', 'channel', 'general head']
+                         'head', 'drain', 'channel', 'general head', 'ET']
     # End __init__()
 
     def create_model_boundary_condition(self, bc_name, bc_type, bc_static=True, bc_parameter=None):

@@ -344,6 +344,14 @@ class GWModelBuilder(object):
         self.ModelInterface.check_for_existing(fn)
     # End check_for_existing()
 
+    def save_obj(self, filename, obj):
+        self.ModelInterface.save_obj(filename, obj)
+    # End save_dataframe()
+
+    def load_obj(self, filename):
+        return self.ModelInterface.load_obj(filename)
+    # End load_dataframe()
+
     def save_dataframe(self, filename, df):
         self.ModelInterface.save_dataframe(filename, df)
     # End save_dataframe()
