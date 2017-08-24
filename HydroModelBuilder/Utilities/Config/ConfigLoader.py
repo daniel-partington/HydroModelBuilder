@@ -7,7 +7,9 @@ import subprocess
 import sys
 
 import simplejson as json
+import warnings
 from jsmin import jsmin
+
 
 
 class ConfigLoader(object):
@@ -112,6 +114,14 @@ class ConfigLoader(object):
         """
         if user_env_name is None:
             user_env_name = subprocess.check_output("whoami").strip()
+        # End if
+        
+        try:
+            self.model_config[project_name]["environment"][user_env_name]
+        except KeyError:
+            warnings.warn('No environment set for current user {}, using defaults'.format(user_env_name))
+            user_env_name = 'default'
+        # End try
 
         self.settings = self.model_config[project_name]["environment"][user_env_name]
         self.model_config = self.model_config[project_name]["environment"][user_env_name]
