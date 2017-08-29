@@ -472,6 +472,12 @@ class ModflowModel(object):
         Flow, Rn, EC = FlRnEC.Fl_Rn_EC_simul()
         return Flow, Rn, EC
 
+    def getHeads(self):
+        headobj = self.importHeads()
+        times = headobj.get_times()
+        head = headobj.get_data(totim=times[-1])
+        return head
+
     def getFinalHeads(self, filename):
         headobj = bf.HeadFile(filename)
         times = headobj.get_times()
@@ -520,7 +526,7 @@ class ModflowModel(object):
         for per in range(str_pers):
             riv_exchange[per] = []
             for cell in river:
-                (l, r, c) = (0, cell[0], cell[1])
+                (l, r, c) = (cell[0], cell[1], cell[2])
                 if str_pers > 1:
                     riv_exchange[per] += [[riv_flux[per][l][r][c], (l, r, c)]]
                 else:
