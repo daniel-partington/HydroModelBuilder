@@ -1,3 +1,4 @@
+import time
 import datetime
 import os
 
@@ -618,8 +619,7 @@ class ModflowModel(object):
                             if obs_type == 'discharge':
                                 col_of_interest = 'Qout'
                             sim_obs = sfr[(sfr['segment'] == seg) &
-                                          (sfr['time'] == interval)] \
-                                [col_of_interest]
+                                          (sfr['time'] == interval)][col_of_interest]
                             f.write('%f\n' % sim_obs)
 
             if obs_type == 'head':
@@ -745,7 +745,7 @@ class ModflowModel(object):
             headobj = bf.HeadFile(path + name + '.hds')  # , precision='double')
             return headobj
         else:
-            self.headobj = bf.HeadFile(self.data_folder + self.name + '.hds')
+            self.headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
             return self.headobj
 
     def importSfrOut(self, path=None, name=None, ext='.sfr.out'):
@@ -759,17 +759,25 @@ class ModflowModel(object):
         return self.sfr_df
 
     def importCbb(self):
-        self.cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
+        # fn = os.path.join(self.data_folder, self.name + ".cbc")
+        # fsize = os.path.getsize(fn)
+        # while fsize == 0:
+        #     pass
+        # # End while
+        # time.sleep(1)  # wait 1 second before attempting to read
+
+        self.cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + ".cbc"))
+
         return self.cbbobj
 
     def SFRoutput_plot(self):
-        sfrout = SfrFile(self.data_folder + self.name + '.sfr.out')
+        sfrout = SfrFile(os.path.join(self.data_folder, self.name + ".sfr.out"))
         sfr_df = sfrout.get_dataframe()
         sfr_df
 
     def waterBalance(self, plot=True, nper=0):
 
-        cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
+        cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
 
         water_balance_components = cbbobj.textlist
         water_balance = {}
@@ -827,10 +835,10 @@ class ModflowModel(object):
         else:
             return wat_bal_df
         # end if
-        
+
     def waterBalanceTS(self, plot=True):
 
-        cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
+        cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
 
         water_balance_components = cbbobj.textlist
         times = cbbobj.get_times()
@@ -1080,7 +1088,7 @@ class ModflowModel(object):
 
         scatterx = np.array([h[0] for h in obs_sim_zone_all])
         scattery = np.array([h[1] for h in obs_sim_zone_all])
- 
+
         sum1 = 0.
         sum2 = 0.
 
@@ -1109,12 +1117,10 @@ class ModflowModel(object):
 
         if to_file:
             with open(os.path.join(self.data_folder, 'Head_Obs_Model_Measures.txt'), 'w') as f:
-                f.write('ME PBIAS RMSE\n')                
-                f.write('{} {} {}'.format(ME, PBIAS, RMSE))                
+                f.write('ME PBIAS RMSE\n')
+                f.write('{} {} {}'.format(ME, PBIAS, RMSE))
 
-            
         return ME, PBIAS, RMSE
-
 
     def viewHeadsByZone(self, nper='all'):
 
@@ -1801,8 +1807,8 @@ class ModflowModel(object):
 
     def viewHeads2(self):
         # Create the headfile object
-        headobj = bf.HeadFile(self.data_folder + self.name + '.hds')
-        cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
+        headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
+        cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
 
         times = headobj.get_times()
         head = headobj.get_data(totim=times[0])
@@ -1972,8 +1978,8 @@ class ModflowModel(object):
 
     def viewGHB(self):
         # Create the headfile object
-        headobj = bf.HeadFile(self.data_folder + self.name + '.hds')
-        cbbobj = bf.CellBudgetFile(self.data_folder + self.name + '.cbc')
+        headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
+        cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
 
         times = headobj.get_times()
         water_balance_components = cbbobj.textlist
@@ -2462,8 +2468,7 @@ class MT3DPostProcess(object):
                         if obs_type == 'EC':
                             col_of_interest = 'SFR-CONCENTRATION'
                         sim_conc = sft[(sft['SFR-NODE'] == seg) &
-                                       (sft['TIME'] == times[interval])] \
-                            [col_of_interest]
+                                       (sft['TIME'] == times[interval])][col_of_interest]
                         f.write('%f\n' % sim_conc)
 
                 if obs_group[obs_set]['domain'] == 'porous':
@@ -2714,6 +2719,7 @@ class MT3DPostProcess(object):
         plt.show()
 
 # End viewConcsByZone
+
 
 if __name__ == '__main__':
     pass
