@@ -547,10 +547,11 @@ class ModflowModel(object):
         times = headobj.get_times()
         head = headobj.get_data(totim=times[-1])
 
-        if mask is None:
-            return np.mean(self.top - head[0])
-        else:
+        if mask is not None:
             return np.mean(self.top[mask] - head[0][mask])
+        else:
+            return np.mean(self.top - head[0])
+        # End if
 
     def loop_over_zone(self, array):
         mesh_1 = self.model_data.model_mesh3D[1]
