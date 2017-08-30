@@ -1,4 +1,3 @@
-import time
 import datetime
 import os
 
@@ -99,10 +98,9 @@ class ModflowModel(object):
                                             nper=self.nper,
                                             perlen=self.perlen,
                                             nstp=self.nstp,
-                                            steady=self.steady)  # ,
-        if self.verbose:
-            if self.check:
-                self.dis.check()
+                                            steady=self.steady)
+        if self.verbose and self.check:
+            self.dis.check()
         # start_datetime = self.start_datetime)
     # End createDiscretisation()
 
@@ -513,7 +511,12 @@ class ModflowModel(object):
         return riv_exchange
 
     def getRivFluxNodes(self, nodes):
-        cbbobj = self.importCbb()
+        try:
+            cbbobj = self.importCbb()
+        except IndexError as e:
+            raise IndexError("""Error occurred reading cell-by-cell file - check if model converged
+            Error: {}""".format(e))
+        # End try
         riv_flux = cbbobj.get_data(text='RIVER LEAKAGE', full3D=True)
         times = cbbobj.get_times()
         if type(times) == str:
@@ -524,7 +527,7 @@ class ModflowModel(object):
         river = nodes
 
         riv_exchange = {}
-        for per in range(str_pers):
+        for per in xrange(str_pers):
             riv_exchange[per] = []
             for cell in river:
                 (l, r, c) = (cell[0], cell[1], cell[2])
@@ -536,6 +539,7 @@ class ModflowModel(object):
         riv_exchange = np.array([x[0] for x in riv_exchange[0] if type(x[0]) == np.float32]).sum()
 
         return riv_exchange
+    # End getRivFluxNodes()
 
     def getAverageDepthToGW(self, mask=None):
 
