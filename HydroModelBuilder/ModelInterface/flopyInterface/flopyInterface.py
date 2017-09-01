@@ -372,16 +372,13 @@ class ModflowModel(object):
     # End checkMODFLOW
 
     def runMODFLOW(self, silent=True):
-
         success, buff = self.mf.run_model(silent=silent)
-        if not success:
-            #raise Exception('MODFLOW did not terminate normally.')
-            convergence = self.checkConvergence(fail=True)
-        else:
-            convergence = self.checkConvergence()
-        # End if
-        return convergence
 
+        if not self.steady:
+            return self.checkConvergence(fail=not success)
+        # End if
+
+        return True
     # End runMODFLOW()
 
     #**************************************************************************
