@@ -374,11 +374,8 @@ class ModflowModel(object):
     def runMODFLOW(self, silent=True):
         success, buff = self.mf.run_model(silent=silent)
 
-        if not self.steady:
-            return self.checkConvergence(fail=not success)
-        # End if
-
-        return True
+        # return self.checkConvergence(fail=not success)
+        return success
     # End runMODFLOW()
 
     #**************************************************************************
@@ -532,6 +529,9 @@ class ModflowModel(object):
                     riv_exchange[per] += [[riv_flux[per][l][r][c], (l, r, c)]]
                 else:
                     riv_exchange[per] += [[riv_flux[0][l][r][c], (l, r, c)]]
+                # End if
+            # End for
+        # End for
 
         riv_exchange = np.array([x[0] for x in riv_exchange[0] if type(x[0]) == np.float32]).sum()
 
@@ -729,7 +729,7 @@ class ModflowModel(object):
         self.obs_sim_zone = []
         obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
         obs_df = obs_df[obs_df['active'] == True]
-        obs_df = obs_df[obs_df['interval'] == nper]
+        # obs_df = obs_df[obs_df['interval'] == nper]
         sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
         # self.model_data.observations.obs_group[obs_set]['time_series']['name']:
         for observation in obs_df['name']:
@@ -767,23 +767,17 @@ class ModflowModel(object):
         return self.sfr_df
 
     def importCbb(self):
-        # fn = os.path.join(self.data_folder, self.name + ".cbc")
-        # fsize = os.path.getsize(fn)
-        # while fsize == 0:
-        #     pass
-        # # End while
-        # time.sleep(1)  # wait 1 second before attempting to read
-
+        """Retrieve data in cell-by-cell budget file"""
         self.cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + ".cbc"))
-
         return self.cbbobj
+    # End importCbb()
 
     def SFRoutput_plot(self):
         sfrout = SfrFile(os.path.join(self.data_folder, self.name + ".sfr.out"))
         sfr_df = sfrout.get_dataframe()
         sfr_df
 
-    def waterBalance(self, plot=True, nper=0):
+    def waterBalance(self, iter_num, plot=True, nper=0):
 
         cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
 
@@ -824,7 +818,7 @@ class ModflowModel(object):
         wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.]
 
         if plot is True:
-            print wat_bal_df
+            # print wat_bal_df
 
             # Setup params to get water balance aspect ratio looking nice
             # aspect = float(12.5715/((wat_bal_df.max()[0]-wat_bal_df.min()[0])/float(wat_bal_df.shape[1])))
@@ -839,7 +833,9 @@ class ModflowModel(object):
                 line.set_linestyle('-')
 
             fig.subplots_adjust(left=0.1, right=0.9, bottom=0.35, top=0.95, wspace=0.1, hspace=0.12)
-            plt.show()
+            # plt.show()
+
+            plt.savefig('run_wb_{}.png'.format(iter_num), bbox_inches='tight')
         else:
             return wat_bal_df
         # end if
@@ -1395,7 +1391,7 @@ class ModflowModel(object):
 
     # End viewHeads
 
-    def viewHeadsByZone2(self, nper='all'):
+    def viewHeadsByZone2(self, iter_num, nper='all'):
 
         # Create the headfile object
         headobj = self.importHeads()
@@ -1649,7 +1645,8 @@ class ModflowModel(object):
 
         ax.plot(ax.get_ylim(), ax.get_ylim())
         fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
-        plt.show()
+        # plt.show()
+        plt.savefig('run_viewheads_{}.png'.format(iter_num), bbox_inches='tight')
 
     # End viewHeads
 
@@ -2402,7 +2399,7 @@ class MT3DPostProcess(object):
         self.obs_sim_zone = []
         obs_df = self.mf_model.model_data.observations.obs_group[obs_set]['time_series']
         obs_df = obs_df[obs_df['active'] == True]
-        obs_df = obs_df[obs_df['interval'] == nper]
+        # obs_df = obs_df[obs_df['interval'] == nper]
         sim_map_dict = self.mf_model.model_data.observations.obs_group[
             obs_set]['mapped_observations']
         # self.model_data.observations.obs_group[obs_set]['time_series']['name']:
