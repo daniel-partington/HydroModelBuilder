@@ -18,19 +18,21 @@ This contains functions for reprojecting:
     b. path_dest
 """
 
+
 def gdal_error_handler(err_class, err_num, err_msg):
     errtype = {
-            gdal.CE_None:'None',
-            gdal.CE_Debug:'Debug',
-            gdal.CE_Warning:'Warning',
-            gdal.CE_Failure:'Failure',
-            gdal.CE_Fatal:'Fatal'
+        gdal.CE_None: 'None',
+        gdal.CE_Debug: 'Debug',
+        gdal.CE_Warning: 'Warning',
+        gdal.CE_Failure: 'Failure',
+        gdal.CE_Fatal: 'Fatal'
     }
-    err_msg = err_msg.replace('\n',' ')
+    err_msg = err_msg.replace('\n', ' ')
     err_class = errtype.get(err_class, 'None')
     print 'Error Number: %s' % (err_num)
     print 'Error Type: %s' % (err_class)
     print 'Error Message: %s' % (err_msg)
+
 
 def coordinate_transform(pointX, pointY, coordTransform):
     """
@@ -108,7 +110,7 @@ def reproject_raster(ds,  # raster dataset
     row = int((lrx - ulx) / pixel_spacing)
     col = int((uly - lry) / pixel_spacing)
 
-    dest = mem_drv.Create('',row , col, 1, gdal.GDT_Float32)
+    dest = mem_drv.Create('', row, col, 1, gdal.GDT_Float32)
     # Calculate the new geotransform
     new_geo = (ulx, pixel_spacing, geo_t[2],
                uly, geo_t[4], -pixel_spacing)
@@ -158,7 +160,7 @@ def reproject_layer(lyr_src,
     driver = ogr.GetDriverByName('ESRI Shapefile')
 
     # input SpatialReference
-    #inSpatialRef = osr.SpatialReference()
+    # inSpatialRef = osr.SpatialReference()
     # inSpatialRef.ImportFromEPSG(epsg_from)
     if src_cs == None:
         inSpatialRef = lyr_src.GetSpatialRef()
@@ -212,7 +214,7 @@ def reproject_layer(lyr_src,
         inFeature = inLayer.GetNextFeature()
 
     outDataSetCopy = ogr.GetDriverByName("Memory").CopyDataSource(
-            outDataSet, outDataSet.GetDescription())
+        outDataSet, outDataSet.GetDescription())
 
     outDataSet.FlushCache()
 
@@ -221,9 +223,10 @@ def reproject_layer(lyr_src,
     with open(copy_dest[:-4] + '.prj', 'w') as prj_file:
         prj_file.write(outSpatialRef.ExportToWkt())
 
-    outDataSet = None 
+    outDataSet = None
 
     return outDataSetCopy
+
 
 if __name__ == "__main__":
 
