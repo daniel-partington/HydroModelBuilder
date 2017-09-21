@@ -142,8 +142,35 @@ def reproject_raster(ds,  # raster dataset
     return dest
 
 
-# Code derived from:
-# https://pcjericks.github.io/py-gdalogr-cookbook/projection.html
+import subprocess
+
+"""
+see www.gdal.org/ogr2ogr.html
+"""
+def ogr2ogr(src_datasource_name, dst_datasource_name, layer_name_list=[], **kwargs):
+    if os.path.exists(dst_datasource_name):
+        os.remove(dst_datasource_name)
+
+    extras = []
+    for key in kwargs.keys():
+        extras.append('-' + key)
+        if isinstance(kwargs[key], (list, tuple)):
+            for v in kwargs[key]:
+                extras.append(str(v))
+        else:
+            extras.append(str(kwargs[key]))
+
+    ret = subprocess.check_output([
+        "ogr2ogr",
+        "-skipfailures",
+        "-overwrite",
+    ] + extras + [
+        dst_datasource_name, 
+        src_datasource_name
+    ] + layer_name_list)
+
+    return ret
+
 
 def reproject_layer(lyr_src,
                     src_cs=None,
@@ -151,83 +178,15 @@ def reproject_layer(lyr_src,
                     create_copy=False,
                     copy_dest=None,
                     geom_type=None):
-    """
-    Reprojects a shapefile from one PCS to another.
-    Only works for single types of geomoetries at present
 
-    :param geom_type: Type of geometry/geometries in the layer e.g. ogr.wkbMultiPolygon
-    """
-    driver = ogr.GetDriverByName('ESRI Shapefile')
+    ogr2ogr(src_datasource_name=lyr_src.GetName(), 
+        dst_datasource_name=copy_dest,
+        t_srs=dst_cs,
+    )
+    driver = ogr.GetDriverByName("ESRI Shapefile")
+    ds = driver.Open(copy_dest)
+    return ds  
 
-    # input SpatialReference
-    # inSpatialRef = osr.SpatialReference()
-    # inSpatialRef.ImportFromEPSG(epsg_from)
-    if src_cs == None:
-        inSpatialRef = lyr_src.GetSpatialRef()
-    else:
-        inSpatialRef = src_cs
-
-    # output SpatialReference
-    outSpatialRef = dst_cs
-
-    # create the CoordinateTransformation
-    coordTrans = osr.CoordinateTransformation(inSpatialRef, outSpatialRef)
-
-    # get the input layer
-    inLayer = lyr_src.GetLayer()
-
-    # create the output layer
-    if os.path.exists(copy_dest):
-        os.remove(copy_dest)
-
-    outDataSet = driver.CreateDataSource(copy_dest)
-    outLayer = outDataSet.CreateLayer("", geom_type=geom_type)
-
-    # add fields
-    inLayerDefn = inLayer.GetLayerDefn()
-
-    for i in range(0, inLayerDefn.GetFieldCount()):
-        fieldDefn = inLayerDefn.GetFieldDefn(i)
-        outLayer.CreateField(fieldDefn)
-
-    # get the output layer's feature definition
-    outLayerDefn = outLayer.GetLayerDefn()
-
-    # loop through the input features
-    inFeature = inLayer.GetNextFeature()
-    while inFeature:
-        # get the input geometry
-        geom = inFeature.GetGeometryRef()
-        # reproject the geometry
-        geom.Transform(coordTrans)
-        # create a new feature
-        outFeature = ogr.Feature(outLayerDefn)
-        # set the geometry and attribute
-        outFeature.SetGeometry(geom)
-        for i in range(0, outLayerDefn.GetFieldCount()):
-            outFeature.SetField(outLayerDefn.GetFieldDefn(i).GetNameRef(), inFeature.GetField(i))
-        # add the feature to the shapefile
-        outLayer.CreateFeature(outFeature)
-        # destroy the features and get the next input feature
-        outFeature.Destroy()
-        inFeature.Destroy()
-        inFeature = inLayer.GetNextFeature()
-
-    outDataSetCopy = ogr.GetDriverByName("Memory").CopyDataSource(
-        outDataSet, outDataSet.GetDescription())
-    outDataSet.FlushCache()
-
-    # Hack to rewrite files deleted by above CopyDataSource. They shouldn't be deleted in the first place.
-    outDataSet = driver.CopyDataSource(outDataSetCopy, outDataSetCopy.GetDescription())
-
-    # create the prj projection file
-    outSpatialRef.MorphToESRI()
-    with open(copy_dest[:-4] + '.prj', 'w') as prj_file:
-        prj_file.write(outSpatialRef.ExportToWkt())
-
-    outDataSet = None
-
-    return outDataSetCopy
 
 
 if __name__ == "__main__":
