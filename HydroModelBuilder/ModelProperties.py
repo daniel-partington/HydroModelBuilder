@@ -123,6 +123,7 @@ class ModelProperties(object):
     def __init__(self):
         self.properties = {}
         self.prop_types = ['Kh', 'Kv', 'SS', 'Sy']
+        self.prop_types_updated = {'Kh':False, 'Kv':False, 'SS':False, 'Sy':False}
     # End __init__()
 
     def assign_model_properties(self, prop_type, value):
@@ -135,6 +136,25 @@ class ModelProperties(object):
                             """.format(prop_type, self.prop_types))
         # End if
     # End assign_model_properties()
+
+    def update_model_properties(self, prop_type, value):
+        if prop_type in self.prop_types:
+            self.properties[prop_type] = value
+            self.prop_types_updated[prop_type] = True
+        else:
+            raise TypeError("""
+                            {} not in {}
+                            Property type not recognised
+                            """.format(prop_type, self.prop_types))
+    
+    def generate_update_report(self):
+        print("The following properties were updated: \n {}".format(
+                [key for key in self.properties.keys() \
+                 if self.prop_types_updated[key] == True]))
+        print("\nThe following properties were NOT updated: \n {}\n".format(
+                [key for key in self.properties.keys() \
+                 if self.prop_types_updated[key] == False]))    
+    
 # End ModelProperties()
 
 
