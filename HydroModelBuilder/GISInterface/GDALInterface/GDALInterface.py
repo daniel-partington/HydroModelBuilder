@@ -89,7 +89,7 @@ class GDALInterface(GISInterface):
                                           geom_type=gdal.ogr.wkbPolygon,
                                           copy_dest=new_file)
 
-                ds = driver.Open(base_name + '_model.shp', 0)
+                ds = driver.Open(new_file, 0)
 
                 self._test_osgeo_load(ds, new_file)
 

@@ -610,7 +610,7 @@ class GWModelBuilder(object):
                                                                                      srm['pixel_y'],
                                                                                      srm['uly']))
             surf_raster_points = np.array(surf_centroids[0].keys())
-            
+
             closest_srp = self.do_kdtree(surf_raster_points, point_merge)
             point2surf_raster_map = []
             for index, point in enumerate(point_merge):
@@ -637,7 +637,8 @@ class GWModelBuilder(object):
                 riv_reach += [reach]
             # End if
         # End for
-        
+
+        print "Reach and Elevations:"
         print len(riv_reach), len(riv_elevations)
 
         river_df = pd.DataFrame({'reach': riv_reach, 'strtop': riv_elevations})
@@ -700,7 +701,7 @@ class GWModelBuilder(object):
         river_seg['i'] = [x[1] for x in amalg_riv_points_naive_layer]
         river_seg['j'] = [x[2] for x in amalg_riv_points_naive_layer]
         river_seg['amalg_riv_points_collection'] = [amalg_riv_points_collection[x]
-                                                    for x in range(len(amalg_riv_points_collection.keys()))]
+                                                    for x in xrange(len(amalg_riv_points_collection.keys()))]
 
         self.river_mapping[name] = river_seg
 
