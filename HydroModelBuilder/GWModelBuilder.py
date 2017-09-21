@@ -352,6 +352,14 @@ class GWModelBuilder(object):
         return self.ModelInterface.load_obj(filename)
     # End load_dataframe()
 
+    def save_array(self, filename, array):
+        return self.ModelInterface.save_array(filename, array)
+    # End save_array()
+
+    def load_array(self, array_file):
+        return self.ModelInterface.load_array(array_file)
+    # End load_array()
+
     def save_dataframe(self, filename, df):
         self.ModelInterface.save_dataframe(filename, df)
     # End save_dataframe()
@@ -951,7 +959,7 @@ class GWModelBuilder(object):
     # End _points_merge()
 
     def save_MODFLOW_SFR_dataframes(self, name, reach_df, seg_df):
-        self.mf_sfr_df[name] = MODFLOW_SFR_dataframes(reach_df, seg_df)
+        self.mf_sfr_df[name] = {'reach_df':reach_df, 'seg_df':seg_df}
     # End save_MODFLOW_SFR_dataframes()
 
     ###########################################################################
