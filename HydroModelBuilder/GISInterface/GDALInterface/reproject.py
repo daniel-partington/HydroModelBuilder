@@ -215,8 +215,10 @@ def reproject_layer(lyr_src,
 
     outDataSetCopy = ogr.GetDriverByName("Memory").CopyDataSource(
         outDataSet, outDataSet.GetDescription())
-
     outDataSet.FlushCache()
+
+    # Hack to rewrite files deleted by above CopyDataSource. They shouldn't be deleted in the first place.
+    outDataSet = driver.CopyDataSource(outDataSetCopy, outDataSetCopy.GetDescription())
 
     # create the prj projection file
     outSpatialRef.MorphToESRI()
