@@ -13,15 +13,21 @@ class ModflowModel(object):
 
     def __init__(self, model_data, data_folder=None, **kwargs):
         """
-        :param name: model_data: Object containing all the data for the model
+        :param model_data: ModelManager instance, containing all the data for the model
+        :param data_folder: str, path to data folder (MODFLOW model run files)
         """
-
         self.model_data = model_data
         self.name = model_data.name
-        if data_folder == None:
+        if data_folder is None:
+            # the addition of os.path.sep is for legacy purposes
             self.data_folder = os.path.join(os.getcwd(), 'model_' + self.name) + os.path.sep
         else:
-            self.data_folder = os.path.join(data_folder, 'model_' + self.name) + os.path.sep
+            if not os.path.exists(data_folder):
+                # Creating temporary run folder
+                # this may cause a race condition - if the directory is created/removed between check and creation
+                # in parallel applications
+                os.makedirs(data_folder)
+            self.data_folder = data_folder + os.path.sep
         # End if
 
 #        if stream_representation == None:
@@ -53,8 +59,7 @@ class ModflowModel(object):
             self.perlen = 1  # 8260000#65 #000000
             self.perlen = 40000 * 365  # 8260000#65 #000000
             self.nstp = 1  # 0
-            self.steady = True  # False # False #True #False#True #False
-            #self.start_datetime = self.model_data.model_time.t['start_time']
+            self.steady = True
         else:
             self.nper = self.model_data.model_time.t['steps']
             self.perlen = [
@@ -77,9 +82,6 @@ class ModflowModel(object):
         for key, value in kwargs.items():
             setattr(self, key, value)
         # End For
-
-        #self.flowpy_params['model_dir'] = os.path.join(data_folder, "MF_IO", name)
-
     # End init()
 
     def createDiscretisation(self):
@@ -2722,8 +2724,9 @@ class MT3DPostProcess(object):
         fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
 
         plt.show()
+    # End viewConcsByZone
 
-# End viewConcsByZone
+# End
 
 
 if __name__ == '__main__':
