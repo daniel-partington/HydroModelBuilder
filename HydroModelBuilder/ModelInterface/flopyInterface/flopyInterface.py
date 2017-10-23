@@ -1149,12 +1149,12 @@ class ModflowModel(object):
             scatterx = []
             scattery = []
             obs_sim_zone_all = []
-            for i in range(len(times)):
-                self.CompareObserved('head', head_orig, nper=i)
-                scatterx += [h[0] for h in self.obs_sim_zone]
-                scattery += [h[1] for h in self.obs_sim_zone]
-                obs_sim_zone_all += self.obs_sim_zone
-            self.obs_sim_zone = obs_sim_zone_all
+#            for i in range(len(times)):
+#                self.CompareObserved('head', head_orig, nper=i)
+#                scatterx += [h[0] for h in self.obs_sim_zone]
+#                scattery += [h[1] for h in self.obs_sim_zone]
+#                obs_sim_zone_all += self.obs_sim_zone
+#            self.obs_sim_zone = obs_sim_zone_all
         else:
             self.CompareObserved('head', head_orig, nper=nper)
             scatterx = [h[0] for h in self.obs_sim_zone]
@@ -1184,7 +1184,7 @@ class ModflowModel(object):
 
         modelmap.plot_bc('RIV')
         modelmap.plot_bc('SFR')
-        modelmap.plot_bc('WEL')
+#        modelmap.plot_bc('WEL')
         modelmap.plot_bc('GHB')
         # modelmap.plot_bc('DRN')
         ax.axes.xaxis.set_ticklabels([])
@@ -1229,14 +1229,15 @@ class ModflowModel(object):
         cbar_ax2 = fig.add_axes([0.43, 0.525, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax2)
 
-        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 1.0]
-        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 1.0]
-        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
-                   2] == 1.0], alpha=0.8, vmin=vmin, vmax=vmax)
+#        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 1.0]
+#        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 1.0]
+#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
+#                   2] == 1.0], alpha=0.8, vmin=vmin, vmax=vmax)
 #        scatterx2 = [loc[1][0] for loc in self.obs_sim_zone if loc[2] == 2.0]
 #        scattery2 = [loc[1][1] for loc in self.obs_sim_zone if loc[2] == 2.0]
 #        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[2] == 2.0], alpha=0.5, vmin=vmin, vmax=vmax)
-        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
+
+#        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
 
         ax = fig.add_subplot(2, 4, 3, aspect='equal')
         ax.set_title('Shepparton')
@@ -1248,15 +1249,17 @@ class ModflowModel(object):
         cbar_ax1 = fig.add_axes([0.67, 0.525, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax1)
 
-        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 3.0]
-        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 3.0]
-        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
-                   2] == 3.0], alpha=0.8, vmin=vmin, vmax=vmax)
-        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
+#        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 3.0]
+#        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 3.0]
+#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
+#                   2] == 3.0], alpha=0.8, vmin=vmin, vmax=vmax)
+#        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
 
-        ax = fig.add_subplot(2, 4, 4)  # , aspect='equal')
-        ax.set_title('Residuals')
-        ax.hist([loc[0] - loc[1] for loc in self.obs_sim_zone], bins=20, alpha=0.5)
+#        ax = fig.add_subplot(2, 4, 4)  # , aspect='equal')
+#        ax.set_title('Residuals')
+#        ax.hist([loc[0] - loc[1] for loc in self.obs_sim_zone], bins=20, alpha=0.5)
+
+
 #        ax.set_title('utam')
 #        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
 #        array = modelmap.plot_array(head[3], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
@@ -1283,11 +1286,11 @@ class ModflowModel(object):
         cbar_ax3 = fig.add_axes([0.19, 0.055, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax3)
 
-        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 5.0]
-        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 5.0]
-        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
-                   2] == 5.0], alpha=0.8, vmin=vmin, vmax=vmax)
-        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
+#        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 5.0]
+#        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 5.0]
+#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
+#                   2] == 5.0], alpha=0.8, vmin=vmin, vmax=vmax)
+#        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
 
         ax = fig.add_subplot(2, 4, 6, aspect='equal')
         ax.set_title('Renmark')
@@ -1300,11 +1303,11 @@ class ModflowModel(object):
         cbar_ax4 = fig.add_axes([0.43, 0.055, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax4)
 
-        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 6.0]
-        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 6.0]
-        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
-                   2] == 6.0], alpha=0.8, vmin=vmin, vmax=vmax)
-        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
+#        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 6.0]
+#        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 6.0]
+#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
+#                   2] == 6.0], alpha=0.8, vmin=vmin, vmax=vmax)
+#        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
 
         ax = fig.add_subplot(2, 4, 7, aspect='equal')
         ax.set_title('Basement')
@@ -1317,64 +1320,64 @@ class ModflowModel(object):
         cbar_ax5 = fig.add_axes([0.67, 0.055, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax5)
 
-        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 7.0]
-        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 7.0]
-        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
-                   2] == 7.0], alpha=0.8, vmin=vmin, vmax=vmax)
-        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
+#        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 7.0]
+#        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 7.0]
+#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
+#                   2] == 7.0], alpha=0.8, vmin=vmin, vmax=vmax)
+#        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
 
-        ax = fig.add_subplot(2, 4, 8, aspect=0.9)
-        ax.set_title('Sim vs Obs (%d points)' % (len(scatterx)))
-        #ax.scatter(scatterx, scattery, edgecolor='none', c=[loc[2] for loc in self.obs_sim_zone], alpha=0.5, vmin=1, vmax=7)
-        comp_zone_plots = {}
-        colors = ['b', 'c', 'y', 'm', 'r', 'green', 'orange']
-        for i in range(1, 8):
-            scatterx2 = [loc[0] for loc in self.obs_sim_zone if loc[2] == float(i)]
-            scattery2 = [loc[1] for loc in self.obs_sim_zone if loc[2] == float(i)]
-            comp_zone_plots[i] = ax.scatter(scatterx2, scattery2, edgecolors=colors[
-                                            i - 1], facecolors='none', alpha=0.5)
-
-        plt.legend((comp_zone_plots[1], comp_zone_plots[2], comp_zone_plots[3],
-                    comp_zone_plots[4], comp_zone_plots[5], comp_zone_plots[6],
-                    comp_zone_plots[7]),
-                   ('qa', 'utb', 'utqa', 'utam', 'utaf', 'lta', 'bse'),
-                   scatterpoints=1,
-                   loc='upper left',
-                   ncol=4,
-                   fontsize=11)
-
-        plt.xlabel('Observed')
-        plt.ylabel('Simulated', labelpad=10)
-
-        scatterx = np.array(scatterx)
-        scattery = np.array(scattery)
-        sum1 = 0.
-        sum2 = 0.
-
-        if len(scatterx) != 0:
-
-            mean = np.mean(scatterx)
-            for i in range(len(scatterx)):
-                num1 = (scatterx[i] - scattery[i])
-                num2 = (scatterx[i] - mean)
-                sum1 += num1 ** np.float64(2.)
-                sum2 += num2 ** np.float64(2.)
-
-            ME = 1 - sum1 / sum2
-
-            ax.text(150, 75, 'Model Efficiency = %4.2f' % (ME))
-
-            # for PBIAS
-            def pbias(simulated, observed):
-                return np.sum(simulated - observed) * 100 / np.sum(observed)
-
-            ax.text(150, 40, 'PBIAS = %4.2f%%' % (pbias(scattery, scatterx)))
-
-            # For rmse
-            def rmse(simulated, observed):
-                return np.sqrt(((simulated - observed) ** 2).mean())
-
-            ax.text(150, 20, 'RMSE = %4.2f' % (rmse(scattery, scatterx)))
+#        ax = fig.add_subplot(2, 4, 8, aspect=0.9)
+#        ax.set_title('Sim vs Obs (%d points)' % (len(scatterx)))
+#        #ax.scatter(scatterx, scattery, edgecolor='none', c=[loc[2] for loc in self.obs_sim_zone], alpha=0.5, vmin=1, vmax=7)
+#        comp_zone_plots = {}
+#        colors = ['b', 'c', 'y', 'm', 'r', 'green', 'orange']
+#        for i in range(1, 8):
+#            scatterx2 = [loc[0] for loc in self.obs_sim_zone if loc[2] == float(i)]
+#            scattery2 = [loc[1] for loc in self.obs_sim_zone if loc[2] == float(i)]
+#            comp_zone_plots[i] = ax.scatter(scatterx2, scattery2, edgecolors=colors[
+#                                            i - 1], facecolors='none', alpha=0.5)
+#
+#        plt.legend((comp_zone_plots[1], comp_zone_plots[2], comp_zone_plots[3],
+#                    comp_zone_plots[4], comp_zone_plots[5], comp_zone_plots[6],
+#                    comp_zone_plots[7]),
+#                   ('qa', 'utb', 'utqa', 'utam', 'utaf', 'lta', 'bse'),
+#                   scatterpoints=1,
+#                   loc='upper left',
+#                   ncol=4,
+#                   fontsize=11)
+#
+#        plt.xlabel('Observed')
+#        plt.ylabel('Simulated', labelpad=10)
+#
+#        scatterx = np.array(scatterx)
+#        scattery = np.array(scattery)
+#        sum1 = 0.
+#        sum2 = 0.
+#
+#        if len(scatterx) != 0:
+#
+#            mean = np.mean(scatterx)
+#            for i in range(len(scatterx)):
+#                num1 = (scatterx[i] - scattery[i])
+#                num2 = (scatterx[i] - mean)
+#                sum1 += num1 ** np.float64(2.)
+#                sum2 += num2 ** np.float64(2.)
+#
+#            ME = 1 - sum1 / sum2
+#
+#            ax.text(150, 75, 'Model Efficiency = %4.2f' % (ME))
+#
+#            # for PBIAS
+#            def pbias(simulated, observed):
+#                return np.sum(simulated - observed) * 100 / np.sum(observed)
+#
+#            ax.text(150, 40, 'PBIAS = %4.2f%%' % (pbias(scattery, scatterx)))
+#
+#            # For rmse
+#            def rmse(simulated, observed):
+#                return np.sqrt(((simulated - observed) ** 2).mean())
+#
+#            ax.text(150, 20, 'RMSE = %4.2f' % (rmse(scattery, scatterx)))
 
         ax.plot(ax.get_ylim(), ax.get_ylim())
         # modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
