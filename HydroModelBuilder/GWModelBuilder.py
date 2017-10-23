@@ -1021,7 +1021,7 @@ class GWModelBuilder(object):
         return self.GISInterface.read_points_data(filename, path)
     # End read_points_data()
 
-    def map_points_to_grid(self, points_obj, feature_id=None):
+    def map_points_to_grid(self, points_obj, feature_id=None, use_kdtree=False):
         point_name, points_obj = self._get_poly_name_and_obj(points_obj)
         if os.path.exists(os.path.join(self.out_data_folder_grid, point_name + '_mapped.pkl')):
             print "Using previously mapped points to grid object"
@@ -1029,19 +1029,26 @@ class GWModelBuilder(object):
                                                                                        point_name + '_mapped.pkl'))
         else:
             temp = []
-            self.points_mapped[point_name] = self.GISInterface.map_points_to_grid(
-                points_obj, feature_id=feature_id)
-            # Go from centroids to ij indexing
-            for item in self.points_mapped[point_name]:
-                centroid = (float(item[1][0]), float(item[1][1]))
-                # replace centroid with row col
-                try:
-                    grid_loc = self.centroid2mesh2Dindex[centroid]
-                except:
-                    grid_loc = self._hacky_centroid_to_mesh(centroid, dist_min=1E6)
-
-                temp += [[grid_loc, item[0]]]
-
+            if use_kdtree:            
+                # Need to get points from points_obj
+                points = []
+                # Get feature id's as well from 
+                identifier = ""
+                temp = self.map_points_to_2Dmesh(points, identifier)
+            else:
+                self.points_mapped[point_name] = self.GISInterface.map_points_to_grid(
+                    points_obj, feature_id=feature_id)
+                # Go from centroids to ij indexing
+                for item in self.points_mapped[point_name]:
+                    centroid = (float(item[1][0]), float(item[1][1]))
+                    # replace centroid with row col
+                    try:
+                        grid_loc = self.centroid2mesh2Dindex[centroid]
+                    except:
+                        grid_loc = self._hacky_centroid_to_mesh(centroid, dist_min=1E6)
+    
+                    temp += [[grid_loc, item[0]]]
+                
             self.points_mapped[point_name] = temp
             self.ModelInterface.save_obj(temp, os.path.join(self.out_data_folder_grid, point_name + '_mapped'))
 
@@ -1061,6 +1068,7 @@ class GWModelBuilder(object):
         Returns: A dict with keys of all points (or identifiers) with each
         corresponding entry containing the i and j reference of the nearest
         cell center to the given point
+        
         '''
         model_mesh_points = np.array(self.centroid2mesh2Dindex.keys())
 
