@@ -638,9 +638,6 @@ class GWModelBuilder(object):
             # End if
         # End for
 
-        print "Reach and Elevations:"
-        print len(riv_reach), len(riv_elevations)
-
         river_df = pd.DataFrame({'reach': riv_reach, 'strtop': riv_elevations})
         # In case of hitting no data values replace these with nan
         river_df.loc[river_df['strtop'] < 0, 'strtop'] = np.nan
