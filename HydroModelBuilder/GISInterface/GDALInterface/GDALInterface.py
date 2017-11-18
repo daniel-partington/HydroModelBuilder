@@ -298,6 +298,10 @@ class GDALInterface(GISInterface):
         gdal.GRA_NearestNeighbour
 
         """
+        if type(raster_files) != list:
+            # Assume single file given as string:
+            raster_files = [raster_files]    
+        
         simplified_raster_array = {}
 
         if self._mesh_type == 'structured':

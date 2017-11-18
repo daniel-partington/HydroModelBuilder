@@ -185,7 +185,7 @@ def reproject_layer(lyr_src,
     )
     driver = ogr.GetDriverByName("ESRI Shapefile")
     ds = driver.Open(copy_dest)
-    return ds  
+    return ds
 
 
 
@@ -224,7 +224,8 @@ if __name__ == "__main__":
     # Test for layer reprojection
     driver = ogr.GetDriverByName("ESRI Shapefile")
     ds = driver.Open(
-        r"C:\Workspace\part0075\MDB modelling\Campaspe_model\GIS\GIS_preprocessed\Surface_Water\Streams\Campaspe_Riv.shp", 0)
+        r"C:\Workspace\part0075\MDB modelling\testbox\input_data\Waterways\River_Murray.shp", 0)                     
+        #r"C:\Workspace\part0075\MDB modelling\Campaspe_model\GIS\GIS_preprocessed\Surface_Water\Streams\Campaspe_Riv.shp", 0)
     poly_obj = ds.GetLayer()
     if poly_obj == None:
         print 'Could not open '

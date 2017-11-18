@@ -159,7 +159,6 @@ class ModelInterface(object):
 
         # Hack to fix up model boundary which contains a gdal object as well:
         packaged_model['_model_boundary'] = packaged_model['_model_boundary'][0:4]
-
         self.save_obj(packaged_model, os.path.join(out_dir, name))
     # End package_model()
 

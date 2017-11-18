@@ -203,7 +203,7 @@ class ModflowModel(object):
                                              irtflg=1,
                                              numtim=1,  # Number of timesteps to use within each MF-NWT timestep
                                              weight=0.75,  # Time weighting factor to calculate the change in channel storage
-                                             flwtol=0.0001,  # flow tolerance convergence criterion for KW equation
+                                             flwtol=0.00003,  # flow tolerance convergence criterion for KW equation
                                              reach_data=reach_data,  # "Data Set 2", rec array with as many entries as stream reaches
                                              segment_data=segment_data,  # "Data Set 4b", dict with recarray of segment data for each stress period
                                              channel_geometry_data=None,  # "Data Set 6d", Can ignore for now, but necessary if icalc is > 1
@@ -273,8 +273,15 @@ class ModflowModel(object):
 
     def createOCpackage(self):
         # Add OC package to the MODFLOW model
-        spd = {(0, 0): ['save head', 'print budget', 'save budget'],
-               (0, 1): ['save head', 'print budget', 'save budget']}
+        if self.steady:
+            spd = {(0, 0): ['save head', 'print budget', 'save budget'],
+                   (0, 1): ['save head', 'print budget', 'save budget']}
+        else:
+            spd = {}
+            for i in range(self.nper):    
+                spd[(i, 0)] = ['save head', 'print budget', 'save budget']
+                spd[(i, 1)] = ['save head', 'print budget', 'save budget']       
+        # end if    
         self.oc = flopy.modflow.ModflowOc(self.mf, stress_period_data=spd, cboufm='(20i5)')
 
     # end createOCpackage
@@ -779,7 +786,7 @@ class ModflowModel(object):
         sfr_df = sfrout.get_dataframe()
         sfr_df
 
-    def waterBalance(self, iter_num, plot=True, nper=0):
+    def waterBalance(self, iter_num, plot=True, save=False, nper=0):
 
         cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
 
@@ -836,8 +843,9 @@ class ModflowModel(object):
 
             fig.subplots_adjust(left=0.1, right=0.9, bottom=0.35, top=0.95, wspace=0.1, hspace=0.12)
             # plt.show()
-
-            plt.savefig('run_wb_{}.png'.format(iter_num), bbox_inches='tight')
+            if save:
+                plt.savefig('run_wb_{}.png'.format(iter_num), bbox_inches='tight')
+            # end if                
         else:
             return wat_bal_df
         # end if
@@ -2625,7 +2633,7 @@ class MT3DPostProcess(object):
 
         plt.show()
 
-    def viewConcsByZone(self, nper='all'):
+    def viewConcsByZone(self, nper='all', specimen=None):
 
         # Create the headfile object
         concobj = self.importConcs()
@@ -2633,6 +2641,10 @@ class MT3DPostProcess(object):
         if nper == 'all':
             conc = concobj.get_alldata()
             conc = np.mean(conc, axis=0)
+            zoned = self.ConcsByZone(conc)
+            conc = zoned
+        elif nper == 'final':
+            conc = concobj.get_data(totim=times[-1])
             zoned = self.ConcsByZone(conc)
             conc = zoned
         else:
@@ -2646,8 +2658,8 @@ class MT3DPostProcess(object):
         multiplier = 1.
         fig = plt.figure(figsize=(width * multiplier, height * multiplier))
 
-        vmin = 0.0
-        vmax = 100.0
+        vmin = np.amin(conc[conc > 0.]) #0.0
+        vmax = np.amax(conc) #100.0
 
         ax = fig.add_subplot(2, 4, 1, aspect='equal')
 

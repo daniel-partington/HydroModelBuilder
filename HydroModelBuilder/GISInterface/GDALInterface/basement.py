@@ -97,7 +97,10 @@ def create_basement_bottom(hu_raster_path,
 
     array2raster(os.path.join(output_path, basement_bot_raster_file + '.tif'), basetop_geotransform,
                  basetop_NODATA, src_cs, basebot_array, raster_driver)
-
+    
+    surf = None
+    basetop = None
+    
 if __name__ == "__main__":
     # r"C:\Workspace\part0075\MDB modelling\Campaspe_model\GIS\GIS_preprocessed\Hydrogeological_Unit_Layers\\"
     hu_raster_path = r"C:\Workspace\part0075\MDB modelling\ESRI_GRID\Preprocessed_data\Hydrogeological_Unit_Layers\\"
