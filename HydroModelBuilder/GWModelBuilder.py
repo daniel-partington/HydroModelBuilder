@@ -592,7 +592,7 @@ class GWModelBuilder(object):
         # End points_dist_collection()
 
         lengths = []
-        for i in xrange(len(amalg_riv_points_collection.keys())):
+        for i in xrange(len(amalg_riv_points_collection)):
             if i == 0:
                 lengths += [points_dist_collection(amalg_riv_points_collection[i])]
                 continue
@@ -703,7 +703,7 @@ class GWModelBuilder(object):
         river_seg['i'] = [x[1] for x in amalg_riv_points_naive_layer]
         river_seg['j'] = [x[2] for x in amalg_riv_points_naive_layer]
         river_seg['amalg_riv_points_collection'] = [amalg_riv_points_collection[x]
-                                                    for x in xrange(len(amalg_riv_points_collection.keys()))]
+                                                    for x in xrange(len(amalg_riv_points_collection))]
 
         self.river_mapping[name] = river_seg
 
@@ -935,7 +935,7 @@ class GWModelBuilder(object):
         """
         :param points_dict:
         """
-        for key in points_dict.keys():
+        for key in points_dict:
             points_dict[key] += [{'start': points_dict[key][0], 'end':points_dict[key][-1]}]
         return points_dict
     # End _get_start_and_end_points_from_line_features()
@@ -1077,17 +1077,14 @@ class GWModelBuilder(object):
         Returns: A dict with keys of all points (or identifiers) with each
         corresponding entry containing the i and j reference of the nearest
         cell center to the given point
-
         '''
         model_mesh_points = np.array(self.centroid2mesh2Dindex.keys())
-
         if type(points) == list:
             points = np.array(points)
         # End if
 
         closest = self.do_kdtree(model_mesh_points, points)
         point2mesh_map = {}
-
         for index, point in enumerate(points):
             if identifier[0]:
                 point2mesh_map[identifier[index]] = self.centroid2mesh2Dindex[
@@ -1216,19 +1213,22 @@ class GWModelBuilder(object):
         This is a function to map the obs at different times within the bounding interval in the
         model times intervals
         """
+        obs_group = self.observations.obs_group
         if self.model_time.t['steady_state']:
-            for key in self.observations.obs_group.keys():
-                self.observations.obs_group[key]['time_series']['interval'] = 0
+            for key in obs_group:
+                obs_group[key]['time_series']['interval'] = 0
         else:
-            for key in self.observations.obs_group.keys():
-                self.observations.obs_group[key]['time_series'].loc[:, 'interval'] = self.observations.obs_group[key][
-                    'time_series'].apply(lambda row: self._findInterval(row, self.model_time.t['dateindex']), axis=1)
+            find_interval = self._findInterval
+            dateindex = self.model_time.t['dateindex']
+            for key in obs_group:
+                obs_group_key = obs_group[key]
+                obs_group_key['time_series'].loc[:, 'interval'] = obs_group_key['time_series'].apply(
+                    lambda row: find_interval(row, dateindex), axis=1)
                 # remove np.nan values from the obs as they are not relevant
-                if self.observations.obs_group[key]['real']:
-                    self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
-                        'time_series'][pd.notnull(self.observations.obs_group[key]['time_series']['interval'])]
-                    self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
-                        'time_series'][self.observations.obs_group[key]['time_series']['value'] != 0.]
+                if obs_group_key['real']:
+                    obs_group_ts = obs_group_key['time_series']
+                    obs_group_ts = obs_group_ts[pd.notnull(obs_group_ts['interval'])]
+                    obs_group_ts = obs_group_ts[obs_group_ts['value'] != 0.]
                 # End if
             # End for
         # End if
@@ -1247,14 +1247,14 @@ class GWModelBuilder(object):
             text = text[1:]
             # Read in parameters and replace values in parameters class for param
             updated = {}
-            for key in self.parameters.param.keys():
+            for key in self.parameters.param:
                 updated[key] = False
 
             for line in text:
                 param_name, value = line.strip('\n').split('\t')
                 value = value.lstrip()
                 param_name = param_name.strip()
-                if param_name in self.parameters.param.keys():
+                if param_name in self.parameters.param:
                     self.parameters.param[param_name]['PARVAL1'] = float(value)
                     updated[param_name] = True
                 else:
@@ -1262,10 +1262,10 @@ class GWModelBuilder(object):
                         print 'Parameter not defined in model: ', param_name
 
         if verbose:
-            were_updated = [key for key in updated.keys() if updated[key] == True]
+            were_updated = [key for key in updated if updated[key] == True]
             if len(were_updated) > 0:
                 print 'Parameters updated for : ', were_updated
-            not_updated = [key for key in updated.keys() if updated[key] == False]
+            not_updated = [key for key in updated if updated[key] == False]
             if len(not_updated) > 0:
                 print 'Parameters unchanged for : ', not_updated
     # End updateModelParameters()
@@ -1311,7 +1311,7 @@ class GWModelBuilder(object):
         :param fname: str, filename to load data from.
         """
         pp = self.ModelInterface.load_obj(fname)
-        for key in pp.keys():
+        for key in pp:
             self.pilot_points[key] = pp[key]
         # End for
     # End load_pilot_points()
