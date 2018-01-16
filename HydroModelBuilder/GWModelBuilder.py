@@ -1,8 +1,5 @@
-import cPickle as pickle
 import os
-import shutil
-import sys
-from itertools import groupby as g
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -12,9 +9,8 @@ from scipy import spatial
 from ModelInterface.ModelInterface import ModelInterface
 from ModelInterface.ModelMesh import MeshGenerator
 from ModelProperties import (ArrayOrdering, ModelBoundaries, ModelBuilderType,
-                             ModelFeature, ModelInitialConditions,
-                             ModelObservations, ModelParameters,
-                             ModelProperties, ModelTime)
+                             ModelInitialConditions, ModelObservations,
+                             ModelParameters, ModelProperties, ModelTime)
 from Utilities import interpolation
 from Utilities.PilotPoints import pilotpoints
 
@@ -55,7 +51,7 @@ class GWModelBuilder(object):
         self._mesh_type = mesh_type
         self.ModelInterface = ModelInterface(model_type, self.types, data_format)
 
-        if units != None:
+        if units is not None:
             if type(units) == list:
                 self.set_units(length=units[0], time=units[1], mass=units[2])
             elif type(units) == dict:
@@ -339,7 +335,7 @@ class GWModelBuilder(object):
         and if so to do nothing unless flagged otherwise. This is done by
         checking the output data path.
 
-        :param fn:
+        :param fn: str, filename to check for
         """
         self.ModelInterface.check_for_existing(fn)
     # End check_for_existing()
@@ -957,7 +953,7 @@ class GWModelBuilder(object):
     # End _points_merge()
 
     def save_MODFLOW_SFR_dataframes(self, name, reach_df, seg_df):
-        self.mf_sfr_df[name] = {'reach_df':reach_df, 'seg_df':seg_df}
+        self.mf_sfr_df[name] = {'reach_df': reach_df, 'seg_df': seg_df}
     # End save_MODFLOW_SFR_dataframes()
 
     ###########################################################################
@@ -1026,10 +1022,10 @@ class GWModelBuilder(object):
                                                                                        point_name + '_mapped.pkl'))
         else:
             temp = []
-            if use_kdtree:            
+            if use_kdtree:
                 # Need to get points from points_obj
                 points = []
-                # Get feature id's as well from 
+                # Get feature id's as well from
                 identifier = ""
                 temp = self.map_points_to_2Dmesh(points, identifier)
             else:
@@ -1043,9 +1039,9 @@ class GWModelBuilder(object):
                         grid_loc = self.centroid2mesh2Dindex[centroid]
                     except:
                         grid_loc = self._hacky_centroid_to_mesh(centroid, dist_min=1E6)
-    
+
                     temp += [[grid_loc, item[0]]]
-                
+
             self.points_mapped[point_name] = temp
             self.ModelInterface.save_obj(temp, os.path.join(self.out_data_folder_grid, point_name + '_mapped'))
 
@@ -1065,7 +1061,7 @@ class GWModelBuilder(object):
         Returns: A dict with keys of all points (or identifiers) with each
         corresponding entry containing the i and j reference of the nearest
         cell center to the given point
-        
+
         '''
         model_mesh_points = np.array(self.centroid2mesh2Dindex.keys())
 
@@ -1224,7 +1220,10 @@ class GWModelBuilder(object):
 
     def updateModelParameters(self, fname, verbose=True):
         """
-        TODO: docs
+        Update model parameters based on values given in a file.
+
+        :param fname: str, filename to open
+        :param verbose: bool, whether or not to print out debug info
         """
         with open(fname, 'r') as f:
             text = f.readlines()
@@ -1271,9 +1270,10 @@ class GWModelBuilder(object):
 
     def create_pilot_points(self, name, linear=False):
         """
-        TODO: docs
+        :param name: str, identifier of target pilot point
+        :param linear: bool, linear or non-linear pilot points.
         """
-        if linear == False:
+        if not linear:
             self.pilot_points[name] = pilotpoints.PilotPoints(
                 output_directory=self.out_data_folder_grid, additional_name=name)
         else:
@@ -1283,14 +1283,16 @@ class GWModelBuilder(object):
 
     def save_pilot_points(self):
         """
-        TODO: docs
+        Save pilot point data in pickle file.
         """
         self.ModelInterface.save_obj(self.pilot_points, os.path.join(self.out_data_folder_grid, 'pilot_points'))
     # End save_pilot_points()
 
     def load_pilot_points(self, fname):
         """
-        TODO: docs
+        Load pilot point data from pickle file.
+
+        :param fname: str, filename to load data from.
         """
         pp = self.ModelInterface.load_obj(fname)
         for key in pp.keys():
@@ -1300,15 +1302,19 @@ class GWModelBuilder(object):
 
     def add2register(self, addition):
         """
-        TODO: docs
+        Add given value to model register.
+
+        :param addition: numeric, value to add.
         """
+        warnings.warn("Call to (possibly) deprecated method `add2register`", DeprecationWarning)
         self.model_register += addition
     # End add2register()
 
     def writeRegister2file(self):
         """
-        TODO: docs
+        Write model register to file.
         """
+        warnings.warn("Call to (possibly) deprecated method `writeRegister2file`", DeprecationWarning)
         with open(os.path.join(self.out_data_folder, 'model_register.dat')) as f:
             for item in self.model_register:
                 f.write(item)
@@ -1317,16 +1323,19 @@ class GWModelBuilder(object):
     # End writeRegister2file()
 
     def points2shapefile(self, points_array, shapefile_name):
-        """ Needs writing ...
+        """
+        Write given points array to shapefile.
+
         :param points_array:
         :param shapefile_name:
         """
+        warnings.warn("Call to (possibly) deprecated method `points2shapefile`", DeprecationWarning)
         self.GISInterface.points2shapefile(points_array, shapefile_name)
     # End points2shapefile()
 
     def mesh3DToVtk(self, val_array, val_name, out_path, vtk_out):
         '''
-        Function to write the mesh array
+        Function to write the mesh array.
 
         :param val_array:
         :param val_name:
@@ -1334,6 +1343,7 @@ class GWModelBuilder(object):
         :param vtk_out:
         '''
         from HydroModelBuilder.GISInterface.GDALInterface import array2Vtk
+        warnings.warn("Call to (possibly) deprecated method `mesh3DToVtk`", DeprecationWarning)
         nrow, ncol = self.model_mesh3D[1][0].shape
         delc, delr = self.gridWidth, self.gridHeight
         x0, y0 = self.model_boundary[0], self.model_boundary[3]
