@@ -512,7 +512,9 @@ class GWModelBuilder(object):
 
     def _get_poly_name_and_obj(self, poly):
         """
-        :param poly:
+        Load poly name and object.
+
+        :param poly: str or poly object
         """
         if type(poly) is str:
             poly = self.read_poly(poly)
@@ -527,7 +529,14 @@ class GWModelBuilder(object):
     # End _get_poly_name_and_obj()
 
     def _pointsdist(self, p1, p2, cache={}):
-        """Calculate distance between points"""
+        """
+        Calculate distance between points.
+
+        :param p1: array-like, x and y values for point 1
+        :param p2: array-like, x and y values for point 2
+
+        :returns: float, distance between points
+        """
         tmp = cache.get((p1, p2), None)
         if tmp is not None:
             return tmp
@@ -555,7 +564,7 @@ class GWModelBuilder(object):
     ###########################################################################
 
     def _dist(self, p1, p2):
-        return np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+        return np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
     # End dist()
 
     def create_river_dataframe(self, name, poly_file, surface_raster_file,
@@ -679,8 +688,9 @@ class GWModelBuilder(object):
         # End if
 
         slopes = []
+        len_rr_elev_adjusted = len(river_reach_elev_adjusted) - 1
         for index, riv_elev in enumerate(river_reach_elev_adjusted):
-            if index == len(river_reach_elev_adjusted) - 1:
+            if index == len_rr_elev_adjusted:
                 slopes += [slopes[-1]]
                 continue
             # End if
@@ -688,7 +698,6 @@ class GWModelBuilder(object):
         # End for
 
         river_seg['slope'] = slopes
-
         amalg_riv_points_naive_layer = [[0] + x for x in river_seg['amalg_riv_points'].tolist()]
         river_seg['k'] = [x[0] for x in amalg_riv_points_naive_layer]
         river_seg['i'] = [x[1] for x in amalg_riv_points_naive_layer]
@@ -708,6 +717,8 @@ class GWModelBuilder(object):
 
         :param name: str, Name given to stream or river when create_river_dataframe was run
         :param points: list, points for which to find the closest to named river
+
+        :returns: list, closest river segment
         '''
         try:
             self.river_mapping[name]
@@ -742,34 +753,35 @@ class GWModelBuilder(object):
         :param us: float, upstream elevation
         :param active: float, elevation being analysed
         :param ds: float, downstream elevation
-        :param adjust: float,
-        :param verbose: bool,
+        :param adjust: float, amount to adjust by
+        :param verbose: bool, print out debug information
         '''
-        if us == None:
+        if us is None:
             if verbose:
                 print("No upstream to worry about, move on")
             return active
+
         if us > active and active > ds:
             if verbose:
                 print("The active elevation fits between upstream and downstream, move on")
             return active
-        if us < active and ds != None:
-            if us > ds:
-                if verbose:
-                    print("Active greater than upstream and downstream, interpolate between us and ds")
-                return (us + ds) / 2.
-            if us < ds:
-                if verbose:
+
+        if us < active:
+            if ds is not None:
+                if us > ds:
+                    if verbose:
+                        print("Active greater than upstream and downstream, interpolate between us and ds")
+                    return (us + ds) / 2.
+                if us < ds and verbose:
                     print("Case 4")
-                return us - adjust
-        if us < active and ds == None:
-            if verbose:
-                print("Case 5")
-            return us - adjust
-        if us == active:
-            if verbose:
-                print("Case 6")
-            return us - adjust
+            else:
+                if verbose:
+                    print("Case 5")
+            # End if
+        # End if
+
+        if us == active and verbose:
+            print("Case 6")
 
         if verbose:
             print("Case 7: {} {} {}".format(us, active, ds))
@@ -785,7 +797,7 @@ class GWModelBuilder(object):
         :param y_pixel: float,
         :param bounds: tuple,
 
-        :returns:
+        :returns: tuple, (dict) centroid2mesh, (dict) mesh2centroid
         '''
         xmin, xmax, ymin, ymax = bounds
         cols = int((xmax - xmin) / x_pixel)
@@ -849,7 +861,7 @@ class GWModelBuilder(object):
         This is a test for river cell ordering which is specific for MODFLOW
         SFR and STR packages.
 
-        :param cell_list: list, list of cells to order
+        :param cell_list: list, of cells to order
         '''
         cl = cell_list
         for index in xrange(len(cell_list)):
@@ -870,7 +882,7 @@ class GWModelBuilder(object):
         :param point2mesh_map2:
         :param point_merge:
 
-        :returns: tuple,
+        :returns: tuple, (list) river points, (dict) river points collection
         """
         # TO CHECK
         amalg_riv_points = []
@@ -898,7 +910,7 @@ class GWModelBuilder(object):
         :param points:
         :param closest:
 
-        :returns: tuple
+        :returns: tuple, (dict) point2mesh mapping, (list) point2mesh in list form
         """
         points_array = np.array(points)
         centroids = self.centroid2mesh2Dindex
@@ -909,6 +921,8 @@ class GWModelBuilder(object):
             point2mesh_map[tuple(list(point))] = centroids[tuple(model_mesh_points[closest[index]])]
         # End for
 
+        warnings.warn("This method will only return a dictionary in future. List `point2mesh_map2` will be removed",
+                      DeprecationWarning)
         point2mesh_map2 = []
         for index, point in enumerate(points_array):
             point2mesh_map2 += [centroids[tuple(model_mesh_points[closest[index]])]]
@@ -930,7 +944,9 @@ class GWModelBuilder(object):
         '''
         Merge points from multiple feature into one continuous line
 
-        :param points_dict: dict,
+        :param points_dict: dict, of feature points
+
+        :return: list, of unique points.
         '''
         # TO CHECK
         point_merge = points_dict[0][0:-1]
@@ -1314,7 +1330,6 @@ class GWModelBuilder(object):
         """
         Write model register to file.
         """
-        warnings.warn("Call to (possibly) deprecated method `writeRegister2file`", DeprecationWarning)
         with open(os.path.join(self.out_data_folder, 'model_register.dat')) as f:
             for item in self.model_register:
                 f.write(item)
