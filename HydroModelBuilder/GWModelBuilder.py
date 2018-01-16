@@ -1168,7 +1168,15 @@ class GWModelBuilder(object):
                                 method='nearest', use='griddata',
                                 function='multiquadric', epsilon=2):
         """
-        TODO: docs
+        Interpolate points to mesh.
+
+        :param points_obj: array-like, points to interpolate
+        :param values_dataframe: DataFrame, of values
+        :param feature_id: int, feature id defaulting to `None`
+        :param method: str, interpolation method. Defaults to `nearest`
+        :param use: str, Defaults to `griddata`
+        :param function: str, Defaults to `multiquadric`
+        :param epsilon: int, Defaults to `2`
         """
         if isinstance(points_obj, list) or isinstance(points_obj, np.ndarray):
             points = points_obj
