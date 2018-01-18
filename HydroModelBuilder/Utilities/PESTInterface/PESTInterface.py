@@ -279,11 +279,11 @@ class PESTInterface(object):
     # End PESTobs()
 
     def _createCSVcopyFromDataFrame(self, df, name):
-        fname = self.directory + os.path.sep + name + '.csv'
+        fname = os.path.join(self.directory, name + '.csv')
         if os.path.exists(fname):
-            print fname + ' file exists already'
+            print(fname + ' file exists already')
         else:
-            df.to_csv(os.path.join(self.directory, name + '.csv'), index=False)
+            df.to_csv(fname, index=False)
         # end if
     # End _createCSVcopyFromDataFrame()
 
@@ -332,15 +332,9 @@ class PESTInterface(object):
         :param models_ID: list, of model IDs. Defaults to ['default'].
         """
         print('# Generating PEST files, %s #\n' % (datetime.datetime.now()))
-        if not models_ID:
-            models_ID = ['default']
-        # End if
-
+        models_ID = ['default'] if not models_ID else models_ID
         PEST_name = 'pest'
-        PEST_folder_name = 'PEST'
-        for model in models_ID:
-            PEST_folder_name += '_' + model
-        # end for
+        PEST_folder_name = '_'.join(['PEST'] + models_ID)
 
         PEST_folder = self.directory + os.path.sep
         if not os.path.isdir(PEST_folder):
