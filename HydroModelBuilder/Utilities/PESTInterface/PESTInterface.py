@@ -3,7 +3,6 @@ Interface for PEST software to generate necessary files
 Based on code of Etienne Bresciani (applied for mflab in Matlab) translated to
 python and modified as well to work with the GWModelBuilder class.
 """
-
 import csv
 import datetime
 import os
@@ -11,6 +10,8 @@ import warnings
 
 import numpy as np
 import pandas as pd
+
+from HydroModelBuilder.Utilities.text_writer import write_line, write_multiline
 
 
 class PESTInterface(object):
@@ -460,132 +461,104 @@ class PESTInterface(object):
 
         # Open file
         with open(os.path.join(PEST_folder, PESTFILE), 'w') as f:
-            f.write('pcf\n')
-
-            control_data = self.PEST_data['PESTcon']['control_data']
-            f.write('* control data\n')
-            f.write('%s %s\n' % (control_data['RSTFLE'], control_data['PESTMODE']))
-            f.write('%d %d %d %d %d\n' % (NPAR, NOBS, NPARGP, NPRIOR, NOBSGP))
-            f.write('%d %d %s %s\n' % (NTPLFILE, NINSFLE, control_data['PRECIS'],
-                                       control_data['DPOINT']))
-            f.write('%g %g %g %g %d %d %s %s\n' % (
-                    control_data['RLAMBDA1'],
-                    control_data['RLAMFAC'],
-                    control_data['PHIRATSUF'],
-                    control_data['PHIREDLAM'],
-                    control_data['NUMLAM'],
-                    control_data['JACUPDATE'],
-                    control_data['LAMFORGIVE'],
-                    control_data['DERFORGIVE']))
-            f.write('%g %g %g\n' % (
-                    control_data['RELPARMAX'],
-                    control_data['FACPARMAX'],
-                    control_data['FACORIG']))
-            f.write('%g %g %s\n' % (
-                    control_data['PHIREDSHW'],
-                    control_data['NOPTSWITCH'],
-                    control_data['BOUNDSCALE']))
-            f.write('%d %g %d %d %g %d\n' % (
-                    control_data['NOPTMAX'],
-                    control_data['PHIREDSTP'],
-                    control_data['NPHISTP'],
-                    control_data['NPHINORED'],
-                    control_data['RELPARSTP'],
-                    control_data['NRELPAR']))
-            f.write('%d %d %d %d %s %s %s %s %s\n' % (
-                    control_data['ICOV'],
-                    control_data['ICOR'],
-                    control_data['IEIG'],
-                    control_data['IRES'],
-                    control_data['JCOSAVE'],
-                    control_data['VERBOSEREC'],
-                    control_data['JCOSAVEITN'],
-                    control_data['REISAVEITN'],
-                    control_data['PARSAVEITN']))
+            c_data = self.PEST_data['PESTcon']['control_data']
 
             # SVD
             svd = self.PEST_data['PESTcon']['singular_value_decomposition']
-            f.write('* singular value decomposition\n')
-            f.write('%d\n' % (svd['SVDMODE']))
             svd['MAXSING'] = len(self.PEST_data['PESTpar'].index)
-            f.write('%d %g\n' % (svd['MAXSING'],
-                                 svd['EIGTHRESH']))
-            f.write('%d\n' % svd['EIGWRITE'])
-            # Parameter groups
-            f.write('* parameter groups\n')
+
+            pcf_lines = [
+                ['pcf'],
+                ['* control data'],
+                [c_data['RSTFLE'], c_data['PESTMODE']],
+                [NPAR, NOBS, NPARGP, NPRIOR, NOBSGP],
+                [NTPLFILE, NINSFLE, c_data['PRECIS'], c_data['DPOINT']],
+                [c_data['RLAMBDA1'], c_data['RLAMFAC'], c_data['PHIRATSUF'], c_data['PHIREDLAM'], c_data['NUMLAM'],
+                 c_data['JACUPDATE'], c_data['LAMFORGIVE'], c_data['DERFORGIVE']],
+                [c_data['RELPARMAX'], c_data['FACPARMAX'], c_data['FACORIG']],
+                [c_data['PHIREDSHW'], c_data['NOPTSWITCH'], c_data['BOUNDSCALE']],
+                [c_data['NOPTMAX'], c_data['PHIREDSTP'], c_data['NPHISTP'], c_data['NPHINORED'], c_data['RELPARSTP'],
+                 c_data['NRELPAR']],
+                [c_data['ICOV'], c_data['ICOR'], c_data['IEIG'], c_data['IRES'], c_data['JCOSAVE'],
+                 c_data['VERBOSEREC'], c_data['JCOSAVEITN'], c_data['REISAVEITN'], c_data['PARSAVEITN']]
+            ]
+            write_multiline(f, pcf_lines)
+
+            svd_lines = [
+                ['* singular value decomposition'],  # SVD
+                [svd['SVDMODE']],
+                [svd['MAXSING'], svd['EIGTHRESH']],
+                [svd['EIGWRITE']]
+            ]
+            write_multiline(f, svd_lines)
+
+            # parameter groups
+            write_line(f, '* parameter groups')
             for row in self.PEST_data['PESTpgp'].iterrows():
-                [f.write(str(x) + '\t') for x in row[1].tolist()]
-                f.write('\n')
+                write_line(f, [str(x) for x in row[1].tolist()], delimit='\t')
             # end for
 
-            # Parameters
-            f.write('* parameter data\n')
-            for row in self.PEST_data['PESTpar'][['PARNAME', 'PARTRANS', 'PARCHGLIM', 'PARVAL1', 'PARLBND', 'PARUBND', 'PARGP', 'SCALE', 'OFFSET']].iterrows():
-                [f.write(str(x) + '\t') for x in row[1].tolist()]
-                f.write('\n')
+            # Parameter data
+            write_line(f, '* parameter data')
+            target_names = ['PARNAME', 'PARTRANS', 'PARCHGLIM', 'PARVAL1', 'PARLBND', 'PARUBND',
+                            'PARGP', 'SCALE', 'OFFSET']
+            for row in self.PEST_data['PESTpar'][target_names].iterrows():
+                write_line(f, [str(x) for x in row[1].tolist()], delimit='\t')
             # end for
             for row in self.PEST_data['PESTpar'][['PARNAME', 'PARTRANS', 'PARTIED']].iterrows():
                 if row[1]['PARTRANS'] == 'tied':
-                    f.write('%s\t%s' % (row[1]['PARNAME'], row[1]['PARTIED']))
-                    f.write('\n')
+                    write_line(f, [row[1]['PARNAME'], row[1]['PARTIED']], delimit='\t')
                 # end if
             # end for
 
             # Observation groups
-            f.write('* observation groups\n')
-            [f.write(str(x) + '\n') for x in PESTobsgp]
+            write_line(f, '* observation groups')
+            write_multiline(f, [[str(x)] for x in PESTobsgp])
+
+            # Observation data
+            write_line(f, '* observation data')
+            for row in self.PEST_data['PESTobs'][['OBSNME', 'OBSVAL', 'WEIGHT', 'OBGNME']].iterrows():
+                write_line(f, [str(x) for x in row[1]], delimit='\t')
             # end for
 
-            # Observations
-            f.write('* observation data\n')
-            for row in self.PEST_data['PESTobs'][['OBSNME', 'OBSVAL', 'WEIGHT', 'OBGNME']].iterrows():
-                [f.write(str(x) + '\t') for x in row[1]]
-                f.write('\n')
-            # end for
+            write_line(f, [str(x) for x in row[1]], delimit='\t')
 
             # Command line that pest executes
-            f.write('* model command line\n')
-            f.write('%s\n' % PESTCMD)
+            write_line(f, '* model command line')
+            write_line(f, [PESTCMD])
 
             # Model input/output
-            f.write('* model input/output\n')
-            f.write('%s\t%s\n' % (TEMPFLE, INFLE))
+            write_line(f, '* model input/output')
+            write_line(f, [TEMPFLE, INFLE], delimit='\t')
             for obs_gp in self.PEST_data['PESTobs']['OBGNME'].unique():
-                f.write('%s\t%s\n' % (INSFLE[obs_gp], OUTFLE[obs_gp]))
+                write_line(f, [INSFLE[obs_gp], OUTFLE[obs_gp]], delimit='\t')
             # end for
 
             # PRIOR rules
-            f.write('* prior information\n')
+            write_line(f, '* prior information')
 
             # Predictive analysis
             if self.predictive_analysis:
-                predictive_analysis = self.PEST_data['PESTcon']['predictive_analysis']
-                f.write('* predictive analysis\n')
-                f.write('%d\n' % (predictive_analysis['NPREDMAXMIN']))
-                f.write('%g %g %g\n' % (predictive_analysis['PD0'],
-                                        predictive_analysis['PD1'],
-                                        predictive_analysis['PD2']))
-                f.write('%g %g %g %g %d\n' % (predictive_analysis['ABSPREDLAM'],
-                                              predictive_analysis['RELPREDLAM'],
-                                              predictive_analysis['INITSCHFAC'],
-                                              predictive_analysis['MULSCHFAC'],
-                                              predictive_analysis['NSEARCH']))
-                f.write('%g %g\n' % (predictive_analysis['ABSPREDSWH'],
-                                     predictive_analysis['RELPREDSWH']))
-                f.write('%d %g %g %d\n' % (predictive_analysis['NPREDNORED'],
-                                           predictive_analysis['ABSPREDSTP'],
-                                           predictive_analysis['RELPREDSTP'],
-                                           predictive_analysis['NPREDSTP']))
+                pred_an = self.PEST_data['PESTcon']['predictive_analysis']
+                prior_lines = [
+                    ['* predictive analysis'],
+                    [pred_an['NPREDMAXMIN']],
+                    [pred_an['PD0'], pred_an['PD1'], pred_an['PD2']],
+                    [pred_an['ABSPREDLAM'], pred_an['RELPREDLAM'], pred_an['INITSCHFAC'], pred_an['MULSCHFAC'],
+                     pred_an['NSEARCH']],
+                    [pred_an['ABSPREDSWH'], pred_an['RELPREDSWH']],
+                    [pred_an['NPREDNORED'], pred_an['ABSPREDSTP'], pred_an['RELPREDSTP'], pred_an['NPREDSTP']]
+                ]
+                write_multiline(f, prior_lines)
         # end with
 
         # Generate initial parameters file
         # Generate PEST template file
         with open(os.path.join(PEST_folder, TEMPFLE), 'w') as f:
-            f.write('ptf #\n')
-            f.write('PARNAME\tPARVAL\n')
+            write_line(f, 'ptf #')
+            write_line(f, ['PARNAME', 'PARVAL'], delimit='\t')
             for row in self.PEST_data['PESTpar'][['PARNAME']].iterrows():
-                f.write('%s\t#%-15s#\n' % (row[1]['PARNAME'],
-                                           row[1]['PARNAME']))
+                f.write('%s\t#%-15s#\n' % (row[1]['PARNAME'], row[1]['PARNAME']))
             # end for
         # end with
 
@@ -595,7 +568,7 @@ class PESTInterface(object):
             PESTobs_filtered = obs_pd[obs_pd['OBGNME'] == obs_gp]
 
             with open(os.path.join(PEST_folder, INSFLE[obs_gp]), 'w') as f:
-                f.write('pif %%\n')
+                write_line(f, 'pif %%')
                 for row in PESTobs_filtered.iterrows():
                     f.write('l1 !%s!\n' % (row[1]['OBSNME']))
                 # end for
@@ -623,19 +596,17 @@ class PESTInterface(object):
 
         UNCERTAINTYFILE = PEST_name + '.unc'
         with open(os.path.join(PEST_folder, UNCERTAINTYFILE), 'w') as f:
-            f.write('# Parameter uncertainty file\n')
-            f.write('# for filling C(k) \n')
-            f.write('\n')
+            write_line(f, '# Parameter uncertainty file')
+            write_line(f, '# for filling C(k)\n')  # new line is intentional
+            write_line(f, 'START STANDARD_DEVIATION')
 
             # Needs to be for every other parameter
-            f.write('START STANDARD_DEVIATION\n')
             for row in self.PEST_data['PESTpar'].iterrows():
                 if row[1]['PARTRANS'] != 'fixed':
-                    f.write('%s\t%g\n' % (row[1]['PARNAME'],
-                                          row[1]['STD']))
+                    write_line(f, [row[1]['PARNAME'], row[1]['STD']], delimit='\t')
                 # end if
             # end for
-            f.write('END STANDARD_DEVIATION\n')
+            write_line(f, 'END STANDARD_DEVIATION')
         # end with
 
         print('\nPEST files generated\n')
