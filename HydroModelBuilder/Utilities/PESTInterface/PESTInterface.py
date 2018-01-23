@@ -121,6 +121,28 @@ class PESTInterface(object):
         
         PHIRATSUF = stands for "phi ratio sufficient", real variable, 0.3 is mostly appropriate,  [float]
         
+        PHIREDLAM = ... A suitable value for PHIREDLAM is between 0.01 and 0.05 [float] 
+        
+        NUMLAM = This integer variable places an upper limit on the number of 
+                 lambdas that PEST will test during any one iteration. It 
+                 should normally be set between 5 and 10 (normally closer to 10); 
+                 however if RLAMBDA1 is set to zero (which is not recommended) 
+                 it must be set to 1. [integer]
+        
+        JACUPDATE = The Broyden Jacobian update procedure is described in 
+                    section 5.4.2 of Doherty (2015). It provides a mechanism 
+                    for improving the Jacobian matrix based on model outputs 
+                    calculated during model runs undertaken for the purpose of 
+                    testing parameter upgrades calculated using different 
+                    values of the Marquardt lambda. [integer, optional]
+        
+        LAMFORGIVE = 
+        
+        [DERFORGIVE]
+        RELPARMAX FACPARMAX FACORIG [IBOUNDSTICK UPVECBEND] [ABSPARMAX]
+        PHIREDSWH [NOPTSWITCH] [SPLITSWH] [DOAUI] [DOSENREUSE] [BOUNDSCALE]
+        NOPTMAX PHIREDSTP NPHISTP NPHINORED RELPARSTP NRELPAR [PHISTOPTHRESH] [LASTRUN] [PHIABANDON]
+        ICOV ICOR IEIG [IRES] [JCOSAVE] [VERBOSEREC] [JCOSAVEITN] [REISAVEITN] [PARSAVEITN] [PARSAVERUN]
         ...
         
         *** end file ***
@@ -132,7 +154,7 @@ class PESTInterface(object):
                         'PESTMODE': 'estimation',
                         'PRECIS': 'single',
                         'DPOINT': 'point',
-                        'RLAMBDA1': 20,
+                        'RLAMBDA1': 10.,
                         'RLAMFAC': -3,
                         'PHIRATSUF': 0.3,
                         'PHIREDLAM': 1.00E-02,
@@ -146,7 +168,7 @@ class PESTInterface(object):
                         'PHIREDSHW': 0.1,
                         'NOPTSWITCH': 1,
                         'BOUNDSCALE': 'noboundscale', #'boundscale',
-                        'NOPTMAX':	25,
+                        'NOPTMAX':	0,
                         'PHIREDSTP':	0.01,
                         'NPHISTP':	5,
                         'NPHINORED': 5,
@@ -166,7 +188,7 @@ class PESTInterface(object):
         singular_value_decomposition = {'SVDMODE': 1,
                                         'MAXSING': 0, # Number of parameters
                                         'EIGTHRESH': 5.00E-07,
-                                        'EIGWRITE': 1,
+                                        'EIGWRITE': 0,
                                         }
 
 
