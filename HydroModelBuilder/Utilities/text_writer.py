@@ -43,13 +43,16 @@ def write_multiline(fp, lines, delimit=' '):
 if __name__ == '__main__':
     import os
     fname = 'test_textwriter.txt'
-    pass_case = ['test single string\n', 'test list single line\n', 'test multi string\n', 'test multi line\n',
-                 'output that spans across two lines\n']
+    pass_case = ['test single string\n', 'test list single line\n', 'test\tline\ttab\tdelimited\n',
+                 'test multi string\n', 'test multi line\n', 'output that spans across two lines\n',
+                 'test\tmulti\ttab-delimited\n', 'line\toutput\n']
     with open(fname, 'w') as f:
         write_line(f, 'test single string')
         write_line(f, ['test', 'list', 'single', 'line'])
+        write_line(f, ['test', 'line', 'tab', 'delimited'], delimit='\t')
         write_multiline(f, [['test', 'multi', 'string']])
         write_multiline(f, [['test', 'multi', 'line'], ['output', 'that', 'spans', 'across', 'two lines']])
+        write_multiline(f, [['test', 'multi', 'tab-delimited'], ['line', 'output']], delimit='\t')
 
     try:
         with open(fname, 'r') as f:
