@@ -567,40 +567,50 @@ class GWModelBuilder(object):
         return np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
     # End dist()
 
+    def _points_dist_collection(self, points, dist):
+        dist_total = 0
+        for index in xrange(len(points)):
+            if index == 0:
+                pass
+            else:
+                dist_total += dist(points[index], points[index - 1])
+        return dist_total
+    # End points_dist_collection()
+    
     def create_river_dataframe(self, name, poly_file, surface_raster_file,
-                               plotting=False, avoid_collocation=False):
+                               plotting=False, avoid_collocation=False, verbose=False):
+
         poly_file = self.GISInterface.read_poly(poly_file)
         points_list, points_dict = self.GISInterface.polyline_explore(poly_file)
         points_dict = self._get_start_and_end_points_from_line_features(points_dict)
         point_merge = self._points_merge(points_dict)
+        if verbose:
+            print("Find closest model mesh cell for line points")
         closest = self.do_kdtree(np.array(self.centroid2mesh2Dindex.keys()), point_merge)
         point2mesh_map, point2mesh_map2 = self._points2mesh_map(point_merge, closest)
         amalg_riv_points, amalg_riv_points_collection = self._amalgamate_points(point2mesh_map2, point_merge)
         # Do test and report any cell jumps more than 1 up, down, left, right
+        if verbose:
+            print("Test order the cells")
         self._naive_cell_ordering_test(amalg_riv_points)
 
         dist = self._dist
 
-        def points_dist_collection(points):
-            dist_total = 0
-            for index in xrange(len(points)):
-                if index == 0:
-                    pass
-                else:
-                    dist_total += dist(points[index], points[index - 1])
-            return dist_total
-        # End points_dist_collection()
-
+        if verbose:
+            print("Get length of reaches")
         lengths = []
         for i in xrange(len(amalg_riv_points_collection)):
             if i == 0:
-                lengths += [points_dist_collection(amalg_riv_points_collection[i])]
+                lengths += [self._points_dist_collection(amalg_riv_points_collection[i], dist)]
                 continue
             # End if
-            lengths += [points_dist_collection([amalg_riv_points_collection[i - 1][-1]] +
-                                               amalg_riv_points_collection[i])]
+            lengths += [self._points_dist_collection([amalg_riv_points_collection[i - 1][-1]] +
+                                               amalg_riv_points_collection[i], dist)]
         # End for
 
+        if verbose:
+            print("Process the surface raster for elevations")
+            
         surf_raster_fname = os.path.join(self.out_data_folder_grid, 'surf_raster_processed_{}.pkl'.format(name))
         if os.path.exists(surf_raster_fname):
             print(" --- Using previously processed surface raster data --- ")
@@ -608,25 +618,36 @@ class GWModelBuilder(object):
         else:
             surf_raster_info = self.get_raster_info(surface_raster_file)
             srm = surf_raster_info['metadata']
+            if verbose:
+                print("Calculate centroids")
             surf_centroids = self._create_centroids(srm['pixel_x'], srm['pixel_y'], (srm['ulx'],
                                                                                      srm['ulx'] + srm['cols'] *
                                                                                      srm['pixel_x'],
                                                                                      srm['uly'] - srm['rows'] *
                                                                                      srm['pixel_y'],
                                                                                      srm['uly']))
-            surf_raster_points = np.array(surf_centroids[0].keys())
-
+            
+            surf_raster_points = np.array(surf_centroids.keys())
+            if verbose:
+                print("Using kd_tree to find surface raster cells closest to river points")
             closest_srp = self.do_kdtree(surf_raster_points, point_merge)
             point2surf_raster_map = []
+
+            if verbose:
+                print("creating the point2surf_raster_map")
             for index, point in enumerate(point_merge):
-                point2surf_raster_map += [surf_centroids[0][tuple(surf_raster_points[closest_srp[index]])]]
+                point2surf_raster_map += [surf_centroids[tuple(surf_raster_points[closest_srp[index]])]]
             sr_array = surf_raster_info['array']
             self.ModelInterface.save_obj([sr_array, point2surf_raster_map], surf_raster_fname[:-4])
         # End if
 
+        if verbose:
+            print("Assign elevations based on surface raster map")
+
         riv_elevations = [sr_array[x[0]][x[1]] for x in point2surf_raster_map]
         riv_reach = []
         reach = 0
+
         for index, point in enumerate(point2mesh_map2):
             # If it is the last point
             if index == len(point2mesh_map2) - 1:
@@ -643,16 +664,19 @@ class GWModelBuilder(object):
             # End if
         # End for
 
+        if verbose:
+            print("Creating river dataframe")
+
         river_df = pd.DataFrame({'reach': riv_reach, 'strtop': riv_elevations})
         # In case of hitting no data values replace these with nan
-        river_df.loc[river_df['strtop'] < 0, 'strtop'] = np.nan
+#        river_df.loc[river_df['strtop'] < 0, 'strtop'] = np.nan
         # Then to fill the Nan values interpolate or drop??
-        river_df.dropna(inplace=True)
+#        river_df.dropna(inplace=True)
 
         # Group the dataframe stream points by reach
         river_seg = river_df.groupby('reach').min()
-        river_seg['rchlen'] = lengths
-        river_seg['amalg_riv_points'] = amalg_riv_points
+        river_seg.loc[:, 'rchlen'] = lengths
+        river_seg.loc[:, 'amalg_riv_points'] = amalg_riv_points
 
         # Check that order of elevations if from upstream to downstream ...
         elev = river_seg['strtop'].tolist()
@@ -680,8 +704,8 @@ class GWModelBuilder(object):
             river_reach_elev_adjusted += [self._adjust_elevations(
                 river_reach_elev_adjusted[-1], elev_reach, river_reach_elev[index + 1])]
         # End for
-        river_seg['strtop_raw'] = river_seg['strtop']
-        river_seg['strtop'] = river_reach_elev_adjusted
+        river_seg.loc[:, 'strtop_raw'] = river_seg['strtop']
+        river_seg.loc[:, 'strtop'] = river_reach_elev_adjusted
         if plotting:
             ax = river_seg.plot(x='Cumulative Length', y='strtop_raw', alpha=0.3)
             river_seg.plot(x='Cumulative Length', y='strtop', ax=ax)
@@ -697,13 +721,14 @@ class GWModelBuilder(object):
             slopes += [(riv_elev - river_reach_elev_adjusted[index + 1]) / lengths[index]]
         # End for
 
-        river_seg['slope'] = slopes
+        river_seg.loc[:, 'slope'] = slopes
+
         amalg_riv_points_naive_layer = [[0] + x for x in river_seg['amalg_riv_points'].tolist()]
-        river_seg['k'] = [x[0] for x in amalg_riv_points_naive_layer]
-        river_seg['i'] = [x[1] for x in amalg_riv_points_naive_layer]
-        river_seg['j'] = [x[2] for x in amalg_riv_points_naive_layer]
-        river_seg['amalg_riv_points_collection'] = [amalg_riv_points_collection[x]
-                                                    for x in xrange(len(amalg_riv_points_collection))]
+        river_seg.loc[:, 'k'] = [x[0] for x in amalg_riv_points_naive_layer]
+        river_seg.loc[:, 'i'] = [x[1] for x in amalg_riv_points_naive_layer]
+        river_seg.loc[:, 'j'] = [x[2] for x in amalg_riv_points_naive_layer]
+        river_seg.loc[:, 'amalg_riv_points_collection'] = [amalg_riv_points_collection[x]
+                                                    for x in xrange(len(amalg_riv_points_collection.keys()))]
 
         self.river_mapping[name] = river_seg
 
@@ -800,21 +825,20 @@ class GWModelBuilder(object):
         :returns: tuple, (dict) centroid2mesh, (dict) mesh2centroid
         '''
         xmin, xmax, ymin, ymax = bounds
+        print bounds, x_pixel, y_pixel
         cols = int((xmax - xmin) / x_pixel)
         rows = int((ymax - ymin) / y_pixel)
         x = np.linspace(xmin + x_pixel / 2.0, xmax - x_pixel / 2.0, cols)
         y = np.linspace(ymax - y_pixel / 2.0, ymin + y_pixel / 2.0, rows)
-        X, Y = np.meshgrid(x, y)
-
+        
         centroid2mesh2Dindex = {}
-        mesh2centroid2Dindex = {}
         for row in xrange(rows):
             for col in xrange(cols):
                 centroid2mesh2Dindex[(x[col], y[row])] = [row, col]
-                mesh2centroid2Dindex[(row, col)] = [x[col], y[row]]
             # End for
         # End for
-        return centroid2mesh2Dindex, mesh2centroid2Dindex
+        print "finished centroid_building"
+        return centroid2mesh2Dindex
     # End _create_centroids()
 
     def get_raster_info(self, raster_file):
@@ -1041,7 +1065,9 @@ class GWModelBuilder(object):
             if use_kdtree:
                 # Need to get points from points_obj
                 points = []
-                # Get feature id's as well from
+                points_label = []
+                
+                # Get feature id's as well from 
                 identifier = ""
                 temp = self.map_points_to_2Dmesh(points, identifier)
             else:
