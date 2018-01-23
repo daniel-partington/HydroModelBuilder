@@ -103,25 +103,25 @@ class ModflowModel(object):
                                             steady=self.steady)
         if self.verbose and self.check:
             self.dis.check()
-        # start_datetime = self.start_datetime)
+        # End if
     # End createDiscretisation()
 
     def setupBASPackage(self, nlay, nrow, ncol):
+        """
+        Create and setup MODFLOW BAS package.
 
+        :param nlay: int, number of layers
+        :param nrow: int, number of rows
+        :param ncol: int, number of columns
+        """
         # Variables for the BAS package
-        #ibound = np.nan*np.empty((nlay, nrow, ncol), dtype=np.int32)
         ibound = self.model_data.model_mesh3D[1]
         ibound[ibound == -1] = 0
-        #ibound[ibound > 0] = 1
 
-        strt = self.strt  # np.nan*np.empty((nlay, nrow, ncol), dtype=np.float32)
-
-        self.bas = flopy.modflow.ModflowBas(self.mf, ibound=ibound, strt=strt)
-
-        if self.verbose:
-            if self.check:
-                self.bas.check()
-
+        self.bas = flopy.modflow.ModflowBas(self.mf, ibound=ibound, strt=self.strt)
+        if self.verbose and self.check:
+            self.bas.check()
+        # End if
     # End setupBASPackage()
 
     def setupNWTpackage(self, headtol, fluxtol):
@@ -278,10 +278,10 @@ class ModflowModel(object):
                    (0, 1): ['save head', 'print budget', 'save budget']}
         else:
             spd = {}
-            for i in range(self.nper):    
+            for i in range(self.nper):
                 spd[(i, 0)] = ['save head', 'print budget', 'save budget']
-                spd[(i, 1)] = ['save head', 'print budget', 'save budget']       
-        # end if    
+                spd[(i, 1)] = ['save head', 'print budget', 'save budget']
+        # end if
         self.oc = flopy.modflow.ModflowOc(self.mf, stress_period_data=spd, cboufm='(20i5)')
 
     # end createOCpackage
@@ -344,7 +344,6 @@ class ModflowModel(object):
 
             if (bc_type == 'river_flow'):
                 self.createSFRpackage(bc_array[0], bc_array[1])
-                # self.createGagepackage(gages)
             # End if
 
             if bc_type == 'wells':
@@ -354,7 +353,9 @@ class ModflowModel(object):
                         wel[key] += bc_array[key]
                     except:
                         wel[key] = bc_array[key]
-                #wel[0] += bc_array[time_key]
+                    # End try
+                # End for
+            # End if
         # End for
 
         if river_exists:
@@ -364,15 +365,14 @@ class ModflowModel(object):
             self.createWELpackage(wel)
 
         # IF transport then
-        if transport == True:
+        if transport:
             self.createLMTpackage()
 
-        if write == True:
+        if write:
             self.finaliseModel()
 
-        if self.verbose:
-            if self.check:
-                self.checkMODFLOW()
+        if self.verbose and self.check:
+            self.checkMODFLOW()
 
     # End buildMODFLOW()
 
@@ -382,18 +382,8 @@ class ModflowModel(object):
 
     def runMODFLOW(self, silent=True):
         success, buff = self.mf.run_model(silent=silent)
-
-        # return self.checkConvergence(fail=not success)
         return success
     # End runMODFLOW()
-
-    #**************************************************************************
-    #**************************************************************************
-    #**************************************************************************
-    #**** CHECKING SUCCESS OF MODEL RUN ***************************************
-    #**************************************************************************
-    #**************************************************************************
-    #**************************************************************************
 
     def checkConvergence(self, path=None, name=None, fail=False):
         converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP",  # Clear statement of model fail in list file
@@ -845,7 +835,7 @@ class ModflowModel(object):
             # plt.show()
             if save:
                 plt.savefig('run_wb_{}.png'.format(iter_num), bbox_inches='tight')
-            # end if                
+            # end if
         else:
             return wat_bal_df
         # end if
@@ -2662,8 +2652,8 @@ class MT3DPostProcess(object):
         multiplier = 1.
         fig = plt.figure(figsize=(width * multiplier, height * multiplier))
 
-        vmin = np.amin(conc[conc > 0.]) #0.0
-        vmax = np.amax(conc) #100.0
+        vmin = np.amin(conc[conc > 0.])  # 0.0
+        vmax = np.amax(conc)  # 100.0
 
         ax = fig.add_subplot(2, 4, 1, aspect='equal')
 
