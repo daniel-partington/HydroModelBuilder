@@ -198,6 +198,9 @@ class ModelParameters(object):
         if PARUBND:
             self.param[param_name]['PARUBND'] = PARUBND
         if PARGP:
+            if len(PARGP) > 6:
+                print('Warning: If using ADDREG PEST utility parameter group')
+                print('         names, should not exceed 6 characters')
             self.param[param_name]['PARGP'] = PARGP
         if SCALE:
             self.param[param_name]['SCALE'] = SCALE
