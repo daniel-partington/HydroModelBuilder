@@ -1,8 +1,5 @@
-import cPickle as pickle
 import os
-import shutil
-import sys
-from itertools import groupby as g
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -12,9 +9,8 @@ from scipy import spatial
 from ModelInterface.ModelInterface import ModelInterface
 from ModelInterface.ModelMesh import MeshGenerator
 from ModelProperties import (ArrayOrdering, ModelBoundaries, ModelBuilderType,
-                             ModelFeature, ModelInitialConditions,
-                             ModelObservations, ModelParameters,
-                             ModelProperties, ModelTime)
+                             ModelInitialConditions, ModelObservations,
+                             ModelParameters, ModelProperties, ModelTime)
 from Utilities import interpolation
 from Utilities.PilotPoints import pilotpoints
 
@@ -55,7 +51,7 @@ class GWModelBuilder(object):
         self._mesh_type = mesh_type
         self.ModelInterface = ModelInterface(model_type, self.types, data_format)
 
-        if units != None:
+        if units is not None:
             if type(units) == list:
                 self.set_units(length=units[0], time=units[1], mass=units[2])
             elif type(units) == dict:
@@ -339,7 +335,7 @@ class GWModelBuilder(object):
         and if so to do nothing unless flagged otherwise. This is done by
         checking the output data path.
 
-        :param fn:
+        :param fn: str, filename to check for
         """
         self.ModelInterface.check_for_existing(fn)
     # End check_for_existing()
@@ -516,7 +512,9 @@ class GWModelBuilder(object):
 
     def _get_poly_name_and_obj(self, poly):
         """
-        :param poly:
+        Load poly name and object.
+
+        :param poly: str or poly object
         """
         if type(poly) is str:
             poly = self.read_poly(poly)
@@ -531,7 +529,14 @@ class GWModelBuilder(object):
     # End _get_poly_name_and_obj()
 
     def _pointsdist(self, p1, p2, cache={}):
-        """Calculate distance between points"""
+        """
+        Calculate distance between points.
+
+        :param p1: array-like, x and y values for point 1
+        :param p2: array-like, x and y values for point 2
+
+        :returns: float, distance between points
+        """
         tmp = cache.get((p1, p2), None)
         if tmp is not None:
             return tmp
@@ -559,7 +564,7 @@ class GWModelBuilder(object):
     ###########################################################################
 
     def _dist(self, p1, p2):
-        return np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+        return np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
     # End dist()
 
     def _points_dist_collection(self, points, dist):
@@ -594,7 +599,7 @@ class GWModelBuilder(object):
         if verbose:
             print("Get length of reaches")
         lengths = []
-        for i in xrange(len(amalg_riv_points_collection.keys())):
+        for i in xrange(len(amalg_riv_points_collection)):
             if i == 0:
                 lengths += [self._points_dist_collection(amalg_riv_points_collection[i], dist)]
                 continue
@@ -707,8 +712,9 @@ class GWModelBuilder(object):
         # End if
 
         slopes = []
+        len_rr_elev_adjusted = len(river_reach_elev_adjusted) - 1
         for index, riv_elev in enumerate(river_reach_elev_adjusted):
-            if index == len(river_reach_elev_adjusted) - 1:
+            if index == len_rr_elev_adjusted:
                 slopes += [slopes[-1]]
                 continue
             # End if
@@ -736,6 +742,8 @@ class GWModelBuilder(object):
 
         :param name: str, Name given to stream or river when create_river_dataframe was run
         :param points: list, points for which to find the closest to named river
+
+        :returns: list, closest river segment
         '''
         try:
             self.river_mapping[name]
@@ -770,34 +778,35 @@ class GWModelBuilder(object):
         :param us: float, upstream elevation
         :param active: float, elevation being analysed
         :param ds: float, downstream elevation
-        :param adjust: float,
-        :param verbose: bool,
+        :param adjust: float, amount to adjust by
+        :param verbose: bool, print out debug information
         '''
-        if us == None:
+        if us is None:
             if verbose:
                 print("No upstream to worry about, move on")
             return active
+
         if us > active and active > ds:
             if verbose:
                 print("The active elevation fits between upstream and downstream, move on")
             return active
-        if us < active and ds != None:
-            if us > ds:
-                if verbose:
-                    print("Active greater than upstream and downstream, interpolate between us and ds")
-                return (us + ds) / 2.
-            if us < ds:
-                if verbose:
+
+        if us < active:
+            if ds is not None:
+                if us > ds:
+                    if verbose:
+                        print("Active greater than upstream and downstream, interpolate between us and ds")
+                    return (us + ds) / 2.
+                if us < ds and verbose:
                     print("Case 4")
-                return us - adjust
-        if us < active and ds == None:
-            if verbose:
-                print("Case 5")
-            return us - adjust
-        if us == active:
-            if verbose:
-                print("Case 6")
-            return us - adjust
+            else:
+                if verbose:
+                    print("Case 5")
+            # End if
+        # End if
+
+        if us == active and verbose:
+            print("Case 6")
 
         if verbose:
             print("Case 7: {} {} {}".format(us, active, ds))
@@ -813,7 +822,7 @@ class GWModelBuilder(object):
         :param y_pixel: float,
         :param bounds: tuple,
 
-        :returns:
+        :returns: tuple, (dict) centroid2mesh, (dict) mesh2centroid
         '''
         xmin, xmax, ymin, ymax = bounds
         print bounds, x_pixel, y_pixel
@@ -876,7 +885,7 @@ class GWModelBuilder(object):
         This is a test for river cell ordering which is specific for MODFLOW
         SFR and STR packages.
 
-        :param cell_list: list, list of cells to order
+        :param cell_list: list, of cells to order
         '''
         cl = cell_list
         for index in xrange(len(cell_list)):
@@ -897,7 +906,7 @@ class GWModelBuilder(object):
         :param point2mesh_map2:
         :param point_merge:
 
-        :returns: tuple,
+        :returns: tuple, (list) river points, (dict) river points collection
         """
         # TO CHECK
         amalg_riv_points = []
@@ -925,7 +934,7 @@ class GWModelBuilder(object):
         :param points:
         :param closest:
 
-        :returns: tuple
+        :returns: tuple, (dict) point2mesh mapping, (list) point2mesh in list form
         """
         points_array = np.array(points)
         centroids = self.centroid2mesh2Dindex
@@ -936,6 +945,8 @@ class GWModelBuilder(object):
             point2mesh_map[tuple(list(point))] = centroids[tuple(model_mesh_points[closest[index]])]
         # End for
 
+        warnings.warn("This method will only return a dictionary in future. List `point2mesh_map2` will be removed",
+                      DeprecationWarning)
         point2mesh_map2 = []
         for index, point in enumerate(points_array):
             point2mesh_map2 += [centroids[tuple(model_mesh_points[closest[index]])]]
@@ -948,7 +959,7 @@ class GWModelBuilder(object):
         """
         :param points_dict:
         """
-        for key in points_dict.keys():
+        for key in points_dict:
             points_dict[key] += [{'start': points_dict[key][0], 'end':points_dict[key][-1]}]
         return points_dict
     # End _get_start_and_end_points_from_line_features()
@@ -957,7 +968,9 @@ class GWModelBuilder(object):
         '''
         Merge points from multiple feature into one continuous line
 
-        :param points_dict: dict,
+        :param points_dict: dict, of feature points
+
+        :return: list, of unique points.
         '''
         # TO CHECK
         point_merge = points_dict[0][0:-1]
@@ -980,7 +993,7 @@ class GWModelBuilder(object):
     # End _points_merge()
 
     def save_MODFLOW_SFR_dataframes(self, name, reach_df, seg_df):
-        self.mf_sfr_df[name] = {'reach_df':reach_df, 'seg_df':seg_df}
+        self.mf_sfr_df[name] = {'reach_df': reach_df, 'seg_df': seg_df}
     # End save_MODFLOW_SFR_dataframes()
 
     ###########################################################################
@@ -1049,7 +1062,7 @@ class GWModelBuilder(object):
                                                                                        point_name + '_mapped.pkl'))
         else:
             temp = []
-            if use_kdtree:            
+            if use_kdtree:
                 # Need to get points from points_obj
                 points = []
                 points_label = []
@@ -1068,9 +1081,9 @@ class GWModelBuilder(object):
                         grid_loc = self.centroid2mesh2Dindex[centroid]
                     except:
                         grid_loc = self._hacky_centroid_to_mesh(centroid, dist_min=1E6)
-    
+
                     temp += [[grid_loc, item[0]]]
-                
+
             self.points_mapped[point_name] = temp
             self.ModelInterface.save_obj(temp, os.path.join(self.out_data_folder_grid, point_name + '_mapped'))
 
@@ -1090,17 +1103,14 @@ class GWModelBuilder(object):
         Returns: A dict with keys of all points (or identifiers) with each
         corresponding entry containing the i and j reference of the nearest
         cell center to the given point
-        
         '''
         model_mesh_points = np.array(self.centroid2mesh2Dindex.keys())
-
         if type(points) == list:
             points = np.array(points)
         # End if
 
         closest = self.do_kdtree(model_mesh_points, points)
         point2mesh_map = {}
-
         for index, point in enumerate(points):
             if identifier[0]:
                 point2mesh_map[identifier[index]] = self.centroid2mesh2Dindex[
@@ -1184,7 +1194,15 @@ class GWModelBuilder(object):
                                 method='nearest', use='griddata',
                                 function='multiquadric', epsilon=2):
         """
-        TODO: docs
+        Interpolate points to mesh.
+
+        :param points_obj: array-like, points to interpolate
+        :param values_dataframe: DataFrame, of values
+        :param feature_id: int, feature id defaulting to `None`
+        :param method: str, interpolation method. Defaults to `nearest`
+        :param use: str, Defaults to `griddata`
+        :param function: str, Defaults to `multiquadric`
+        :param epsilon: int, Defaults to `2`
         """
         if isinstance(points_obj, list) or isinstance(points_obj, np.ndarray):
             points = points_obj
@@ -1229,19 +1247,22 @@ class GWModelBuilder(object):
         This is a function to map the obs at different times within the bounding interval in the
         model times intervals
         """
+        obs_group = self.observations.obs_group
         if self.model_time.t['steady_state']:
-            for key in self.observations.obs_group.keys():
-                self.observations.obs_group[key]['time_series']['interval'] = 0
+            for key in obs_group:
+                obs_group[key]['time_series']['interval'] = 0
         else:
-            for key in self.observations.obs_group.keys():
-                self.observations.obs_group[key]['time_series'].loc[:, 'interval'] = self.observations.obs_group[key][
-                    'time_series'].apply(lambda row: self._findInterval(row, self.model_time.t['dateindex']), axis=1)
+            find_interval = self._findInterval
+            dateindex = self.model_time.t['dateindex']
+            for key in obs_group:
+                obs_group_key = obs_group[key]
+                obs_group_key['time_series'].loc[:, 'interval'] = obs_group_key['time_series'].apply(
+                    lambda row: find_interval(row, dateindex), axis=1)
                 # remove np.nan values from the obs as they are not relevant
-                if self.observations.obs_group[key]['real']:
-                    self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
-                        'time_series'][pd.notnull(self.observations.obs_group[key]['time_series']['interval'])]
-                    self.observations.obs_group[key]['time_series'] = self.observations.obs_group[key][
-                        'time_series'][self.observations.obs_group[key]['time_series']['value'] != 0.]
+                if obs_group_key['real']:
+                    obs_group_ts = obs_group_key['time_series']
+                    obs_group_ts = obs_group_ts[pd.notnull(obs_group_ts['interval'])]
+                    obs_group_ts = obs_group_ts[obs_group_ts['value'] != 0.]
                 # End if
             # End for
         # End if
@@ -1249,7 +1270,10 @@ class GWModelBuilder(object):
 
     def updateModelParameters(self, fname, verbose=True):
         """
-        TODO: docs
+        Update model parameters based on values given in a file.
+
+        :param fname: str, filename to open
+        :param verbose: bool, whether or not to print out debug info
         """
         with open(fname, 'r') as f:
             text = f.readlines()
@@ -1257,14 +1281,14 @@ class GWModelBuilder(object):
             text = text[1:]
             # Read in parameters and replace values in parameters class for param
             updated = {}
-            for key in self.parameters.param.keys():
+            for key in self.parameters.param:
                 updated[key] = False
 
             for line in text:
                 param_name, value = line.strip('\n').split('\t')
                 value = value.lstrip()
                 param_name = param_name.strip()
-                if param_name in self.parameters.param.keys():
+                if param_name in self.parameters.param:
                     self.parameters.param[param_name]['PARVAL1'] = float(value)
                     updated[param_name] = True
                 else:
@@ -1272,10 +1296,10 @@ class GWModelBuilder(object):
                         print 'Parameter not defined in model: ', param_name
 
         if verbose:
-            were_updated = [key for key in updated.keys() if updated[key] == True]
+            were_updated = [key for key in updated if updated[key] == True]
             if len(were_updated) > 0:
                 print 'Parameters updated for : ', were_updated
-            not_updated = [key for key in updated.keys() if updated[key] == False]
+            not_updated = [key for key in updated if updated[key] == False]
             if len(not_updated) > 0:
                 print 'Parameters unchanged for : ', not_updated
     # End updateModelParameters()
@@ -1296,9 +1320,10 @@ class GWModelBuilder(object):
 
     def create_pilot_points(self, name, linear=False):
         """
-        TODO: docs
+        :param name: str, identifier of target pilot point
+        :param linear: bool, linear or non-linear pilot points.
         """
-        if linear == False:
+        if not linear:
             self.pilot_points[name] = pilotpoints.PilotPoints(
                 output_directory=self.out_data_folder_grid, additional_name=name)
         else:
@@ -1308,31 +1333,36 @@ class GWModelBuilder(object):
 
     def save_pilot_points(self):
         """
-        TODO: docs
+        Save pilot point data in pickle file.
         """
         self.ModelInterface.save_obj(self.pilot_points, os.path.join(self.out_data_folder_grid, 'pilot_points'))
     # End save_pilot_points()
 
     def load_pilot_points(self, fname):
         """
-        TODO: docs
+        Load pilot point data from pickle file.
+
+        :param fname: str, filename to load data from.
         """
         pp = self.ModelInterface.load_obj(fname)
-        for key in pp.keys():
+        for key in pp:
             self.pilot_points[key] = pp[key]
         # End for
     # End load_pilot_points()
 
     def add2register(self, addition):
         """
-        TODO: docs
+        Add given value to model register.
+
+        :param addition: numeric, value to add.
         """
+        warnings.warn("Call to (possibly) deprecated method `add2register`", DeprecationWarning)
         self.model_register += addition
     # End add2register()
 
     def writeRegister2file(self):
         """
-        TODO: docs
+        Write model register to file.
         """
         with open(os.path.join(self.out_data_folder, 'model_register.dat')) as f:
             for item in self.model_register:
@@ -1342,16 +1372,19 @@ class GWModelBuilder(object):
     # End writeRegister2file()
 
     def points2shapefile(self, points_array, shapefile_name):
-        """ Needs writing ...
+        """
+        Write given points array to shapefile.
+
         :param points_array:
         :param shapefile_name:
         """
+        warnings.warn("Call to (possibly) deprecated method `points2shapefile`", DeprecationWarning)
         self.GISInterface.points2shapefile(points_array, shapefile_name)
     # End points2shapefile()
 
     def mesh3DToVtk(self, val_array, val_name, out_path, vtk_out):
         '''
-        Function to write the mesh array
+        Function to write the mesh array.
 
         :param val_array:
         :param val_name:
@@ -1359,6 +1392,7 @@ class GWModelBuilder(object):
         :param vtk_out:
         '''
         from HydroModelBuilder.GISInterface.GDALInterface import array2Vtk
+        warnings.warn("Call to (possibly) deprecated method `mesh3DToVtk`", DeprecationWarning)
         nrow, ncol = self.model_mesh3D[1][0].shape
         delc, delr = self.gridWidth, self.gridHeight
         x0, y0 = self.model_boundary[0], self.model_boundary[3]
