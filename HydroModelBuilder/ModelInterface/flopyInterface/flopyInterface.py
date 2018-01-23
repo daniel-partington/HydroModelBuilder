@@ -738,7 +738,7 @@ class ModflowModel(object):
         self.obs_sim_zone = []
         obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
         obs_df = obs_df[obs_df['active'] == True]
-        # obs_df = obs_df[obs_df['interval'] == nper]
+        obs_df = obs_df[obs_df['interval'] == nper]
         sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
         # self.model_data.observations.obs_group[obs_set]['time_series']['name']:
         for observation in obs_df['name']:
@@ -1458,10 +1458,14 @@ class ModflowModel(object):
         # modelmap.plot_bc(plotAll=True)
         # modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
 
-        modelmap.plot_bc('RIV')
-        modelmap.plot_bc('WEL')
-        modelmap.plot_bc('GHB')
-        # modelmap.plot_bc('DRN')
+        modelmap.plot_bc('RIV', plotAll=True)
+        modelmap.plot_bc('WEL', plotAll=True)
+        modelmap.plot_bc('GHB', plotAll=True)
+        try:
+            modelmap.plot_bc('SFR', plotAll=True)
+        except:
+            print("No SFR package present")
+            # modelmap.plot_bc('DRN')
         # ax.axes.xaxis.set_ticklabels([])
         start, end = ax.get_xlim()
         start = start // 1000 * 1000 + 1000
