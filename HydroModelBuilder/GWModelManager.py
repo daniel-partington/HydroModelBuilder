@@ -12,7 +12,6 @@ class GWModelManager(object):
 
     def __init__(self, model_directory=None):
         self.model_directory = model_directory
-        self.models = 0
         self.default = 'default'
         self.model_register = None
         self.GW_build = {}
@@ -76,17 +75,17 @@ class GWModelManager(object):
         pass
 
     def build_GW_model(self, name=None):
-        if name == None:
-            name = 'default' + self.models
+        if name is None:
+            name = 'default{}'.format(self.models)
         self.name = name
-        self.models += 1
-        self.GW_build[self.models] = GWModelBuilder(name=None, model_type=None,
-                                                    mesh_type=None, units=None,
-                                                    data_folder=None,
-                                                    out_data_folder=None,
-                                                    GISInterface=None,
-                                                    data_format='binary',
-                                                    target_attr=self.target_attr)
+
+        self.GW_build[name] = GWModelBuilder(name=None, model_type=None,
+                                             mesh_type=None, units=None,
+                                             data_folder=None,
+                                             out_data_folder=None,
+                                             GISInterface=None,
+                                             data_format='binary',
+                                             target_attr=self.target_attr)
 
     def emulate_GW_model(self, emulation_method):
         # Create new GW_model using emulation of existing model
@@ -144,24 +143,28 @@ class GWModelManager(object):
         print "Model for PEST: ", self.GW_build[model_name]
         self.PEST = PESTInterface(name=name, directory=directory, csv_copy=csv_copy,
                                   excel_copy=excel_copy, params=params, obs=obs, obs_grp=obs_grp, models_ID=models_ID)
+    # End setupPEST()
+
+    @property
+    def models(self):
+        """Get the number of associated models"""
+        return len(self.GW_build)
+    # End models()
 
     def load_GW_model(self, GW_model, out_data_folder=None):
+        """Load groundwater model."""
         packaged_model = self.load_obj(GW_model)
 
-        self.models += 1
-        self.GW_build[self.models] = GWModelBuilder(name=packaged_model['name'],
-                                                    model_type=packaged_model['model_type'],
-                                                    mesh_type=packaged_model['_mesh_type'],
-                                                    units=packaged_model['_units'],
-                                                    data_folder=packaged_model['data_folder'],
-                                                    out_data_folder=packaged_model['out_data_folder'],
-                                                    model_data_folder=packaged_model['model_data_folder'],
-                                                    GISInterface=None,
-                                                    data_format=packaged_model['data_format'],
-                                                    target_attr=self.target_attr)
-
-        # Rename model in dictionary by it's model builder name
-        self.GW_build[packaged_model['name']] = self.GW_build.pop(self.models)
+        self.GW_build[packaged_model['name']] = GWModelBuilder(name=packaged_model['name'],
+                                                               model_type=packaged_model['model_type'],
+                                                               mesh_type=packaged_model['_mesh_type'],
+                                                               units=packaged_model['_units'],
+                                                               data_folder=packaged_model['data_folder'],
+                                                               out_data_folder=packaged_model['out_data_folder'],
+                                                               model_data_folder=packaged_model['model_data_folder'],
+                                                               GISInterface=None,
+                                                               data_format=packaged_model['data_format'],
+                                                               target_attr=self.target_attr)
 
         ref_pkg_model = self.GW_build[packaged_model['name']]
         for key in self.target_attr:
