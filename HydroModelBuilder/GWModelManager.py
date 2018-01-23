@@ -125,6 +125,16 @@ class GWModelManager(object):
         :param parameters: str or dict, parameter(s) to update. If string, assume it is a file to load data from.
         """
         warnings.warn("DEPRECATED. Use `update_parameters` instead.", DeprecationWarning)
+        self.update_parameters(model_name, parameters)
+    # End updateParameters()
+
+    def update_parameters(self, model_name, parameters):
+        """
+        Update parameters in the groundwater model.
+
+        :param model_name: str, name of model to update.
+        :param parameters: str or dict, parameter(s) to update. If string, assume it is a file to load data from.
+        """
         params_new = {}
         if type(parameters) == str:
             # Assume string is a filename to load in the format:
@@ -157,16 +167,6 @@ class GWModelManager(object):
                 self.GW_build[model_name].parameters.param[key] = params_new[key]
             # End if
         # End for
-    # End updateParameters()
-
-    def update_parameters(self, model_name, parameters):
-        """
-        Update parameters in the groundwater model.
-
-        :param model_name: str, name of model to update.
-        :param parameters: str or dict, parameter(s) to update. If string, assume it is a file to load data from.
-        """
-        self.updateParameters(model_name, parameters)
     # End update_parameters()
 
     def setupPEST(self, model_name, directory=None, csv_copy=False, excel_copy=False, models_ID=None):
