@@ -1,5 +1,6 @@
 import datetime
 import os
+import warnings
 
 import flopy
 import flopy.utils.binaryfile as bf
@@ -30,15 +31,6 @@ class ModflowModel(object):
             self.data_folder = data_folder + os.path.sep
         # End if
 
-#        if stream_representation == None:
-#            self.stream_representation = 'RIV'
-#        elif stream_representation not in ['RIV', 'STR', 'SFR']:
-#            print("stream_representation not valid, must be one of {}".format(['RIV', 'STR', 'SFR']))
-#            print("setting to 'RIV'")
-#            self.stream_representation = 'RIV'
-#        else:
-#            self.stream_representation = stream_representation
-
         self.executable = r".\MODFLOW-NWT_64.exe"
 
         self.nlay = self.model_data.model_mesh3D[0].shape[0] - 1
@@ -51,29 +43,29 @@ class ModflowModel(object):
         self.xul = self.model_data.model_boundary[0]
         self.yul = self.model_data.model_boundary[3]
 
+        # Need to document why these values are used
         self.headtol = 1E-3  # 1E-6
         self.fluxtol = 1.0E4
 
         if self.model_data.model_time.t['steady_state'] == True:
             self.nper = 1
-            self.perlen = 1  # 8260000#65 #000000
-            self.perlen = 40000 * 365  # 8260000#65 #000000
+            self.perlen = 1
+            self.perlen = 40000 * 365
             self.nstp = 1  # 0
             self.steady = True
         else:
             self.nper = self.model_data.model_time.t['steps']
             self.perlen = [
-                x.total_seconds() / 86400. for x in self.model_data.model_time.t['intervals']]  # 365000
-            self.nstp = 1  # 10
+                x.total_seconds() / 86400. for x in self.model_data.model_time.t['intervals']]
+            self.nstp = 1
             self.steady = False
             self.start_datetime = self.model_data.model_time.t['dateindex'][0]
 
         # Initial data:
-        # self.model_data.model_mesh3D[0][1:] + 20.
         self.strt = self.model_data.initial_conditions.ic_data["Head"]
 
         self.hk = self.model_data.properties.properties['Kh']
-        self.hk[self.hk == -1] = 1.
+        self.hk[self.hk == -1] = 1.0
         self.vka = self.model_data.properties.properties['Kv']
         self.sy = self.model_data.properties.properties['Sy']
         self.ss = self.model_data.properties.properties['SS']
@@ -85,7 +77,6 @@ class ModflowModel(object):
     # End init()
 
     def createDiscretisation(self):
-
         # Create discretisation object
         self.dis = flopy.modflow.ModflowDis(self.mf,
                                             nlay=self.nlay,
@@ -127,19 +118,19 @@ class ModflowModel(object):
     def setupNWTpackage(self, headtol, fluxtol):
         # Specify NWT settings
         self.nwt = flopy.modflow.ModflowNwt(self.mf,
-                                            headtol=headtol,  # 1E-4
-                                            fluxtol=fluxtol,  # 1.0E1
+                                            headtol=headtol,
+                                            fluxtol=fluxtol,
                                             linmeth=2,
                                             iprnwt=1,
                                             ibotav=1,
-                                            thickfact=1E-5,  # 1E-7
-                                            maxiterout=10000,  # 100000
+                                            thickfact=1E-5,
+                                            maxiterout=10000,
                                             options='COMPLEX')
-    # end setupNWTpackage
+    # End setupNWTpackage()
 
     def setupPCGpackage(self):
         self.pcg = flopy.modflow.ModflowPcg(self.mf)  # if using mf 2005
-    # end setupPCGpachage
+    # End setupPCGpachage()
 
     def setupUPWpackage(self):
         """
@@ -157,21 +148,21 @@ class ModflowModel(object):
                                             laywet=0,
                                             laytyp=1)
 
-    # end setupUPWpackage
+    # End setupUPWpackage()
 
     def createRIVpackage(self, lrcd=None):
         self.riv = flopy.modflow.ModflowRiv(self.mf, ipakcb=53, stress_period_data=lrcd)
-        if self.verbose:
-            if self.check:
-                self.riv.check()
-    # end createRIVpackage
+        if self.verbose and self.check:
+            self.riv.check()
+        # End if
+    # End createRIVpackage()
 
     def createSTRpackage(self, STRvariables=None):
         self.str = flopy.modflow.ModflowStr(self.mf, ipakcb=53, stress_period_data=STRvariables)
         if self.verbose:
             if self.check:
                 self.str.check()
-    # end createSTRpackage
+    # End createSTRpackage()
 
     def createSFRpackage(self, reach_data, segment_data):
         if self.model_data.model_time.t['steady_state'] == True:
@@ -218,90 +209,99 @@ class ModflowModel(object):
                                              filenames=None  # Leave as None and let flopy define output names
                                              )
 
-        if self.verbose:
-            if self.check:
-                self.sfr.check()
+        if self.verbose and self.check:
+            self.sfr.check()
         # End if
-    # end createSFRpackage
+    # End createSFRpackage()
 
     def createGagepackage(self, gages, files=None):
         # gages should contain seg, rch, unit, outtype [set = 9]
-        if files == None:
+        if files is None:
             files = ['Gage.gage']
             files += ['Gage.gag{}'.format(x) for x in range(len(gages))]
         # End if
+
         self.gage = flopy.modflow.ModflowGage(self.mf, numgage=len(gages), gage_data=gages, filenames=None)
-        if self.verbose:
-            if self.check:
-                self.gage.check()
-    # end createGagepackage
+        if self.verbose and self.check:
+            self.gage.check()
+        # End if
+    # End createGagepackage()
 
     def createDRNpackage(self, lrcsc=None):
         self.drn = flopy.modflow.ModflowDrn(self.mf, ipakcb=53, stress_period_data=lrcsc)
-        if self.verbose:
-            if self.check:
-                self.drn.check()
-    # end createDRNpackage
+        if self.verbose and self.check:
+            self.drn.check()
+    # End createDRNpackage()
 
     def createGHBpackage(self, lrcsc=None):
         self.ghb = flopy.modflow.ModflowGhb(self.mf, ipakcb=53, stress_period_data=lrcsc)
-        if self.verbose:
-            if self.check:
-                self.ghb.check()
+        if self.verbose and self.check:
+            self.ghb.check()
     # end createGHBpackage
 
     def createRCHpackage(self, rchrate=None):
-        # Add RCH package to the MODFLOW model to represent recharge
-        # rchrate  = 1.0E-3 * np.random.rand(self.nrow, self.ncol)
+        """
+        Add RCH package to the MODFLOW model to represent recharge
+        """
         self.rch = flopy.modflow.ModflowRch(self.mf, ipakcb=53, rech=rchrate, nrchop=3)
-        if self.verbose:
-            if self.check:
-                self.rch.check()
+        if self.verbose and self.check:
+            self.rch.check()
     # end createRCHpackage
 
     def createWELpackage(self, lrcq=None):
-        # Add WEL package to the MODFLOW model to represent pumping wells
-        # Expects a dictionary with an array of well location lay row col and flux
-        # at each stress period, e.g.
-        #lrcq = {}
-        # lrcq[0] = [[0, 7, 7, -100.]] # layer, row, column, flux
+        """
+        Add WEL package to the MODFLOW model to represent pumping wells
+        Expects a dictionary with an array of well location lay row col and flux
+        at each stress period, e.g.
+        """
         self.wel = flopy.modflow.ModflowWel(self.mf, ipakcb=53, stress_period_data=lrcq)
-        if self.verbose:
-            if self.check:
-                self.wel.check()
+        if self.verbose and self.check:
+            self.wel.check()
     # end createWElpackage
 
     def createOCpackage(self):
-        # Add OC package to the MODFLOW model
+        """
+        Add OC package to the MODFLOW model
+        """
+        spd_opts = ['save head', 'print budget', 'save budget']
         if self.steady:
-            spd = {(0, 0): ['save head', 'print budget', 'save budget'],
-                   (0, 1): ['save head', 'print budget', 'save budget']}
+            spd = {(0, 0): spd_opts[:],
+                   (0, 1): spd_opts[:]}
         else:
             spd = {}
             for i in range(self.nper):
-                spd[(i, 0)] = ['save head', 'print budget', 'save budget']
-                spd[(i, 1)] = ['save head', 'print budget', 'save budget']
-        # end if
-        self.oc = flopy.modflow.ModflowOc(self.mf, stress_period_data=spd, cboufm='(20i5)')
+                spd[(i, 0)] = spd_opts[:]
+                spd[(i, 1)] = spd_opts[:]
+            # End for
+        # End if
 
-    # end createOCpackage
+        self.oc = flopy.modflow.ModflowOc(self.mf, stress_period_data=spd, cboufm='(20i5)')
+    # End createOCpackage()
 
     def createLMTpackage(self):
-        # Add LMT package to the MODFLOW model to allow linking with MT3DMS
+        """
+        Add LMT package to the MODFLOW model to allow linking with MT3DMS
+        """
         self.lmt = flopy.modflow.ModflowLmt(self.mf,
                                             output_file_header='extended',
                                             output_file_format='formatted',
                                             package_flows=['sfr'])
-
-    # end createLMTpackage
+    # End createLMTpackage()
 
     def finaliseModel(self):
         # Write the MODFLOW model input files
-        self.mf.write_input()
+        warnings.warn("Deprecated method called. Use `finalize_model()` instead", DeprecationWarning)
+        self.finalize_model()
     # end finaliseModel
 
-    def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False):
+    def finalize_model(self):
+        self.mf.write_input()
+    # End finalize_model()
 
+    def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False):
+        """
+        Build MODFLOW model.
+        """
         self.mf = flopy.modflow.Modflow(self.name, exe_name=self.executable,
                                         model_ws=self.data_folder, version='mfnwt')
         self.verbose = verbose
@@ -369,10 +369,11 @@ class ModflowModel(object):
             self.createLMTpackage()
 
         if write:
-            self.finaliseModel()
+            self.finalize_model()
 
         if self.verbose and self.check:
             self.checkMODFLOW()
+        # End if
 
     # End buildMODFLOW()
 
@@ -390,16 +391,15 @@ class ModflowModel(object):
                                  " PERCENT DISCREPANCY =         200.00",  # Convergence but extreme discrepancy in results
                                  " NaN "  # Something big went wrong but somehow convergence was reached?
                                  ]
-        if path:
-            with open(os.path.join(path, name) + '.list', 'r') as f:
-                list_file = f.read()
-        else:
-            with open(os.path.join(self.data_folder, self.name + '.list'), 'r') as f:
-                list_file = f.read()
+        path = path if path else self.data_folder
+        name = name if name else self.name
+        with open(os.path.join(path, name + '.list'), 'r') as f:
+            list_file = f.read()
 
+        # TODO consolidate these file writing processes, see `Utilities.text_writer`
         for converge_fail in converge_fail_options:
             if converge_fail in list_file:
-                print "*** Convergence failure ***"
+                print("*** Convergence failure ***")
                 now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
                 with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
                     fail.write("Model did not converge, @ %s" %
@@ -407,8 +407,9 @@ class ModflowModel(object):
                     fail.write("Error: \n {}".format(converge_fail))
                 return False
             # End if
-            if fail == True:
-                print "*** Model run failure ***"
+
+            if fail:
+                print("*** Model run failure ***")
                 now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
                 with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
                     fail.write("Model did not run, @ %s" %
@@ -417,15 +418,9 @@ class ModflowModel(object):
                 return False
             # End if
         # End for
-        return True
 
-    #**************************************************************************
-    #**************************************************************************
-    #**************************************************************************
-    #**** PROCESSING OF MODEL RUN *********************************************
-    #**************************************************************************
-    #**************************************************************************
-    #**************************************************************************
+        return True
+    # End checkConvergence()
 
     def Calculate_Rn_from_SFR_with_simple_model(self, df, Ini_cond, Rn_decay=0.181):
         '''
@@ -437,28 +432,27 @@ class ModflowModel(object):
         from the sfr package which can be imported via the sfroutputfile util
         from flopy. The other parameters required are:
 
+        * Ini_Cond = Ini_cond # 3 item list containing Initial flow, radon and ec concentrations
+        * Rn_decay = Rn_decay # constant for Radon decay
 
-        Ini_Cond = Ini_cond # 3 item list containing Initial flow, radon and ec concentrations
-        Rn_decay = Rn_decay # constant for Radon decay
         # Dataframe variables
-        df['HZ_poro'] # Hyporheic zone porosity
-        df['HZ_Prod_Rate'] # Hyporheic zone radon production rate
-        df['HZ_RTime'] # Hyporheic zone residence time
-        df['R_depth_HZ'] # Depth of the hyporheic zone
-        df['GTV'] # Gas transfer velocity
-        df['GW_Rn_conc'] # Groundwater radon concentration
-        df['GW_EC'] # Groundwater EC
-        df['Trib_EC'] # EC of the inflowing tributary water if present
-        df['Trib_Rn'] # Radon concentration of inflowing tributary water if present
-        df['dx'] # Reach length
-
+        * df['HZ_poro'] # Hyporheic zone porosity
+        * df['HZ_Prod_Rate'] # Hyporheic zone radon production rate
+        * df['HZ_RTime'] # Hyporheic zone residence time
+        * df['R_depth_HZ'] # Depth of the hyporheic zone
+        * df['GTV'] # Gas transfer velocity
+        * df['GW_Rn_conc'] # Groundwater radon concentration
+        * df['GW_EC'] # Groundwater EC
+        * df['Trib_EC'] # EC of the inflowing tributary water if present
+        * df['Trib_Rn'] # Radon concentration of inflowing tributary water if present
+        * df['dx'] # Reach length
         '''
         try:
             self.sfr
         except:
             print("SFR package not activated in current model")
             return
-        # end try
+        # End try
 
         FlRnEC = Radon_EC_simple(df, Ini_cond, Rn_decay=Rn_decay)
         Flow, Rn, EC = FlRnEC.Fl_Rn_EC_simul()
@@ -489,7 +483,7 @@ class ModflowModel(object):
             time_key = self.model_data.boundaries.bc[name]['bc_array'].keys()[0]
             river = self.model_data.boundaries.bc[name]['bc_array'][time_key]
         else:
-            print 'Not a river boundary'
+            print('Not a river boundary')
 
         riv_exchange = {}
         for per in range(str_pers):
@@ -500,8 +494,12 @@ class ModflowModel(object):
                     riv_exchange[per] += [[riv_flux[per][l][r][c], (l, r, c)]]
                 else:
                     riv_exchange[per] += [[riv_flux[0][l][r][c], (l, r, c)]]
+                # End if
+            # End for
+        # End for
 
         return riv_exchange
+    # End getRivFlux()
 
     def getRivFluxNodes(self, nodes):
         try:
@@ -517,8 +515,8 @@ class ModflowModel(object):
         else:
             str_pers = len(times)
         # End if
-        river = nodes
 
+        river = nodes
         riv_exchange = {}
         for per in xrange(str_pers):
             riv_exchange[per] = []
@@ -548,6 +546,7 @@ class ModflowModel(object):
         else:
             return np.mean(self.top - head[0])
         # End if
+    # End getAverageDepthToGW()
 
     def loop_over_zone(self, array):
         mesh_1 = self.model_data.model_mesh3D[1]
@@ -591,14 +590,13 @@ class ModflowModel(object):
                 # Check if model outputs have already been imported and if not import
                 if not head:
                     headobj = self.importHeads()
-                    #times = headobj.get_times()
-                    head = headobj.get_alldata()  # (totim=times[0])
+                    head = headobj.get_alldata()
             elif obs_type in stream_options:
                 try:
                     self.sfr_df
                 except:
                     sfr_df = self.importSfrOut()
-                # end except
+                # End except
             else:
                 continue
             # End if
@@ -628,6 +626,10 @@ class ModflowModel(object):
                             sim_obs = sfr[(sfr['segment'] == seg) &
                                           (sfr['time'] == interval)][col_of_interest]
                             f.write('%f\n' % sim_obs)
+                        # End for
+                    # End with
+                # End for
+            # End if
 
             if obs_type == 'head':
                 for zone in obs_df['zone'].unique():
@@ -635,6 +637,7 @@ class ModflowModel(object):
                         zone_txt = 'head'
                     else:
                         zone_txt = zone
+                    # End if
                     with open(os.path.join(self.data_folder, 'observations_' + zone_txt + '.txt'), 'w') as f:
                         obs_df_zone = obs_df[obs_df['zone'] == zone]
                         for observation in obs_df_zone.index:
@@ -650,10 +653,15 @@ class ModflowModel(object):
                             sim_head = np.mean(sim_heads)
                             f.write('%f\n' % sim_head)
                         # End for
+                    # End with
+                # End for
+            # End if
+        # End for
+    # End writeObservations()
 
     def plotRiverFromRiverSegData(self, ax, names=None, **kwargs):
         river_mapping = self.model_data.river_mapping
-        if names != None:
+        if names is not None:
             keys = [i for i in names if i in river_mapping.keys()]
             not_a_key = [j for j in names if j not in river_mapping.keys()]
             if len(not_a_key) == 0:
@@ -661,6 +669,7 @@ class ModflowModel(object):
         else:
             keys = river_mapping.keys()
         # End if
+
         for key in keys:
             river_seg = river_mapping[key]
             all_riv = []
@@ -671,6 +680,7 @@ class ModflowModel(object):
             y = [y[1] for y in all_riv]
             ax.plot(x, y, **kwargs)
         # End for
+    # End plotRiverFromRiverSegData()
 
     def getObservation(self, obs, interval, obs_set):
         # Set model output arrays to None to initialise
@@ -682,12 +692,11 @@ class ModflowModel(object):
             # Check if model outputs have already been imported and if not import
             if not head:
                 headobj = self.importHeads()
-                #times = headobj.get_times()
-                head = headobj.get_alldata()  # (totim=times[0])
+                head = headobj.get_alldata()
         elif obs_type == 'stage':
-            #stage = self.importStage()
             pass
         # End if
+
         sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
         sim_head = head[interval][sim_map_dict[obs][0]][sim_map_dict[obs][1]][sim_map_dict[obs][2]]
         dtw = self.model_data.model_mesh3D[0][0][
@@ -695,8 +704,7 @@ class ModflowModel(object):
         return sim_head, dtw
     # End getObservation()
 
-    def CompareObservedHead(self, obs_set, simulated, nper=0):
-
+    def compare_observed_head(self, obs_set, simulated, nper=0):
         mesh_1 = self.model_data.model_mesh3D[1]
         obs_group = self.model_data.observations.obs_group[obs_set]
         locations = obs_group['locations']
@@ -722,9 +730,21 @@ class ModflowModel(object):
             x_y = (locations['Easting'].loc[observation], locations['Northing'].loc[observation])
             zone = mesh_1[sim]
             self.obs_loc_val_zone += [[obs, x_y, zone, sim]]
+        # End for
+    # End compare_observed_head()
+
+    def CompareObservedHead(self, obs_set, simulated, nper=0):
+        """
+        :param obs_set: dict, observation set
+        :param simulated: dict, simulated result set
+        :param nper: int, number of periods
+        """
+        warnings.warn("Use of deprecated method `CompareObservedHead`, use `compare_observed_head` instead",
+                      DeprecationWarning)
+        return self.compare_observed_head(obs_set, simulated, nper)
+    # End CompareObservedHead()
 
     def CompareObserved(self, obs_set, simulated, nper=0):
-
         self.obs_sim_zone = []
         obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
         obs_df = obs_df[obs_df['active'] == True]
@@ -746,6 +766,7 @@ class ModflowModel(object):
                 print sim, obs, zone
                 continue
             self.obs_sim_zone += [[obs, sim, zone, x, y]]
+    # End ComparedObserved()
 
     def importHeads(self, path=None, name=None):
         if path:
@@ -754,6 +775,8 @@ class ModflowModel(object):
         else:
             self.headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
             return self.headobj
+        # End if
+    # End importHeads()
 
     def importSfrOut(self, path=None, name=None, ext='.sfr.out'):
         if path:
@@ -764,6 +787,7 @@ class ModflowModel(object):
             self.sfr_df = sfrout.get_dataframe()
         # End if
         return self.sfr_df
+    # End importSfrOut()
 
     def importCbb(self):
         """Retrieve data in cell-by-cell budget file"""
@@ -772,6 +796,7 @@ class ModflowModel(object):
     # End importCbb()
 
     def SFRoutput_plot(self):
+        raise NotImplementedError("Tried to call unfinished method!")
         sfrout = SfrFile(os.path.join(self.data_folder, self.name + ".sfr.out"))
         sfr_df = sfrout.get_dataframe()
         sfr_df
@@ -816,29 +841,27 @@ class ModflowModel(object):
         wat_bal_df.columns = ['Flux m^3/d']
         wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.]
 
-        if plot is True:
-            # print wat_bal_df
-
+        if plot:
             # Setup params to get water balance aspect ratio looking nice
             # aspect = float(12.5715/((wat_bal_df.max()[0]-wat_bal_df.min()[0])/float(wat_bal_df.shape[1])))
 
             fig = plt.figure(figsize=(10, 7))
-            ax = fig.add_subplot(1, 1, 1)  # , aspect=aspect)
+            ax = fig.add_subplot(1, 1, 1)
             ax.set_title('Water Balance')
             wat_bal_df.plot(kind='bar', ax=plt.gca())
             ax.grid(True)
-            gridlines = ax.get_xgridlines()  # + ax.get_ygridlines()
+            gridlines = ax.get_xgridlines()
             for line in gridlines:
                 line.set_linestyle('-')
 
             fig.subplots_adjust(left=0.1, right=0.9, bottom=0.35, top=0.95, wspace=0.1, hspace=0.12)
-            # plt.show()
             if save:
                 plt.savefig('run_wb_{}.png'.format(iter_num), bbox_inches='tight')
-            # end if
+            # End if
         else:
             return wat_bal_df
         # end if
+    # End waterBalance()
 
     def waterBalanceTS(self, plot=True):
 
@@ -855,7 +878,7 @@ class ModflowModel(object):
                 continue
 
             component_stripped = component.strip()
-            water_balance[component_stripped] = cbbobj.get_data(text=component, full3D=True)  # [-1]
+            water_balance[component_stripped] = cbbobj.get_data(text=component, full3D=True)
             pos = component_stripped + '_pos'
             neg = component_stripped + '_neg'
 
@@ -865,12 +888,12 @@ class ModflowModel(object):
             for nper in range(len(times)):
                 wb_element = water_balance[component_stripped][nper]
 
-                if not np.sum(wb_element[wb_element > 0]) is np.ma.masked:  # core.MaskedConstant():
+                if not np.sum(wb_element[wb_element > 0]) is np.ma.masked:
                     water_balance_summary[pos] += [np.sum(wb_element[wb_element > 0])]
                 else:
                     water_balance_summary[pos] += [0.]
 
-                if not np.sum(wb_element[wb_element < 0]) is np.ma.masked:  # core.MaskedConstant():
+                if not np.sum(wb_element[wb_element < 0]) is np.ma.masked:
                     water_balance_summary[neg] += [np.sum(wb_element[wb_element < 0])]
                 else:
                     water_balance_summary[neg] += [0.]
@@ -887,11 +910,13 @@ class ModflowModel(object):
         wat_bal_ts_df['time'] = pd.to_datetime(self.start_datetime)
         wat_bal_ts_df['time'] = wat_bal_ts_df['time'] + pd.to_timedelta(times, unit='d')
 
-        if plot is True:
+        if plot:
             ax = wat_bal_ts_df.plot(x='time')
             return wat_bal_ts_df, ax
         else:
             return wat_bal_ts_df
+        # End if
+    # End waterBalanceTS()
 
     def compareAllObs(self):
 
@@ -909,20 +934,10 @@ class ModflowModel(object):
             head = headobj.get_data(totim=times[i])
             self.CompareObserved('head', head, nper=i)
             obs_sim_zone_all += self.obs_sim_zone
-
-#        obs_sim_zone_cull = []
-#        for x in obs_sim_zone_all:
-#            if abs(x[0]-x[1] > 50):
-#                continue
-#            else:
-#                obs_sim_zone_cull += [x]
-#
-#        obs_sim_zone_all = obs_sim_zone_cull
+        # End for
 
         scatterx = np.array([h[0] for h in obs_sim_zone_all])
         scattery = np.array([h[1] for h in obs_sim_zone_all])
-        # print np.min(scatterx), np.max(scatterx)
-        # print np.min(scattery), np.max(scattery)
 
         zoned_residuals = {}
         for i in range(1, 8):
@@ -939,31 +954,24 @@ class ModflowModel(object):
         ax = fig.add_subplot(1, 3, 1)  # , aspect='equal')
         ax.set_title('Residuals')
         comp_zone_plots = {}
-        #colours = ['b', 'c', 'sienna', 'm', 'r', 'green', 'fuchsia']
         colours = ['r', 'orangered', 'y', 'green', 'teal', 'blue', 'fuchsia']
         labels = ('qa', 'utb', 'utqa', 'utam', 'utaf', 'lta', 'bse')
 
-        ax.hist(residuals, bins=20, alpha=0.5,
-                color='black', histtype='step', label='all')
+        ax.hist(residuals, bins=20, alpha=0.5, color='black', histtype='step', label='all')
         for i in range(1, 8):
             comp_zone_plots[i] = ax.hist(zoned_residuals[i], bins=20, alpha=0.5,
                                          color=colours[i - 1], histtype='step', label=labels[i - 1])
-        #ax.hist([loc[0] - loc[1] for loc in obs_sim_zone_all], bins=20, alpha=0.5)
+        # End for
 
-        plt.legend(loc='upper left',
-                   ncol=4,
-                   fontsize=11)
+        plt.legend(loc='upper left', ncol=4, fontsize=11)
 
-        ax = fig.add_subplot(1, 3, 2)  # , aspect=0.9)
+        ax = fig.add_subplot(1, 3, 2)
         ax.set_title('Sim vs Obs (%d points)' % (len(scatterx)))
 
         comp_zone_plots = {}
-        #colours = ['b', 'c', 'sienna', 'm', 'r', 'green', 'fuchsia']
-        colours = ['r', 'orangered', 'y', 'green', 'teal', 'blue', 'fuchsia']
         for i in range(1, 8):
             scatterx2 = [loc[0] for loc in obs_sim_zone_all if loc[2] == float(i)]
             scattery2 = [loc[1] for loc in obs_sim_zone_all if loc[2] == float(i)]
-            # print len(scatterx2), colours[i-1]
             comp_zone_plots[i] = ax.scatter(scatterx2, scattery2, edgecolors=colours[
                                             i - 1], facecolors='none', alpha=0.5)
 
@@ -979,17 +987,16 @@ class ModflowModel(object):
         plt.xlabel('Observed')
         plt.ylabel('Simulated', labelpad=10)
 
-        sum1 = 0.
-        sum2 = 0.
+        sum1 = 0.0
+        sum2 = 0.0
 
         if len(scatterx) != 0:
-
             mean = np.mean(scatterx)
             for i in range(len(scatterx)):
                 num1 = (scatterx[i] - scattery[i])
                 num2 = (scatterx[i] - mean)
-                sum1 += num1 ** np.float64(2.)
-                sum2 += num2 ** np.float64(2.)
+                sum1 += num1**np.float64(2.0)
+                sum2 += num2**np.float64(2.0)
 
             ME = 1 - sum1 / sum2
 
@@ -1025,24 +1032,20 @@ class ModflowModel(object):
         y = np.array([h[4] for h in obs_sim_zone_all])
         zone = [h[2] for h in obs_sim_zone_all]
         residuals = [h[0] - h[1] for h in obs_sim_zone_all]
-        #residuals = np.absolute(residuals)
 
-        #plt.scatter(x, y, c=residual, alpha=0.5)
-
-        #alphas = np.linspace(0.1, 1, 10)
         from matplotlib import colors
         import six
         colors_ = list(six.iteritems(colors.cnames))
+
         # Add the single letter colors.
         for name, rgb in six.iteritems(colors.ColorConverter.colors):
-            hex_ = colors.rgb2hex(rgb)
-            colors_.append((name, hex_))
+            colors_.append((name, colors.rgb2hex(rgb)))
 
         hex_ = [color[1] for color in colors_]
         nams = [color[0] for color in colors_]
+
         # Get the rgb equivalent.
         rgb_all = [colors.hex2color(color) for color in hex_]
-
         rgb_ref = []
         for col in colours:
             for index, nam in enumerate(nams):
@@ -1050,16 +1053,18 @@ class ModflowModel(object):
                     rgb_ref += [rgb_all[index]]
 
         rgba_colors = np.zeros((len(x), 4))
+
         # for red the first column needs to be one
         zone = np.array(zone)
         for i in range(1, 8):
             rgba_colors[:, 0][zone == i] = rgb_ref[i - 1][0]
             rgba_colors[:, 1][zone == i] = rgb_ref[i - 1][1]
             rgba_colors[:, 2][zone == i] = rgb_ref[i - 1][2]
-        # the fourth column needs to be your alphas
-        rgba_colors[:, 3] = residuals / np.max(residuals)  # alphas
+        # End for
 
-        #plt.scatter(x, y, color=rgba_colors)
+        # the fourth column needs to be your alphas
+        rgba_colors[:, 3] = residuals / np.max(residuals)
+
         plt.scatter(x, y, c=residuals, alpha=0.5, edgecolors='none')
         start, end = ax.get_xlim()
         start = start // 1000 * 1000 + 1000
@@ -1068,10 +1073,8 @@ class ModflowModel(object):
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
 
         plt.colorbar()
-
-        #fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
-
         plt.show()
+    # End compareAllObs()
 
     def compareAllObs_metrics(self, to_file=False):
 
@@ -1125,6 +1128,7 @@ class ModflowModel(object):
                 f.write('{} {} {}'.format(ME, PBIAS, RMSE))
 
         return ME, PBIAS, RMSE
+    # End compareAllObs_metrics()
 
     def viewHeadsByZone(self, nper='all'):
 
@@ -1147,21 +1151,16 @@ class ModflowModel(object):
             scatterx = []
             scattery = []
             obs_sim_zone_all = []
-#            for i in range(len(times)):
-#                self.CompareObserved('head', head_orig, nper=i)
-#                scatterx += [h[0] for h in self.obs_sim_zone]
-#                scattery += [h[1] for h in self.obs_sim_zone]
-#                obs_sim_zone_all += self.obs_sim_zone
-#            self.obs_sim_zone = obs_sim_zone_all
         else:
             self.CompareObserved('head', head_orig, nper=nper)
             scatterx = [h[0] for h in self.obs_sim_zone]
             scattery = [h[1] for h in self.obs_sim_zone]
+        # End if
 
         # First step is to set up the plot
         width = 20
         height = 10
-        multiplier = 1.
+        multiplier = 1.0
         fig = plt.figure(figsize=(width * multiplier, height * multiplier))
 
         vmin = 0
@@ -1171,71 +1170,27 @@ class ModflowModel(object):
 
         ax.set_title('ibound and bc')
         # Next we create an instance of the ModelMap class
-        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap = flopy.plot.ModelMap(model=self.mf)
         modelmap.plot_ibound()
-        #linecollection = modelmap.plot_grid()
 
-        #ax = fig.add_subplot(1, 3, 2, aspect='equal')
-        #ax.set_title('Riv BC')
-        # modelmap.plot_bc(plotAll=True)
-        # modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
-
-        modelmap.plot_bc('RIV')
+        modelmap.plot_bc('RIV')  # Can also plot 'WEL' and 'DRN'
         modelmap.plot_bc('SFR')
-#        modelmap.plot_bc('WEL')
         modelmap.plot_bc('GHB')
-        # modelmap.plot_bc('DRN')
         ax.axes.xaxis.set_ticklabels([])
-
-#        ax.set_title('qa')
-#        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
-#        max_head = np.amax(head)
-#        min_head = np.amin(head)
-#        #print max_head
-#        #print min_head
-#
-#        array = modelmap.plot_array(head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
-#        ax.xaxis.set_ticklabels([])
-        #cbar_ax1 = fig.add_axes([0.19, 0.525, 0.01, 0.42])
-        #fig.colorbar(array, cax=cbar_ax1)
-        #linecollection = modelmap.plot_grid()
-#        scatterx2 = [loc[1][0] for loc in self.obs_loc_val_zone if loc[2]==1.0]
-#        scattery2 = [loc[1][1] for loc in self.obs_loc_val_zone if loc[2]==1.0]
-#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_loc_val_zone if loc[2]==1.0], alpha=0.5, vmin=vmin, vmax=vmax)
-#        ax.text(2.7e5, 6030000, 'Observations: %d' %(len(scatterx2)))
 
         ax = fig.add_subplot(2, 4, 2, aspect='equal')
         ax.set_title('Coonambidgal')
-        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap = flopy.plot.ModelMap(model=self.mf)
         max_head = np.amax(head)
         min_head = np.amin(head)
-        # print max_head
-        # print min_head
 
         array = modelmap.plot_array(
             head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
-#        ax.set_title('utb')
-#        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
-#        max_head = np.amax(head)
-#        min_head = np.amin(head)
-#        #print max_head
-#        #print min_head
-#
-#        array = modelmap.plot_array(head[1], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
+
         ax.xaxis.set_ticklabels([])
         ax.yaxis.set_ticklabels([])
         cbar_ax2 = fig.add_axes([0.43, 0.525, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax2)
-
-#        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 1.0]
-#        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 1.0]
-#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
-#                   2] == 1.0], alpha=0.8, vmin=vmin, vmax=vmax)
-#        scatterx2 = [loc[1][0] for loc in self.obs_sim_zone if loc[2] == 2.0]
-#        scattery2 = [loc[1][1] for loc in self.obs_sim_zone if loc[2] == 2.0]
-#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[2] == 2.0], alpha=0.5, vmin=vmin, vmax=vmax)
-
-#        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
 
         ax = fig.add_subplot(2, 4, 3, aspect='equal')
         ax.set_title('Shepparton')
@@ -1246,30 +1201,6 @@ class ModflowModel(object):
         ax.yaxis.set_ticklabels([])
         cbar_ax1 = fig.add_axes([0.67, 0.525, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax1)
-
-#        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 3.0]
-#        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 3.0]
-#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
-#                   2] == 3.0], alpha=0.8, vmin=vmin, vmax=vmax)
-#        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
-
-#        ax = fig.add_subplot(2, 4, 4)  # , aspect='equal')
-#        ax.set_title('Residuals')
-#        ax.hist([loc[0] - loc[1] for loc in self.obs_sim_zone], bins=20, alpha=0.5)
-
-
-#        ax.set_title('utam')
-#        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
-#        array = modelmap.plot_array(head[3], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
-#        ax.xaxis.set_ticklabels([])
-#        ax.yaxis.set_ticklabels([])
-#        cbar_ax5 = fig.add_axes([0.91, 0.525, 0.01, 0.42])
-#        fig.colorbar(array, cax=cbar_ax5)
-#
-#        scatterx2 = [loc[1][0] for loc in self.obs_sim_zone if loc[2] == 4.0]
-#        scattery2 = [loc[1][1] for loc in self.obs_sim_zone if loc[2] == 4.0]
-#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[2] == 4.0], alpha=0.5, vmin=vmin, vmax=vmax)
-#        ax.text(2.7e5, 6030000, 'Observations: %d' %(len(scatterx2)))
 
         ax = fig.add_subplot(2, 4, 5, aspect='equal')
         ax.set_title('Calivil')
@@ -1284,15 +1215,9 @@ class ModflowModel(object):
         cbar_ax3 = fig.add_axes([0.19, 0.055, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax3)
 
-#        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 5.0]
-#        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 5.0]
-#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
-#                   2] == 5.0], alpha=0.8, vmin=vmin, vmax=vmax)
-#        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
-
         ax = fig.add_subplot(2, 4, 6, aspect='equal')
         ax.set_title('Renmark')
-        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap = flopy.plot.ModelMap(model=self.mf)
         array = modelmap.plot_array(
             head[5], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
         ax.yaxis.set_ticklabels([])
@@ -1301,15 +1226,9 @@ class ModflowModel(object):
         cbar_ax4 = fig.add_axes([0.43, 0.055, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax4)
 
-#        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 6.0]
-#        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 6.0]
-#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
-#                   2] == 6.0], alpha=0.8, vmin=vmin, vmax=vmax)
-#        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
-
         ax = fig.add_subplot(2, 4, 7, aspect='equal')
         ax.set_title('Basement')
-        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap = flopy.plot.ModelMap(model=self.mf)
         array = modelmap.plot_array(
             head[6], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
         ax.yaxis.set_ticklabels([])
@@ -1318,81 +1237,11 @@ class ModflowModel(object):
         cbar_ax5 = fig.add_axes([0.67, 0.055, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax5)
 
-#        scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 7.0]
-#        scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 7.0]
-#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
-#                   2] == 7.0], alpha=0.8, vmin=vmin, vmax=vmax)
-#        ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
-
-#        ax = fig.add_subplot(2, 4, 8, aspect=0.9)
-#        ax.set_title('Sim vs Obs (%d points)' % (len(scatterx)))
-#        #ax.scatter(scatterx, scattery, edgecolor='none', c=[loc[2] for loc in self.obs_sim_zone], alpha=0.5, vmin=1, vmax=7)
-#        comp_zone_plots = {}
-#        colors = ['b', 'c', 'y', 'm', 'r', 'green', 'orange']
-#        for i in range(1, 8):
-#            scatterx2 = [loc[0] for loc in self.obs_sim_zone if loc[2] == float(i)]
-#            scattery2 = [loc[1] for loc in self.obs_sim_zone if loc[2] == float(i)]
-#            comp_zone_plots[i] = ax.scatter(scatterx2, scattery2, edgecolors=colors[
-#                                            i - 1], facecolors='none', alpha=0.5)
-#
-#        plt.legend((comp_zone_plots[1], comp_zone_plots[2], comp_zone_plots[3],
-#                    comp_zone_plots[4], comp_zone_plots[5], comp_zone_plots[6],
-#                    comp_zone_plots[7]),
-#                   ('qa', 'utb', 'utqa', 'utam', 'utaf', 'lta', 'bse'),
-#                   scatterpoints=1,
-#                   loc='upper left',
-#                   ncol=4,
-#                   fontsize=11)
-#
-#        plt.xlabel('Observed')
-#        plt.ylabel('Simulated', labelpad=10)
-#
-#        scatterx = np.array(scatterx)
-#        scattery = np.array(scattery)
-#        sum1 = 0.
-#        sum2 = 0.
-#
-#        if len(scatterx) != 0:
-#
-#            mean = np.mean(scatterx)
-#            for i in range(len(scatterx)):
-#                num1 = (scatterx[i] - scattery[i])
-#                num2 = (scatterx[i] - mean)
-#                sum1 += num1 ** np.float64(2.)
-#                sum2 += num2 ** np.float64(2.)
-#
-#            ME = 1 - sum1 / sum2
-#
-#            ax.text(150, 75, 'Model Efficiency = %4.2f' % (ME))
-#
-#            # for PBIAS
-#            def pbias(simulated, observed):
-#                return np.sum(simulated - observed) * 100 / np.sum(observed)
-#
-#            ax.text(150, 40, 'PBIAS = %4.2f%%' % (pbias(scattery, scatterx)))
-#
-#            # For rmse
-#            def rmse(simulated, observed):
-#                return np.sqrt(((simulated - observed) ** 2).mean())
-#
-#            ax.text(150, 20, 'RMSE = %4.2f' % (rmse(scattery, scatterx)))
-
         ax.plot(ax.get_ylim(), ax.get_ylim())
-        # modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
-        #ffrf = modelmap.plot_array(head[6], masked_values=[-999.98999023, max_head, min_head], alpha=0.5)
-
-        # ax.yaxis.set_ticklabels([])
-        #ax.xaxis.set_ticks(np.arange(start, end, 20000.))
-        #ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
-
-        #cbar_ax5 = fig.add_axes([0.67, 0.055, 0.01, 0.42])
-        #fig.colorbar(ffrf, cax=cbar_ax5)
-
         fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
-
         plt.show()
 
-    # End viewHeads
+    # End viewHeadsByZone()
 
     def viewHeadsByZone2(self, iter_num, nper='all'):
 
@@ -1410,6 +1259,7 @@ class ModflowModel(object):
             head_orig = head
             zoned = self.HeadsByZone(head)
             head = zoned
+        # End if
 
         if nper == 'all':
             scatterx = []
@@ -1425,11 +1275,12 @@ class ModflowModel(object):
             self.CompareObserved('head', head_orig, nper=nper)
             scatterx = [h[0] for h in self.obs_sim_zone]
             scattery = [h[1] for h in self.obs_sim_zone]
+        # End if
 
         # First step is to set up the plot
         width = 20
         height = 10
-        multiplier = 1.
+        multiplier = 1.0
         fig = plt.figure(figsize=(width * multiplier, height * multiplier))
 
         vmin = 0
@@ -1439,14 +1290,8 @@ class ModflowModel(object):
 
         ax.set_title('ibound and bc')
         # Next we create an instance of the ModelMap class
-        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap = flopy.plot.ModelMap(model=self.mf)
         modelmap.plot_ibound()
-        #linecollection = modelmap.plot_grid()
-
-        #ax = fig.add_subplot(1, 3, 2, aspect='equal')
-        #ax.set_title('Riv BC')
-        # modelmap.plot_bc(plotAll=True)
-        # modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
 
         modelmap.plot_bc('RIV', plotAll=True)
         modelmap.plot_bc('WEL', plotAll=True)
@@ -1455,50 +1300,22 @@ class ModflowModel(object):
             modelmap.plot_bc('SFR', plotAll=True)
         except:
             print("No SFR package present")
-            # modelmap.plot_bc('DRN')
-        # ax.axes.xaxis.set_ticklabels([])
+        # End try
+
         start, end = ax.get_xlim()
         start = start // 1000 * 1000 + 1000
         end = end // 1000 * 1000 - 1000
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
-
-#        ax.set_title('qa')
-#        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
-#        max_head = np.amax(head)
-#        min_head = np.amin(head)
-#        #print max_head
-#        #print min_head
-#
-#        array = modelmap.plot_array(head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
-#        ax.xaxis.set_ticklabels([])
-        #cbar_ax1 = fig.add_axes([0.19, 0.525, 0.01, 0.42])
-        #fig.colorbar(array, cax=cbar_ax1)
-        #linecollection = modelmap.plot_grid()
-#        scatterx2 = [loc[1][0] for loc in self.obs_loc_val_zone if loc[2]==1.0]
-#        scattery2 = [loc[1][1] for loc in self.obs_loc_val_zone if loc[2]==1.0]
-#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_loc_val_zone if loc[2]==1.0], alpha=0.5, vmin=vmin, vmax=vmax)
-#        ax.text(2.7e5, 6030000, 'Observations: %d' %(len(scatterx2)))
 
         ax = fig.add_subplot(2, 4, 2, aspect='equal')
         ax.set_title('Coonambidgal')
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
         max_head = np.amax(head)
         min_head = np.amin(head)
-        # print max_head
-        # print min_head
 
         array = modelmap.plot_array(
             head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
-#        ax.set_title('utb')
-#        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
-#        max_head = np.amax(head)
-#        min_head = np.amin(head)
-#        #print max_head
-#        #print min_head
-#
-#        array = modelmap.plot_array(head[1], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
-        # ax.xaxis.set_ticklabels([])
-        # ax.yaxis.set_ticklabels([])
+
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
         cbar_ax2 = fig.add_axes([0.43, 0.525, 0.01, 0.42])
@@ -1508,9 +1325,7 @@ class ModflowModel(object):
         scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 1.0]
         ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[
                    2] == 1.0], alpha=0.8, vmin=vmin, vmax=vmax)
-#        scatterx2 = [loc[1][0] for loc in self.obs_sim_zone if loc[2] == 2.0]
-#        scattery2 = [loc[1][1] for loc in self.obs_sim_zone if loc[2] == 2.0]
-#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[2] == 2.0], alpha=0.5, vmin=vmin, vmax=vmax)
+
         ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
 
         ax = fig.add_subplot(2, 4, 3, aspect='equal')
@@ -1518,8 +1333,7 @@ class ModflowModel(object):
         modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
         array = modelmap.plot_array(
             head[2], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
-        # ax.xaxis.set_ticklabels([])
-        # ax.yaxis.set_ticklabels([])
+
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
         cbar_ax1 = fig.add_axes([0.67, 0.525, 0.01, 0.42])
@@ -1531,25 +1345,13 @@ class ModflowModel(object):
                    2] == 3.0], alpha=0.8, vmin=vmin, vmax=vmax)
         ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
 
-        ax = fig.add_subplot(2, 4, 4)  # , aspect='equal')
+        ax = fig.add_subplot(2, 4, 4)
         ax.set_title('Residuals')
         ax.hist([loc[0] - loc[1] for loc in self.obs_sim_zone], bins=20, alpha=0.5)
-#        ax.set_title('utam')
-#        modelmap = flopy.plot.ModelMap(model=self.mf) #, sr=self.mf.dis.sr, dis=self.mf.dis)
-#        array = modelmap.plot_array(head[3], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
-#        ax.xaxis.set_ticklabels([])
-#        ax.yaxis.set_ticklabels([])
-#        cbar_ax5 = fig.add_axes([0.91, 0.525, 0.01, 0.42])
-#        fig.colorbar(array, cax=cbar_ax5)
-#
-#        scatterx2 = [loc[1][0] for loc in self.obs_sim_zone if loc[2] == 4.0]
-#        scattery2 = [loc[1][1] for loc in self.obs_sim_zone if loc[2] == 4.0]
-#        ax.scatter(scatterx2, scattery2, c=[loc[0] for loc in self.obs_sim_zone if loc[2] == 4.0], alpha=0.5, vmin=vmin, vmax=vmax)
-#        ax.text(2.7e5, 6030000, 'Observations: %d' %(len(scatterx2)))
 
         ax = fig.add_subplot(2, 4, 5, aspect='equal')
         ax.set_title('Calivil')
-        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap = flopy.plot.ModelMap(model=self.mf)
         array = modelmap.plot_array(
             head[4], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
@@ -1565,10 +1367,10 @@ class ModflowModel(object):
 
         ax = fig.add_subplot(2, 4, 6, aspect='equal')
         ax.set_title('Renmark')
-        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap = flopy.plot.ModelMap(model=self.mf)
         array = modelmap.plot_array(
             head[5], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
-        # ax.yaxis.set_ticklabels([])
+
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
         cbar_ax4 = fig.add_axes([0.43, 0.055, 0.01, 0.42])
@@ -1582,10 +1384,10 @@ class ModflowModel(object):
 
         ax = fig.add_subplot(2, 4, 7, aspect='equal')
         ax.set_title('Basement')
-        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap = flopy.plot.ModelMap(model=self.mf)
         array = modelmap.plot_array(
             head[6], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
-        # ax.yaxis.set_ticklabels([])
+
         ax.xaxis.set_ticks(np.arange(start, end, 20000.))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
         cbar_ax5 = fig.add_axes([0.67, 0.055, 0.01, 0.42])
@@ -1599,7 +1401,7 @@ class ModflowModel(object):
 
         ax = fig.add_subplot(2, 4, 8, aspect=0.9)
         ax.set_title('Sim vs Obs (%d points)' % (len(scatterx)))
-        #ax.scatter(scatterx, scattery, edgecolor='none', c=[loc[2] for loc in self.obs_sim_zone], alpha=0.5, vmin=1, vmax=7)
+
         comp_zone_plots = {}
         colors = ['b', 'c', 'y', 'm', 'r', 'green', 'orange']
         for i in range(1, 8):
@@ -1626,7 +1428,6 @@ class ModflowModel(object):
         sum2 = 0.
 
         if len(scatterx) != 0:
-
             mean = np.mean(scatterx)
             for i in range(len(scatterx)):
                 num1 = (scatterx[i] - scattery[i])
@@ -1652,10 +1453,9 @@ class ModflowModel(object):
 
         ax.plot(ax.get_ylim(), ax.get_ylim())
         fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
-        # plt.show()
         plt.savefig('run_viewheads_{}.png'.format(iter_num), bbox_inches='tight')
 
-    # End viewHeads
+    # End viewHeadsByZone2()
 
     def viewHeads(self):
 
@@ -1767,7 +1567,7 @@ class ModflowModel(object):
         fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
         plt.show()
 
-    # End viewHeads
+    # End viewHeads()
 
     def viewHeadLayer(self, layer=0, figsize=(20, 10)):
 
@@ -1815,7 +1615,7 @@ class ModflowModel(object):
 
         plt.show()
 
-    # End viewHeads
+    # End viewHeadLayer()
 
     def viewHeads2(self):
         # Create the headfile object
@@ -1986,39 +1786,43 @@ class ModflowModel(object):
                             wspace=0.1, hspace=0.12)
         plt.show()
 
-    # End viewHeads2
+    # End viewHeads2()
 
     def viewGHB(self):
         # Create the headfile object
         headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
         cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
 
-        times = headobj.get_times()
         water_balance_components = cbbobj.textlist
         water_balance = {}
         water_balance_summary = {}
         water_bal_summed_titles = []
         water_bal_summed_values = []
+
         for component in water_balance_components:
             component_stripped = component.lstrip().rstrip()
             if 'FLOW' in component_stripped:
                 continue
+            # End if
             water_balance[component_stripped] = cbbobj.get_data(text=component, full3D=True)[-1]
-            # print water_balance[component_stripped]
+
             if np.any(water_balance[component_stripped][0] > 0):
                 water_balance_summary[component_stripped + '_pos'] = np.sum(
                     water_balance[component_stripped][0][water_balance[component_stripped][0] > 0])
             else:
                 water_balance_summary[component_stripped + '_pos'] = 0.0
+            # End if
+
             if np.any(water_balance[component_stripped][0] < 0):
                 water_balance_summary[component_stripped + '_neg'] = np.sum(
                     water_balance[component_stripped][0][water_balance[component_stripped][0] < 0])
             else:
                 water_balance_summary[component_stripped + '_neg'] = 0.0
+            # End if
 
             water_bal_summed_titles += component_stripped + '_pos', component_stripped + '_neg'
-            water_bal_summed_values += water_balance_summary[
-                component_stripped + '_pos'], water_balance_summary[component_stripped + '_neg']
+            water_bal_summed_values += water_balance_summary[component_stripped +
+                                                             '_pos'], water_balance_summary[component_stripped + '_neg']
             # End if
         # End for
 
@@ -2035,18 +1839,20 @@ class ModflowModel(object):
         ax = fig.add_subplot(2, 4, 1, aspect='equal')
         ax.set_title('ibound and bc')
         # Next we create an instance of the ModelMap class
-        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap = flopy.plot.ModelMap(model=self.mf)
         modelmap.plot_ibound()
         modelmap.plot_bc('RIV')
+
         try:
             modelmap.plot_bc('GHB')
-        except:
-            pass
-        ax.axes.xaxis.set_ticklabels([])
+        except Exception as e:
+            print(e)
+        # End try
 
+        ax.axes.xaxis.set_ticklabels([])
         ax = fig.add_subplot(2, 4, 2, aspect='equal')
         ax.set_title('Riv flux')
-        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap = flopy.plot.ModelMap(model=self.mf)
         modelmap.plot_ibound()
         max_val = np.amax(water_balance['RIVER LEAKAGE'][0])
         min_val = np.amin(water_balance['RIVER LEAKAGE'][0])
@@ -2073,9 +1879,8 @@ class ModflowModel(object):
 
         ax = fig.add_subplot(2, 4, 3, aspect='equal')
         ax.set_title('GHB layer 2')
-        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap = flopy.plot.ModelMap(model=self.mf)
         modelmap.plot_ibound()
-        # modelmap.plot_grid()
         river_flux = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][
                                          1], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
         ax.xaxis.set_ticklabels([])
@@ -2098,7 +1903,7 @@ class ModflowModel(object):
 
         ax = fig.add_subplot(2, 4, 5, aspect='equal')
         ax.set_title('GHB layer 3')
-        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap = flopy.plot.ModelMap(model=self.mf)
         modelmap.plot_ibound()
         recharge = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][2], masked_values=[
                                        0.], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
@@ -2122,7 +1927,7 @@ class ModflowModel(object):
 
         ax = fig.add_subplot(2, 4, 6, aspect='equal')
         ax.set_title('GHB layer 4')
-        modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+        modelmap = flopy.plot.ModelMap(model=self.mf)
         modelmap.plot_ibound()
         elevation = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][
                                         3], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
@@ -2157,7 +1962,7 @@ class ModflowModel(object):
         fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95,
                             wspace=0.1, hspace=0.12)
         plt.show()
-    # End viewHeads2
+    # End viewGHB()
 
 # End ModflowModel()
 
@@ -2201,8 +2006,13 @@ class MT3DModel(object):
                                       ncrs=0, accl=1, cclose=1.0E-4, iprgcg=0)
 
     def finaliseMT3Dmodel(self):
-        self.mt.write_input()
+        warnings.warn("Deprecated. Use `finalize_MT3D_model()` instead.", DeprecationWarning)
+        self.finalize_MT3D_model()
     # end finaliseMT3Dmodel
+
+    def finalize_MT3D_model(self):
+        self.mt.write_input()
+    # End finalize_MT3D_model()
 
     def buildMT3D(self):
 
@@ -2241,24 +2051,20 @@ class MT3DModel(object):
             # End if
 
             if bc_type == 'recharge':
-                for key in bc_array.keys():
+                for key in bc_array:
                     self.crch[key] = np.ones_like(bc_array[key])
                     self.crch[key] = self.crch[key] * 100.0
                     self.crch[key][ibound[0] == 0] = 0.0
-
-            # if self.model_data.boundaries.bc[boundary]['bc_type'] == 'river':
-            #    self.createRIVpackage(self.model_data.boundaries.bc[boundary]['bc_array'])
+                # End for
+            # End if
 
             if bc_type == 'wells':
-                for key in bc_array.keys():
+                for key in bc_array:
                     for well in bc_array[key]:
                         ssm_data[key].append((well[0], well[1], well[2], 100.0, itype['WEL']))
 
-            # if self.model_data.boundaries.bc[boundary]['bc_type'] == 'drain':
-            #    self.model_data.boundaries.bc[boundary]['bc_array']
-
             if bc_type == 'general head':
-                for key in bc_array.keys():
+                for key in bc_array:
                     for ghb in bc_array[key]:
                         ssm_data[key].append((ghb[0], ghb[1], ghb[2], 0.0, itype['GHB']))
                     # End for
@@ -2267,7 +2073,7 @@ class MT3DModel(object):
         # End for
 
         if len(river) > 0:
-            for key in river.keys():
+            for key in river:
                 for riv in river[key]:
                     ssm_data[key].append((riv[0], riv[1], riv[2], 100.0, itype['RIV']))
                 # End for
@@ -2292,6 +2098,7 @@ class Radon_EC_simple(object):
         self.Ini_Cond = Ini_cond  # 3 item list containing Initial flow, radon and ec concentrations
         self.Rn_decay = Rn_decay  # constant for Radon decay
         self.units = units  # units being used ... not really used yet!
+
         # Dataframe variables
         self.HZ_Poro = df['HZ_poro'].tolist()  # Hyporheic zone porosity
         self.HZ_Prod_Rate = df['HZ_Prod_Rate'].tolist()  # Hyporheic zone radon production rate
@@ -2306,6 +2113,7 @@ class Radon_EC_simple(object):
         # Variables inherited from the output of SFR package
         self.Evap_Rate = df['Qet'].tolist()  # Evaporation rate
         self.Trib_inflow = df['Qovr'].tolist()
+
         try:
             self.R_Pump = df['R_pump'].tolist()
         except:
@@ -2313,12 +2121,14 @@ class Radon_EC_simple(object):
         # end try
         self.R_depth = df['depth'].tolist()
         self.R_width = df['width'].tolist()
-        self.GW_inflow = (df['Qaquifer'] * -1.).tolist()
+        self.GW_inflow = (df['Qaquifer'] * -1.0).tolist()
+    # End __init__()
 
     def Fl_Rn_EC_simul(self):
 
         # Specify radon decay constant
         Rn_decay = self.Rn_decay
+
         # Initialise temp vars
         Flow_temp = self.Ini_Cond[0]
         Rn_temp = self.Ini_Cond[1]
@@ -2334,12 +2144,12 @@ class Radon_EC_simple(object):
             Flow_temp += self.GW_inflow[i] - self.Evap_Rate[i] - \
                 self.R_Pump[i] + self.Trib_inflow[i]
             # Radon concentration calculation based on steady state stream flow
-            if self.GW_inflow[i] < 0.:
+            if self.GW_inflow[i] < 0.0:
                 GW_Rn_conc_adj = Rn_temp
             else:
                 GW_Rn_conc_adj = self.GW_Rn_conc[i]
             # End if
-            Rn_temp += 1. / (Flow_temp) * (
+            Rn_temp += 1.0 / (Flow_temp) * (
                 self.GW_inflow[i] * (GW_Rn_conc_adj - Rn_temp) +
                 self.Trib_inflow[i] * (self.Trib_Rn[i] - Rn_temp) +
                 Rn_temp * (self.Evap_Rate[i] - self.dx[i] *
@@ -2347,7 +2157,7 @@ class Radon_EC_simple(object):
                 self.dx[i] * self.HZ_Poro[i] / (1 + Rn_decay * self.HZ_RTime[i]) *
                 self.R_width[i] * self.R_depth_HZ[i] * (self.HZ_Prod_Rate[i] - Rn_temp))
             if Rn_temp < 0:
-                Rn_temp = 0.
+                Rn_temp = 0.0
             # EC calculation based on steady state stream flow
             EC_temp += 1 / (Flow_temp) * (
                 self.GW_inflow[i] * (self.GW_EC[1] - EC_temp) +
@@ -2359,6 +2169,9 @@ class Radon_EC_simple(object):
             EC_simul.append(EC_temp)
 
         return Fl_simul, Rn_simul, EC_simul
+    # End Fl_Rn_EC_simul()
+
+# End Radon_EC_simple()
 
 
 class MT3DPostProcess(object):
@@ -2498,6 +2311,9 @@ class MT3DPostProcess(object):
                         f.write('%f\n' % sim_conc)
                     # End for
                 # End if
+            # End with
+        # End for
+    # End writeObservations()
 
     def compareAllObs(self):
 
@@ -2520,7 +2336,7 @@ class MT3DPostProcess(object):
         # First step is to set up the plot
         width = 20
         height = 5
-        multiplier = 1.
+        multiplier = 1.0
         fig = plt.figure(figsize=(width * multiplier, height * multiplier))
 
         ax = fig.add_subplot(1, 3, 1)
@@ -2551,8 +2367,8 @@ class MT3DPostProcess(object):
         plt.xlabel('Observed')
         plt.ylabel('Simulated', labelpad=10)
 
-        sum1 = 0.
-        sum2 = 0.
+        sum1 = 0.0
+        sum2 = 0.0
 
         if len(scatterx) != 0:
 
@@ -2611,7 +2427,9 @@ class MT3DPostProcess(object):
             for index, nam in enumerate(nams):
                 if col == nam:
                     rgb_ref += [rgb_all[index]]
-        # print rgb_ref
+                # End if
+            # End for
+        # End for
 
         zone = np.array(zone)
         rgba_colors = np.zeros((len(x), 4))
@@ -2624,8 +2442,8 @@ class MT3DPostProcess(object):
         rgba_colors[:, 3] = residuals / np.max(residuals)  # alphas
 
         plt.scatter(x, y, color=rgba_colors)
-
         plt.show()
+    # End compareAllObs()
 
     def viewConcsByZone(self, nper='all', specimen=None):
 
@@ -2645,6 +2463,7 @@ class MT3DPostProcess(object):
             conc = concobj.get_data(totim=times[nper])
             zoned = self.ConcsByZone(conc)
             conc = zoned
+        # End if
 
         # First step is to set up the plot
         width = 20
@@ -2672,8 +2491,8 @@ class MT3DPostProcess(object):
         ax = fig.add_subplot(2, 4, 2, aspect='equal')
         ax.set_title('Coonambidgal')
         modelmap = flopy.plot.ModelMap(model=self.mf_model.mf)
-        max_conc = -100.0  # np.amax(conc)
-        min_conc = 1E6  # np.amin(conc)
+        max_conc = -100.0
+        min_conc = 1E6
 
         array = modelmap.plot_array(
             conc[0], masked_values=[-999.98999023, max_conc, min_conc], alpha=0.5, vmin=vmin, vmax=vmax)
@@ -2685,7 +2504,6 @@ class MT3DPostProcess(object):
 
         ax = fig.add_subplot(2, 4, 3, aspect='equal')
         ax.set_title('Shepparton')
-        # , sr=self.mf.dis.sr, dis=self.mf.dis)
         modelmap = flopy.plot.ModelMap(model=self.mf_model.mf)
         array = modelmap.plot_array(
             conc[2], masked_values=[-999.98999023, max_conc, min_conc, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
@@ -2726,16 +2544,16 @@ class MT3DPostProcess(object):
         array = modelmap.plot_array(
             conc[6], masked_values=[-999.98999023, max_conc, min_conc, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
         ax.yaxis.set_ticklabels([])
-        ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+        ax.xaxis.set_ticks(np.arange(start, end, 20000.0))
         ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
         cbar_ax5 = fig.add_axes([0.67, 0.055, 0.01, 0.42])
         fig.colorbar(array, cax=cbar_ax5)
         fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
 
         plt.show()
-    # End viewConcsByZone
+    # End viewConcsByZone()
 
-# End
+# End MT3DPostProcess()
 
 
 if __name__ == '__main__':
