@@ -629,7 +629,7 @@ class PESTInterface(object):
         print(' %s\n' % PESTFILE)
         print('\nPEST files generation completed!\n')
 
-    def updateparameterswithpestbestpar(pestparfile):
+    def updateparameterswithpestbestpar(self, pestparfile):
         """
         Generate parameters.txt containing all models parameters.
 
