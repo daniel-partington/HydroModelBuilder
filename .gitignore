@@ -95,3 +95,5 @@ target/
 *.mtc1
 *.out
 *.synctex.gz
+
+HydroModelBuilder/examples/\.ipynb_checkpoints/
