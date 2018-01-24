@@ -263,6 +263,9 @@ class ModflowModel(object):
         Add WEL package to the MODFLOW model to represent pumping wells
         Expects a dictionary with an array of well location lay row col and flux
         at each stress period, e.g.
+
+        >>> lrcq = {}
+        >>> lrcq[0] = [[0, 7, 7, -100.]] # layer, row, column, flux
         """
         self.wel = flopy.modflow.ModflowWel(self.mf, ipakcb=53, stress_period_data=lrcq)
         if self.verbose and self.check:
