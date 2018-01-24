@@ -6,7 +6,6 @@ python and modified as well to work with the GWModelBuilder class.
 import csv
 import datetime
 import os
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -269,12 +268,10 @@ class PESTInterface(object):
 
         Outputs a copy of the generated DataFrame as a csv if `csv_copy` property is set to `True`.
 
-        :param obs: UNKNOWN, NOT USED
-        :param obs_grp: dict,
+        :param obs_grp: dict, of observation groupings
 
         :returns: DataFrame, observation group time series
         """
-        warnings.warn("`obs` parameter is defined but unused - will be removed in future", FutureWarning)
         for index, key in enumerate(obs_grp.keys()):
             obs_grp_ts = obs_grp[key]['time_series'].copy()
             # Filter out null observations that were out of date range or
