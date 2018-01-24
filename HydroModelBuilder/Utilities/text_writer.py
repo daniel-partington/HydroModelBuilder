@@ -9,12 +9,14 @@ def write_line(fp, line, delimit=' '):
 
     :param fp: File Object
     :param line: list or str, text to write out.
-                 If type is list, joins the string elements using the specified delimiter.
+                 If type is list, converts all elements to string and joins them using the specified delimiter.
     :param delimit: str, text to use to separate out line entry. Defaults to single space.
     """
     if isinstance(line, list):
+        line = [str(el) for el in line]
         line = delimit.join(line)
     # End if
+
     if len(line) > 0:
         line += '\n'
         fp.write(line)
