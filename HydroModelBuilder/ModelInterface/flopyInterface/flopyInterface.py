@@ -419,19 +419,19 @@ class ModflowModel(object):
             if converge_fail in list_file:
                 print "*** Convergence failure ***"
                 now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
-                with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
-                    fail.write("Model did not converge, @ %s" %
+                with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as f:
+                    f.write("Model did not converge, @ %s" %
                                datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-                    fail.write("Error: \n {}".format(converge_fail))
+                    f.write("Error: \n {}".format(converge_fail))
                 return False
             # End if
             if fail == True:
                 print "*** Model run failure ***"
                 now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
-                with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as fail:
-                    fail.write("Model did not run, @ %s" %
+                with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as f:
+                    f.write("Model did not run, @ %s" %
                                datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-                    fail.write("Error: \n {}".format('MODFLOW did not terminate normally'))
+                    f.write("Error: \n {}".format('MODFLOW did not terminate normally'))
                 return False
             # End if
         # End for
