@@ -1,4 +1,5 @@
 import os
+from itertools import groupby
 
 import numpy as np
 
@@ -149,7 +150,7 @@ class MeshGenerator(object):
         mesh3D_1 = self.model_mesh3D[1]
 
         def most_common_oneliner(L):
-            return max(g(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
+            return max(groupby(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
         # End most_common_oneliner()
 
         # Clean up idle cells:
