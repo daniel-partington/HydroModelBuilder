@@ -344,10 +344,10 @@ class ModflowModel(object):
 
             if (bc_type == 'river') or (bc_type == 'channel'):
                 river_exists = True
-                for key in bc_array.keys():
+                for key in bc_array:
                     try:
                         river[key] += bc_array[key]
-                    except IndexError:
+                    except KeyError:
                         river[key] = bc_array[key]
                     # End try
                 # End for
