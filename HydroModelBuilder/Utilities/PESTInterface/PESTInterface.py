@@ -35,7 +35,7 @@ class PESTInterface(object):
 
         self.PESTcon()
         self.PEST_data['PESTpar'] = self.PESTpar(params=self.params)
-        self.PEST_data['PESTobs'] = self.PESTobs(obs=self.obs, obs_grp=self.obs_grp)
+        self.PEST_data['PESTobs'] = self.PESTobs(obs_grp=self.obs_grp)
 
     def PESTcon(self):
         """
@@ -96,24 +96,24 @@ class PESTInterface(object):
         RLAMFAC = factor for adjusting the Marquardt lambda, set as >1.0 or <-1.0 [float]
 
         PHIRATSUF = stands for "phi ratio sufficient", real variable, 0.3 is mostly appropriate,  [float]
-        
-        PHIREDLAM = ... A suitable value for PHIREDLAM is between 0.01 and 0.05 [float] 
-        
-        NUMLAM = This integer variable places an upper limit on the number of 
-                 lambdas that PEST will test during any one iteration. It 
-                 should normally be set between 5 and 10 (normally closer to 10); 
-                 however if RLAMBDA1 is set to zero (which is not recommended) 
+
+        PHIREDLAM = ... A suitable value for PHIREDLAM is between 0.01 and 0.05 [float]
+
+        NUMLAM = This integer variable places an upper limit on the number of
+                 lambdas that PEST will test during any one iteration. It
+                 should normally be set between 5 and 10 (normally closer to 10);
+                 however if RLAMBDA1 is set to zero (which is not recommended)
                  it must be set to 1. [integer]
-        
-        JACUPDATE = The Broyden Jacobian update procedure is described in 
-                    section 5.4.2 of Doherty (2015). It provides a mechanism 
-                    for improving the Jacobian matrix based on model outputs 
-                    calculated during model runs undertaken for the purpose of 
-                    testing parameter upgrades calculated using different 
+
+        JACUPDATE = The Broyden Jacobian update procedure is described in
+                    section 5.4.2 of Doherty (2015). It provides a mechanism
+                    for improving the Jacobian matrix based on model outputs
+                    calculated during model runs undertaken for the purpose of
+                    testing parameter upgrades calculated using different
                     values of the Marquardt lambda. [integer, optional]
-        
-        LAMFORGIVE = 
-        
+
+        LAMFORGIVE =
+
         [DERFORGIVE]
         RELPARMAX FACPARMAX FACORIG [IBOUNDSTICK UPVECBEND] [ABSPARMAX]
         PHIREDSWH [NOPTSWITCH] [SPLITSWH] [DOAUI] [DOSENREUSE] [BOUNDSCALE]
@@ -142,10 +142,10 @@ class PESTInterface(object):
                         'FACORIG': 1.00E-03,
                         'PHIREDSHW': 0.1,
                         'NOPTSWITCH': 1,
-                        'BOUNDSCALE': 'noboundscale', #'boundscale',
-                        'NOPTMAX':	0,
-                        'PHIREDSTP':	0.01,
-                        'NPHISTP':	5,
+                        'BOUNDSCALE': 'noboundscale',  # 'boundscale',
+                        'NOPTMAX': 0,
+                        'PHIREDSTP': 0.01,
+                        'NPHISTP': 5,
                         'NPHINORED': 5,
                         'RELPARSTP': 0.01,
                         'NRELPAR': 3,
@@ -263,7 +263,7 @@ class PESTInterface(object):
         self.PEST_data['PESTpgp'] = PESTpgp
     # End genPESTpgp()
 
-    def PESTobs(self, obs=None, obs_grp=None):
+    def PESTobs(self, obs_grp):
         """
         Collate PEST observations into a DataFrame.
 
@@ -629,7 +629,7 @@ class PESTInterface(object):
         print(' %s\n' % PESTFILE)
         print('\nPEST files generation completed!\n')
 
-    def updateparameterswithpestbestpar(pestparfile):
+    def updateparameterswithpestbestpar(self, pestparfile):
         """
         Generate parameters.txt containing all models parameters.
 
