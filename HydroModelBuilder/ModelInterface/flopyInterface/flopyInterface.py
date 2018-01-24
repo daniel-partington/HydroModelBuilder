@@ -311,6 +311,18 @@ class ModflowModel(object):
         self.mf.write_input()
     # End finalize_model()
 
+    def add_bc_to_target(self, bc_array, target):
+        for key in bc_array:
+            try:
+                target[key] += bc_array[key]
+            except KeyError:
+                target[key] = bc_array[key]
+            # End try
+        # End for
+
+        return target
+    # End add_bc_to_river()
+
     def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False):
         """
         Build MODFLOW model.
@@ -347,13 +359,7 @@ class ModflowModel(object):
 
             if (bc_type == 'river') or (bc_type == 'channel'):
                 river_exists = True
-                for key in bc_array:
-                    try:
-                        river[key] += bc_array[key]
-                    except KeyError:
-                        river[key] = bc_array[key]
-                    # End try
-                # End for
+                river = self.add_bc_to_target(bc_array, river)
             # End if
 
             if (bc_type == 'river_flow'):
@@ -362,13 +368,7 @@ class ModflowModel(object):
 
             if bc_type == 'wells':
                 wells_exist = True
-                for key in bc_array.keys():
-                    try:
-                        wel[key] += bc_array[key]
-                    except:
-                        wel[key] = bc_array[key]
-                    # End try
-                # End for
+                wel = self.add_bc_to_target(bc_array, wel)
             # End if
         # End for
 
