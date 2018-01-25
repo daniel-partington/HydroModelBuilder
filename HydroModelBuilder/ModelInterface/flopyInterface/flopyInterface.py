@@ -11,6 +11,9 @@ import pandas as pd
 from flopy.utils.sfroutputfile import SfrFile
 
 import viz.flopy_viz as fviz  # Visualization extension methods
+# For legacy purposes, allow use of other flopy related classes
+from MT3DModel import MT3DModel
+from MT3DPostProcess import MT3DPostProcess
 from Radon_EC_simple import Radon_EC_simple
 
 
