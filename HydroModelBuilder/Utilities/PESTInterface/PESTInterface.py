@@ -454,7 +454,7 @@ class PESTInterface(object):
         os.chdir(self.directory)
         for obs_gp in self.PEST_data['PESTobs']['OBGNME'].unique():
             # Model observation file (must be created by post-processing of model outputs)
-            OUTFLE[obs_gp] = '.' + os.path.sep + 'model_' + models_ID[0] + r'\observations_' + obs_gp + '.txt'
+            OUTFLE[obs_gp] = '.' + os.path.sep + 'model_' + models_ID[0] + os.path.sep + r'observations_' + obs_gp + '.txt'
 
             # Corresponding instruction file for PEST to know how to read it
             INSFLE[obs_gp] = 'observations_' + obs_gp + '.ins'

@@ -1,10 +1,14 @@
 # HydroModelBuilder
 
-Under development.
+HydroModelBuilder is made up of a set of utilities to build, run, and optimise numerical groundwater models.
+The primary use case of HydroModelBuilder is to generate groundwater models within an integrated environmental
+modelling process.
 
-Utilities to build, run, optimise and emulate numerical surface water-groundwater models
+It is currently under development and supports the generation of MODFLOW models. Future capabilities will expand the
+supported groundwater modelling platforms, include surface water models, and the ability generate model emulators.
+Collaboration is encouraged and appreciated.
 
-Consists of two main modules: *GWModelBuilder* and *GWModelManager*
+HydroModelBuilder currently consists of two main modules: *GWModelBuilder* and *GWModelManager*
 
 GWModelBuilder
 -------------------------
@@ -21,4 +25,4 @@ GWModelManager
 Module to:
 * Load and run models
 * Optimise models and conduct uncertainty analysis
-* Emulate numerical models
+* In future: Emulate numerical models
