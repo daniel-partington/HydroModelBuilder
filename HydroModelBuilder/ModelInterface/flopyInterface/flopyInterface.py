@@ -400,7 +400,7 @@ class ModflowModel(object):
 
     def runMODFLOW(self, silent=True):
         success, buff = self.mf.run_model(silent=silent)
-        return success
+        return self.checkConvergence(fail=not success)
     # End runMODFLOW()
 
     def checkConvergence(self, path=None, name=None, fail=False):
