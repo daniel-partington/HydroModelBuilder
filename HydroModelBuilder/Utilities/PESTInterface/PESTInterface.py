@@ -364,7 +364,7 @@ class PESTInterface(object):
         for row in self.PEST_data['PESTpar'].iterrows():
             if row[1]['models'] not in models_ID:
                 self.PEST_data['PESTpar'].set_value(row[0], 'PARTRANS', 'fixed')
-        # end for
+        # End for
 
         # Retain only observations corresponding to current models (uses the column 'model' of Dataframe PESTobs)
         required = []
@@ -454,7 +454,8 @@ class PESTInterface(object):
         os.chdir(self.directory)
         for obs_gp in self.PEST_data['PESTobs']['OBGNME'].unique():
             # Model observation file (must be created by post-processing of model outputs)
-            OUTFLE[obs_gp] = '.' + os.path.sep + 'model_' + models_ID[0] + os.path.sep + r'observations_' + obs_gp + '.txt'
+            OUTFLE[obs_gp] = '.' + os.path.sep + 'model_' + models_ID[0] + os.path.sep + \
+                'observations_' + obs_gp + '.txt'
 
             # Corresponding instruction file for PEST to know how to read it
             INSFLE[obs_gp] = 'observations_' + obs_gp + '.ins'
@@ -534,8 +535,6 @@ class PESTInterface(object):
                 write_line(f, [str(x) for x in row[1]], delimit='\t')
             # end for
 
-            write_line(f, [str(x) for x in row[1]], delimit='\t')
-
             # Command line that pest executes
             write_line(f, '* model command line')
             write_line(f, [PESTCMD])
@@ -572,6 +571,7 @@ class PESTInterface(object):
             write_line(f, ['PARNAME', 'PARVAL'], delimit='\t')
             for row in self.PEST_data['PESTpar'][['PARNAME']].iterrows():
                 f.write('%s\t#%-15s#\n' % (row[1]['PARNAME'], row[1]['PARNAME']))
+                # write_line(f, [row[1]['PARNAME'], '{:15}'.format(row[1]['PARNAME'])], delimit='\t')
             # end for
         # end with
 
@@ -611,9 +611,9 @@ class PESTInterface(object):
         with open(os.path.join(PEST_folder, UNCERTAINTYFILE), 'w') as f:
             write_line(f, '# Parameter uncertainty file')
             write_line(f, '# for filling C(k)\n')  # new line is intentional
-            write_line(f, 'START STANDARD_DEVIATION')
 
             # Needs to be for every other parameter
+            write_line(f, 'START STANDARD_DEVIATION')
             for row in self.PEST_data['PESTpar'].iterrows():
                 if row[1]['PARTRANS'] != 'fixed':
                     write_line(f, [row[1]['PARNAME'], row[1]['STD']], delimit='\t')

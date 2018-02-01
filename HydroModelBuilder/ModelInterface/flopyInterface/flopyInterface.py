@@ -400,9 +400,9 @@ class ModflowModel(object):
 
     def runMODFLOW(self, silent=True):
         '''
-        Function to run the modflow model with the optional argument for 
+        Function to run the modflow model with the optional argument for
         suppressing any output to screen.
-        
+
         Call to checkConvergence is to capture model run failures that are not
         picked up in the flopy run_model function.
         '''
@@ -427,7 +427,7 @@ class ModflowModel(object):
                 now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
                 with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as f:
                     f.write("Model did not converge, @ %s" %
-                               datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                            datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
                     f.write("Error: \n {}".format(converge_fail))
                 return False
             # End if
@@ -437,7 +437,7 @@ class ModflowModel(object):
                 now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
                 with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as f:
                     f.write("Model did not run, @ %s" %
-                               datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                            datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
                     f.write("Error: \n {}".format('MODFLOW did not terminate normally'))
                 return False
             # End if
