@@ -1,11 +1,12 @@
 import os
+from itertools import groupby
 
 import numpy as np
 
 
 class MeshGenerator(object):
     """
-    Mesh geneartion methods.
+    Mesh generation methods.
     """
 
     def __init__(self, Model_Int, GIS_Int):
@@ -149,7 +150,7 @@ class MeshGenerator(object):
         mesh3D_1 = self.model_mesh3D[1]
 
         def most_common_oneliner(L):
-            return max(g(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
+            return max(groupby(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
         # End most_common_oneliner()
 
         # Clean up idle cells:
@@ -303,8 +304,7 @@ class MeshGenerator(object):
                     # Check that 'mapped_observations' are in active cells and if not then set
                     # the observation to inactive
                     for obs_loc in observations.obs_group[key]['mapped_observations'].keys():
-                        [k, j, i] = observations.obs_group[key] \
-                            ['mapped_observations'][obs_loc]
+                        [k, j, i] = observations.obs_group[key]['mapped_observations'][obs_loc]
                         if self.model_mesh3D[1][k][j][i] in ignore:
                             observations.obs_group[key]['time_series'].loc[
                                 observations.obs_group[key]['time_series']

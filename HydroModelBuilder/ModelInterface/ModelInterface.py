@@ -1,7 +1,6 @@
 import cPickle as pickle
 import os
 import shutil
-import sys
 
 import numpy as np
 import pandas as pd
@@ -16,7 +15,9 @@ class ModelInterface(object):
 
     def __init__(self, model_type, types, data_format):
         """
-        :param model_type: str, Type of model being used.
+        :param model_type: str, type of model being used.
+        :param types: object, ModelBuilderType
+        :param data_format: str, one of 'ascii' or 'binary'
         """
         self.model_type = model_type
         self.types = types
@@ -32,26 +33,14 @@ class ModelInterface(object):
         :param time: str, time unit
         :param mass: str, mass unit
         """
-        if length in self.types.length:
-            self.units['length'] = length
-        else:
-            print 'Length unit not recognised, please use one of: ', self.types.length
-            print 'Default unit "m" is set'
-        # End if
+        assert length in self.types.length, "Length unit not recognised, use one of {}".format(self.types.length)
+        self.units['length'] = length
 
-        if time in self.types.time:
-            self.units['time'] = time
-        else:
-            print 'Time unit not recognised, please use one of: ', self.types.time
-            print 'Default unit "s" is set'
-        # End if
+        assert time in self.types.time, "Time unit not recognised, use one of {}".format(self.types.time)
+        self.units['time'] = time
 
-        if mass in self.types.mass:
-            self.units['mass'] = mass
-        else:
-            print 'Mass unit not recognised, please use one of: ', self.types.mass
-            print 'Default unit "kg" is set'
-        # End if
+        assert mass in self.types.mass, "Mass unit not recognised, use one of {}".format(self.types.mass)
+        self.units['time'] = time
     # End set_units()
 
     def check_for_existing(self, fn):
@@ -60,7 +49,7 @@ class ModelInterface(object):
         and if so to do nothing unless flagged otherwise. This is done by
         checking the output data path.
 
-        :param fn:
+        :param fn: str, filename to use.
         """
         filename_suffixes = ['_model', '_grid']
         for suffix in filename_suffixes:
@@ -77,7 +66,7 @@ class ModelInterface(object):
         elif self.data_format == self.types.data_formats[1]:  # if it is 'binary'
             np.save(filename, array)
         else:
-            print 'Data format not recognised, use "binary" or "ascii"'
+            print('Data format not recognised, use "binary" or "ascii"')
         # End if
     # End save_array()
 
@@ -130,7 +119,7 @@ class ModelInterface(object):
             raise ValueError('Expected mode to be either "data" or "model" but got: {}'.format(mode))
         # End if
 
-        if folder == None:
+        if not folder:
             raise ValueError('No folder set, so no flushing')
         # End if
         for the_file in os.listdir(folder):
