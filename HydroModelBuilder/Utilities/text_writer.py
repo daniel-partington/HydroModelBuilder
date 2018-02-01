@@ -29,11 +29,12 @@ def write_multiline(fp, lines, delimit=' '):
     Write given list of line strings to a file.
 
     :param fp: File Object
-    :param lines: list, of lists with each element representing a single line
+    :param lines: list[list], with each list element representing a single line
     :param delimit: str, text to use to separate line entry. Defaults to single space.
     """
     all_lines = []
     for line in lines:
+        line = [str(el) for el in line]
         str_to_write = delimit.join(line) + '\n'
         all_lines.append(str_to_write)
     # End for
@@ -47,14 +48,19 @@ if __name__ == '__main__':
     fname = 'test_textwriter.txt'
     pass_case = ['test single string\n', 'test list single line\n', 'test\tline\ttab\tdelimited\n',
                  '1000 1000 50 50.0 1000000.0\n',
-                 'test multi string\n', 'test multi line\n', 'output that spans across two lines\n',
+                 'test multi string\n',
+                 '1000 9999.9 100000.0\n',
+                 'test multi line\n', 'output that spans across two lines\n',
                  'test\tmulti\ttab-delimited\n', 'line\toutput\n']
+
     with open(fname, 'w') as f:
         write_line(f, 'test single string')
         write_line(f, ['test', 'list', 'single', 'line'])
         write_line(f, ['test', 'line', 'tab', 'delimited'], delimit='\t')
         write_line(f, ['1000', 1000, 50, 50.0, 1e6])
+
         write_multiline(f, [['test', 'multi', 'string']])
+        write_multiline(f, [[1000, 9999.9, 1e5]])
         write_multiline(f, [['test', 'multi', 'line'], ['output', 'that', 'spans', 'across', 'two lines']])
         write_multiline(f, [['test', 'multi', 'tab-delimited'], ['line', 'output']], delimit='\t')
 
