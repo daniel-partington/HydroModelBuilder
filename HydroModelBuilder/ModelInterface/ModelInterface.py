@@ -45,17 +45,18 @@ class ModelInterface(object):
 
     def check_for_existing(self, fn):
         """
-        Function to determine if input files have previously been processed
-        and if so to do nothing unless flagged otherwise. This is done by
-        checking the output data path.
+        Determine if previously processed input files exist in the folder indicated by the `out_data_folder` property.
 
-        :param fn: str, filename to use.
+        :param fn: str, filename to use including extension
+
+        :returns: None, just prints out whether a processed file was found.
         """
+        file_ext_split = os.path.splitext(fn)
         filename_suffixes = ['_model', '_grid']
         for suffix in filename_suffixes:
-            if os.path.isfile(os.path.join(self.out_data_folder, fn[:-4] +
-                                           suffix + fn[-4:])):
-                print 'found processed file'
+            if os.path.isfile(os.path.join(self.out_data_folder, file_ext_split[0] +
+                                           suffix + file_ext_split[1])):
+                print('Found processed file')
             # End if
         # End for
     # End check_for_existing()
