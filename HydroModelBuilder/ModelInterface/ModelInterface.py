@@ -19,6 +19,7 @@ class ModelInterface(object):
         :param types: object, ModelBuilderType
         :param data_format: str, one of 'ascii' or 'binary'
         """
+        assert data_format in ['ascii', 'binary'], "Unknown data format '{}'".format(data_format)
         self.model_type = model_type
         self.types = types
         self.data_format = data_format
@@ -27,11 +28,11 @@ class ModelInterface(object):
 
     def set_units(self, length='m', time='s', mass='kg'):
         """
-        Sets the units for use inside the model.
+        Sets the units of measurement used inside the model.
 
-        :param length: str, length unit
-        :param time: str, time unit
-        :param mass: str, mass unit
+        :param length: str, length unit. Defaults to meters.
+        :param time: str, time unit. Defaults to seconds.
+        :param mass: str, length unit. Defaults to kg.
         """
         assert length in self.types.length, "Length unit not recognised, use one of {}".format(self.types.length)
         self.units['length'] = length
@@ -45,39 +46,53 @@ class ModelInterface(object):
 
     def check_for_existing(self, fn):
         """
-        Function to determine if input files have previously been processed
-        and if so to do nothing unless flagged otherwise. This is done by
-        checking the output data path.
+        Determine if previously processed input files exist in the folder indicated by the `out_data_folder` property.
 
-        :param fn: str, filename to use.
+        :param fn: str, filename to use including extension
+
+        :returns: None, just prints out whether a processed file was found.
         """
+        file_ext_split = os.path.splitext(fn)
         filename_suffixes = ['_model', '_grid']
         for suffix in filename_suffixes:
-            if os.path.isfile(os.path.join(self.out_data_folder, fn[:-4] +
-                                           suffix + fn[-4:])):
-                print 'found processed file'
+            if os.path.isfile(os.path.join(self.out_data_folder, file_ext_split[0] +
+                                           suffix + file_ext_split[1])):
+                print('Found processed file')
             # End if
         # End for
     # End check_for_existing()
 
     def save_array(self, filename, array):
-        if self.data_format == self.types.data_formats[0]:  # if it is 'ascii'
-            np.savetxt(filename, array)
-        elif self.data_format == self.types.data_formats[1]:  # if it is 'binary'
-            np.save(filename, array)
+        """
+        Save array data.
+
+        :param filename: str, name of file to save data to
+        :param array: numpy array, data to save to file
+        """
+        if self.data_format in self.types.data_formats:
+            # Extract and run associated function that saves data for this format
+            func = self.types.data_formats[self.data_format]
+            func(filename, array)
         else:
-            print('Data format not recognised, use "binary" or "ascii"')
+            print("Data format not recognised, use one of {}".format(self.types.data_formats))
         # End if
     # End save_array()
 
     def load_array(self, array_file):
+        """
+        Load array data from file.
+
+        :param array_file: str, name of file to load data from, including path and extension
+        """
         if array_file.endswith('txt'):
-            return np.loadtxt(array_file)
+            func = np.loadtxt
         elif array_file.endswith('npy') or array_file.endswith('npz'):
-            return np.load(array_file)
+            func = np.load
         else:
             raise TypeError('File type not recognised as "txt", "npy" or "npz" \n {}'.format(array_file))
         # End if
+
+        return func(array_file)
     # End load_array()
 
     def save_dataframe(self, filename, df):
