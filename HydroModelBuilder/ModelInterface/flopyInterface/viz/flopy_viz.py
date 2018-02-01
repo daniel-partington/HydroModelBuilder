@@ -1,8 +1,12 @@
 import os
 
+import flopy
 import flopy.utils.binaryfile as bf
 import matplotlib.pyplot as plt
+import numpy as np
+import six
 from flopy.utils.sfroutputfile import SfrFile
+from matplotlib import colors
 
 
 def plotRiverFromRiverSegData(self, ax, names=None, **kwargs):
@@ -68,13 +72,10 @@ def compareAllObs(self):
     headobj = self.importHeads()
     times = headobj.get_times()
 
-    scatterx = []
-    scattery = []
     obs_sim_zone_all = []
 
     # The definition of obs_sim_zone looks like:
     # self.obs_sim_zone += [[obs, sim, zone, x, y]]
-
     for i in range(self.model_data.model_time.t['steps']):
         head = headobj.get_data(totim=times[i])
         self.CompareObserved('head', head, nper=i)
@@ -167,19 +168,17 @@ def compareAllObs(self):
 
     ax.plot(ax.get_ylim(), ax.get_ylim())
 
-    ax = fig.add_subplot(1, 3, 3)  # , aspect=0.9)
+    ax = fig.add_subplot(1, 3, 3)
     ax.set_title('Residuals in space')
 
-    modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+    modelmap = flopy.plot.ModelMap(model=self.mf)
     modelmap.plot_ibound()
 
     x = np.array([h[3] for h in obs_sim_zone_all])
     y = np.array([h[4] for h in obs_sim_zone_all])
-    zone = [h[2] for h in obs_sim_zone_all]
-    residuals = [h[0] - h[1] for h in obs_sim_zone_all]
+    zone = np.array([h[2] for h in obs_sim_zone_all])
+    residuals = np.array([h[0] - h[1] for h in obs_sim_zone_all])
 
-    from matplotlib import colors
-    import six
     colors_ = list(six.iteritems(colors.cnames))
 
     # Add the single letter colors.
@@ -200,7 +199,6 @@ def compareAllObs(self):
     rgba_colors = np.zeros((len(x), 4))
 
     # for red the first column needs to be one
-    zone = np.array(zone)
     for i in range(1, 8):
         rgba_colors[:, 0][zone == i] = rgb_ref[i - 1][0]
         rgba_colors[:, 1][zone == i] = rgb_ref[i - 1][1]
@@ -293,15 +291,7 @@ def viewHeadsByZone(self, nper='all'):
         head_orig = head
         zoned = self.HeadsByZone(head)
         head = zoned
-
-    if nper == 'all':
-        scatterx = []
-        scattery = []
-        obs_sim_zone_all = []
-    else:
         self.CompareObserved('head', head_orig, nper=nper)
-        scatterx = [h[0] for h in self.obs_sim_zone]
-        scattery = [h[1] for h in self.obs_sim_zone]
     # End if
 
     # First step is to set up the plot
