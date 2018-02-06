@@ -27,31 +27,39 @@ class GDALInterface(GISInterface):
     The GDALInterface works within the GISInterface class to apply a range of
     common spatial tasks using the open source GDAL library.
 
-
     Things to fix ...
     inconsistent use of 'mesh' and 'grid', need consistent terminology. Will change
     all to 'mesh' as it is more generic.
-
     """
 
     def __init__(self):
-
         pass
 
     def _load_shapefile(self, shapefile_name, shapefile_path=None):
         pass
 
     def _test_osgeo_load(self, obj, file_name):
+        """
+        Check to see if osgeo object is valid.
+
+        :param obj: osgeo object, if not loaded properly this will be None.
+        :param file_name: str, name of file that was loaded
+        """
         if obj is None:
-            sys.exit('Could not open {}'.format(file_name))
+            raise IOError('Could not open {}'.format(file_name))
+        # End if
+    # End _test_osgeo_load()
 
     def set_model_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None):
         """
-        Function to set the model boundary using a shapefile, assuming polygon type:
+        Set the model boundary using a shapefile, assuming polygon type.
         1. For structured mesh this will create a rectangle that creates an envelope on the polygon
 
-        """
+        :param shapefile_name: str, name of shapefile to use
+        :param shapefile_path: str, path to shapefile
 
+        :returns: tuple[object], (self.model_boundary, self.boundary_poly_file)
+        """
         # Check first that file hasn't been previously processed
         base_name = os.path.join(self.out_data_folder, shapefile_name[:-4])
         new_file = base_name + "_model.shp"
@@ -115,12 +123,11 @@ class GDALInterface(GISInterface):
 
     def set_data_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None,
                                                  buffer_dist=None):
-
-        if shapefile_path is None:
-            shapefile_name = shapefile_name
-        else:
-            shapefile_name = os.path.join(shapefile_path, shapefile_name)
-        # End if
+        """
+        TODO: Docs
+        """
+        shapefile_name = shapefile_name if not shapefile_path \
+            else os.path.join(shapefile_path, shapefile_name)
 
         shp_name = os.path.splitext(os.path.basename(shapefile_name))[0]
         new_file = os.path.join(shapefile_path, shp_name + "_buffer_" + str(buffer_dist) + ".shp")
@@ -134,24 +141,32 @@ class GDALInterface(GISInterface):
             self._test_osgeo_load(self.data_boundary, new_file)
         # End if
         self.boundary_data_file = new_file
+
         return self.data_boundary, self.boundary_data_file
+    # End set_data_boundary_from_polygon_shapefile()
 
     def set_model_boundary_from_corners(self, xmin, xmax, ymin, ymax):
         """
-        Function to set model boundary based on x and y bounds: xmin, xmax, ymin, ymax
+        Function to set model boundary based on x and y bounds: xmin, xmax, ymin, ymax::
 
                     ._________.(xmax, ymax)
                     |         |
                     |         |
                     |         |
                     ._________.
-         (xmin,ymin)
+            (xmin,ymin)
+
+        :param xmin: float, bottom left x-position
+        :param xmax: float, upper right x-position
+        :param ymin: float, bottom left y-position
+        :param ymax: float, upper right y-position
         """
 
         self.model_boundary[0] = xmin
         self.model_boundary[1] = xmax
         self.model_boundary[2] = ymin
         self.model_boundary[3] = ymax
+    # End set_model_boundary_from_corners()
 
     def define_structured_mesh(self, gridHeight, gridWidth):
         """
@@ -160,7 +175,7 @@ class GDALInterface(GISInterface):
         :param gridHeight: Uniform grid height to be used in defining structured mesh
         :param gridWidth: Uniform grid width to be used in defining structured mesh
 
-
+        :returns: `model_mesh` property
         """
         new_file = os.path.join(self.out_data_folder,
                                 'structured_model_grid_{}m'.format(int(gridHeight)),
@@ -182,7 +197,9 @@ class GDALInterface(GISInterface):
                                                      4], copy_dest=self.model_data_folder)
             self._test_osgeo_load(self.model_mesh, new_file)
         # End if
+
         return self.model_mesh
+    # End define_structured_mesh()
 
     def read_rasters(self, files, path=None):
         """
@@ -190,6 +207,8 @@ class GDALInterface(GISInterface):
 
         :param files: List of file names for the rasters that are to be read in.
         :param path: Path of the files, which is optional, default path is working directory
+
+        :returns: dict[list], raster array data and filename
         """
         rasters = {}
 
@@ -236,10 +255,15 @@ class GDALInterface(GISInterface):
             ds = None  # close raster file
 
         return rasters
+    # End read_rasters()
 
     def get_raster_info(self, fname):
         '''
         Function to open raster and create dictionary with raster info
+
+        :param fname: str, filename to get information from.
+
+        :returns: dict, raster array data and metadata
         '''
         gdal.UseExceptions()
         raster = {}
@@ -253,22 +277,17 @@ class GDALInterface(GISInterface):
         raster['metadata'] = {'cols': cols, 'rows': rows, 'nodata': no_data,
                               'ulx': ulx, 'uly': uly, 'pixel_x': x_pixel, 'pixel_y': -y_pixel}
         return raster
+    # End get_raster_info()
 
     def raster_reproject_by_grid(self, infile, outfile, epsg_to=None,
-                                 bounds=None, resample_method=None):
+                                 bounds=None, resample_method='near'):
+        epsg_to = self.pcs_EPSG if not epsg_to else "EPSG:{}".format(epsg_to)
 
-        if epsg_to == None:
-            epsg_to = self.pcs_EPSG
-        else:
-            epsg_to = "EPSG:{}".format(epsg_to)
-        # end if
-        if bounds == None:
+        if not bounds:
             (xmin, xmax, ymin, ymax) = self.model_mesh.GetLayer().GetExtent()
         else:
             (xmin, xmax, ymin, ymax) = bounds
-        # end if
-        if resample_method == None:
-            resample_method = 'near'
+        # End if
 
         command = "gdalwarp -overwrite -t_srs {} ".format(epsg_to) + \
                   " -te " + " {0} {1} {2} {3} ".format(xmin, ymin, xmax, ymax) + \
@@ -279,7 +298,8 @@ class GDALInterface(GISInterface):
             print(subprocess.check_output(command, shell=True))
         except subprocess.CalledProcessError as e:
             print(e)
-        # end try
+        # End try
+    # End raster_reproject_by_grid()
 
     def map_rasters_to_grid(self, raster_files, raster_path, raster_driver=None):
         """
@@ -297,13 +317,17 @@ class GDALInterface(GISInterface):
         gdal.GRA_Mode
         gdal.GRA_NearestNeighbour
 
+        :param raster_files: list or str, raster file(s) to map to grid
+        :param raster_path: str, path to raster files
+        :param raster_driver: GDAL driver to use to load rasters
+
+        :returns: dict or None, raster data or None if `unstructured`
         """
         if type(raster_files) != list:
             # Assume single file given as string:
-            raster_files = [raster_files]    
-        
-        simplified_raster_array = {}
+            raster_files = [raster_files]
 
+        simplified_raster_array = {}
         if self._mesh_type == 'structured':
             new_files = [os.path.join(self.out_data_folder_grid, raster +
                                       '_model_grid.tif') for raster in raster_files]
@@ -375,20 +399,35 @@ class GDALInterface(GISInterface):
             pass
 
         else:
-            print 'Something went wrong ... mesh type is not recognised: %s' % self._mesh_type
+            print('Something went wrong ... mesh type is not recognised: {}'.foramt(self._mesh_type))
+        # End if
+
+    # End map_rasters_to_grid
 
     def get_raster_array(self, raster_fname, band=1):
+        """
+        Load raster data as an array
+
+        :param raster_fname: str, filename of raster
+        :param band: int, band id to load
+
+        :returns: numpy array, raster data
+        """
         ds = gdal.Open(raster_fname)
         raster_band = ds.GetRasterBand(band)
         array = raster_band.ReadAsArray()
         return array
+    # End get_raster_array()
 
     def map_raster_to_regular_grid_return_array(self, raster_fname,
                                                 resample_method='near'):
-
+        """
+        TODO: Docs
+        """
         if not os.path.exists(raster_fname):
-            sys.exit("File {} does not exist".format(raster_fname))
-        # end if
+            raise IOError("File {} does not exist".format(raster_fname))
+        # End if
+
         (xmin, xmax, ymin, ymax) = self.model_mesh.GetLayer().GetExtent()
         epsg_to = self.pcs_EPSG
         pixel_spacing = self.gridHeight
@@ -396,7 +435,8 @@ class GDALInterface(GISInterface):
             fname = raster_fname.split(os.path.sep)[-1]
         else:
             fname = raster_fname
-        # end if
+        # End if
+
         new_raster_fname = os.path.join(self.out_data_folder_grid, fname[:-4] + '_model.tif')
         if os.path.exists(new_raster_fname):
             print("Found previously generated file: {}".format(new_raster_fname))
@@ -422,6 +462,7 @@ class GDALInterface(GISInterface):
         returns array of head values with same shape as the mesh
         """
         pass
+    # End map_heads_to_mesh_by_layer()
 
     def create_basement_bottom(self, hu_raster_path, surface_raster_file, basement_top_raster_file,
                                basement_bot_raster_file, output_path, raster_driver=None):
@@ -451,8 +492,9 @@ class GDALInterface(GISInterface):
 
         :param filename: filename for the polyline that is to be read in.
         :param path: Path of the files, which is optional, default path is working directory
+        :param poly_type: str, name of polygon type.
+        :param new_filename_only: bool, return new filename or the data
         """
-
         if poly_type == 'polyline':
             geom_type = ogr.wkbMultiLineString
         if poly_type == 'polygon':
@@ -462,6 +504,7 @@ class GDALInterface(GISInterface):
             filename_only = filename.split(os.path.sep)[-1]
         else:
             filename_only = filename
+        # End if
 
         driver = ogr.GetDriverByName("ESRI Shapefile")
         p_f = os.path.join(path, filename)
