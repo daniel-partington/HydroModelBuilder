@@ -564,8 +564,7 @@ class GDALInterface(GISInterface):
         :param polyline_obj
         :param model_grid
 
-        returns masked array highlighting cells where polylines intersects
-
+        :returns: masked array, highlighting cells where polylines intersects
         """
         length_and_centroids = map2grid.shp2grid(
             polyline_obj, self.model_mesh, shp_type='poly', data_folder=self.out_data_folder)
@@ -606,6 +605,8 @@ class GDALInterface(GISInterface):
 
         returns ??
         """
+        pass
+    # End read_points_data_from_csv()
 
     def read_points_data(self, filename, path=None):
         """
@@ -613,6 +614,8 @@ class GDALInterface(GISInterface):
 
         :param filename: filename for the point shapefile that is to be read in.
         :param path: Path of the files, which is optional, default path is working directory
+
+        :returns: GDAL file pointer
         """
         base = os.path.splitext(os.path.basename(filename))[0]
         new_f = base + "_clipped.shp"
@@ -645,16 +648,16 @@ class GDALInterface(GISInterface):
         ds = driver.Open(new_file, 0)
         self._test_osgeo_load(ds, new_file)
         return ds
+    # End read_points_data()
 
     def map_points_to_grid(self, points_obj, feature_id=None):
         """
         Map the points object to the grid
 
-        :param opints_obj
-        :param feature_id
+        :param opints_obj:
+        :param feature_id:
 
-        returns masked array highlighting cells where polylines intersects
-
+        :returns: masked array highlighting cells where polylines intersects
         """
         ids_and_centroids = map2grid.shp2grid(points_obj, self.model_mesh, feature_id=feature_id,
                                               shp_type='points', data_folder=self.out_data_folder)
@@ -667,6 +670,7 @@ class GDALInterface(GISInterface):
         based on the k-d tree as in the GWModelBuilder
         """
         pass
+    # End map_points_to_3Dmesh()
 
     def getXYpairs(self, points_obj, feature_id=1):
 
@@ -684,19 +688,20 @@ class GDALInterface(GISInterface):
             point_ids[str(feat.GetField(feature_id))] = coords
         Layer = None
         return point_ids
+    # End getXYpairs()
 
     def point_values_from_raster(self, points, raster_obj):
         """
         Get values from raster at given points defined by list or by points object
         points must be a list made up of point lists or points shapefile object
         """
-
         return point_values_from_raster.get_point_values_from_raster(points, raster_obj)
+    # End point_values_from_raster()
 
     def create_line_string_from_points(self, points, file_in, file_out,
                                        driver_name='ESRI Shapefile'):
         '''
-        Function to convert set of points into a linestring and write to shapefile
+        Convert set of points into a linestring and write to shapefile
         '''
         shp1 = ogr.Open(file_in)
         layer1 = shp1.GetLayer(0)
@@ -709,7 +714,8 @@ class GDALInterface(GISInterface):
         line = ogr.Geometry(ogr.wkbLineString)
         for point in points:
             line.AddPoint(*point)
-        # end for
+        # End for
+
         featureDefn = dstlayer.GetLayerDefn()
         lineFeature = ogr.Feature(featureDefn)
         lineFeature.SetGeometry(line)
@@ -717,11 +723,15 @@ class GDALInterface(GISInterface):
         lineFeature.Destroy
         dstshp.Destroy
         dstshp = None
+    # End create_line_string_from_points()
 
     def polyline_explore(self, poly_file):
         '''
-        Function to extract all points from a polyline
-        and that returns a dict containing all points within each feature
+        Extract all points from a polyline and that returns a dict containing all points within each feature.
+
+        :param poly_file: str or ogr object, polygon file to use.
+
+        :returns: tuple, (list of geometry points, dict of geometry points)
         '''
         if type(poly_file) == str:
             poly_ds = ogr.Open(poly_file)
@@ -739,18 +749,29 @@ class GDALInterface(GISInterface):
             if index in range(count):
                 points_dict[index] = geom.GetPoints()
                 points_all += geom.GetPoints()
+            # End if
+        # End for
 
         return points_all, points_dict
+    # End polyline_explore()
 
     def _linestring2points(self, linestring):
+        """
+        Convert a string description of line points to numerical list.
+
+        :param linestring: str, line type descriptor to convert into list of points
+
+        :returns: list[float], points that describe a line
+        """
         linestring = linestring.split("LINESTRING (")[1].split(")")[0].split(',')
         linestring = [[float(x.split(" ")[0]), float(x.split(" ")[1])] for x in linestring]
         print("called")
         return linestring
+    # End _linestring2points()
 
     def polyline_explore_2(self, poly_file):
         '''
-        Function to extract points from multi-linestring
+        Extract points from multi-linestring
         '''
         poly_ds = ogr.Open(poly_file)
         poly_layer = poly_ds.GetLayer()
@@ -761,9 +782,12 @@ class GDALInterface(GISInterface):
                 points_all += self._linestring2points(geo.ExportToWkt())
 
         return points_all
+    # End polyline_explore_2()
 
     def map_points_to_raster_layers(self, points, depths, rasters, points_layer):
-
+        """
+        TODO: Docs
+        """
         p_j = os.path.join
         for index, raster in enumerate(rasters):
 
@@ -787,14 +811,20 @@ class GDALInterface(GISInterface):
             bot = None
 
         return points_layer
+    # End map_points_to_raster_layers()
 
     def raster2polygon(self, raster):
         '''
-        Function to get the first band of a raster and convert it into
-        a polygon
-        '''
+        Convert first band of a raster into a polygon.
 
+        :param raster:
+
+        :returns: np.ndarray, raster data
+        '''
         return raster2polygon.raster2polygon(raster)
+    # End raster2polygon()
+
+# End GDALInterface()
 
 
 class StructuredMesh(object):
