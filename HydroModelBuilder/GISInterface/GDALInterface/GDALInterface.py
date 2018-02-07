@@ -154,7 +154,7 @@ class GDALInterface(GISInterface):
                     |         |
                     |         |
                     ._________.
-            (xmin,ymin)
+                (xmin,ymin)
 
         :param xmin: float, bottom left x-position
         :param xmax: float, upper right x-position

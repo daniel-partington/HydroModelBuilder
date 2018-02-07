@@ -119,34 +119,25 @@ def create_fishnet(structured_mesh, spatialRef, copy_dest=None):
 
     outDataSource
     outDataSourceCopy = ogr.GetDriverByName("Memory").CopyDataSource(
-            outDataSource, "")
+        outDataSource, "")
 
-    outDataSource = None #.Destroy()
+    outDataSource = None  # .Destroy()
 
-    #return outDataSource  # outputGridfn #ds
+    # return outDataSource  # outputGridfn #ds
     return outDataSourceCopy
+
 
 if __name__ == "__main__":
     # Main to allow standalone testing of this module
+    from GDALInterface import StructuredMesh
+    from osgeo import osr
 
     copy_dest = r"C:\Workspace\part0075\MDB modelling\Campaspe_data\SW\Farm\\"
-
-    from osgeo import osr
 
     Proj_CS = osr.SpatialReference()
     Proj_CS.ImportFromEPSG(28355)  # This is just an example coordinate system
 
     print Proj_CS.ExportToWkt()
-
-    class StructuredMesh(object):
-
-        def __init__(self, xmin=None, xmax=None, ymin=None, ymax=None, gridHeight=None, gridWidth=None):
-            self.xmin = xmin
-            self.xmax = xmax
-            self.ymin = ymin
-            self.ymax = ymax
-            self.gridHeight = gridHeight
-            self.gridWidth = gridWidth
 
     structured_mesh = StructuredMesh(xmin='223167.454274',
                                      xmax='223177.454274',
