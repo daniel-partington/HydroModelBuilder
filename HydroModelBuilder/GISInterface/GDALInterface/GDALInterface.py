@@ -154,7 +154,7 @@ class GDALInterface(GISInterface):
                     |         |
                     |         |
                     ._________.
-                (xmin,ymin)
+                (xmin, ymin)
 
         :param xmin: float, bottom left x-position
         :param xmax: float, upper right x-position
@@ -259,7 +259,7 @@ class GDALInterface(GISInterface):
 
     def get_raster_info(self, fname):
         '''
-        Function to open raster and create dictionary with raster info
+        Open raster file and create dictionary with raster info.
 
         :param fname: str, filename to get information from.
 
@@ -451,9 +451,11 @@ class GDALInterface(GISInterface):
                 print(subprocess.check_output(command, shell=True))
             except subprocess.CalledProcessError as e:
                 sys.exit(e)
-            # end try
-        # end if
+            # End try
+        # End if
+
         return self.get_raster_array(new_raster_fname)
+    # End map_raster_to_regular_grid_return_array()
 
     def map_heads_to_mesh_by_layer(self):
         """
@@ -475,6 +477,7 @@ class GDALInterface(GISInterface):
         basement.create_basement_bottom(hu_raster_path, surface_raster_file,
                                         basement_top_raster_file, basement_bot_raster_file,
                                         output_path, raster_driver=raster_driver)
+    # End create_basement_bottom()
 
     def build_3D_mesh_from_rasters(self, raster_files, raster_path, minimum_thickness,
                                    maximum_thickness):
@@ -485,6 +488,7 @@ class GDALInterface(GISInterface):
                                                         self.name + '_model',
                                                         minimum_thickness,
                                                         maximum_thickness)
+    # End build_3D_mesh_from_rasters()
 
     def read_poly(self, filename, path="", poly_type='polyline', new_filename_only=False):
         """
@@ -499,6 +503,7 @@ class GDALInterface(GISInterface):
             geom_type = ogr.wkbMultiLineString
         if poly_type == 'polygon':
             geom_type = ogr.wkbMultiPolygon
+        # End if
 
         if os.path.sep in filename:
             filename_only = filename.split(os.path.sep)[-1]
@@ -526,6 +531,7 @@ class GDALInterface(GISInterface):
                                            copy_dest=copy_dest,
                                            geom_type=geom_type)
             self._test_osgeo_load(ds, copy_dest)
+        # End if
 
         ds_copy = ogr.GetDriverByName("Memory").CopyDataSource(
             ds, ds.GetDescription())
@@ -535,14 +541,15 @@ class GDALInterface(GISInterface):
                 return copy_dest
             else:
                 return ds_copy
-            # end if
+            # End if
         else:
             if new_filename_only:
                 return os.path.join(path, filename)
             else:
                 return ds_copy
-            # end if
-        # end if
+            # End if
+        # End if
+    # End read_poly()
 
     def smooth_poly(self, poly_file, smooth_factor=0.0001):
         # Smooth  poly shape using ogr
@@ -556,6 +563,8 @@ class GDALInterface(GISInterface):
             subprocess.check_output(command, shell=True)  # , stdout=FNULL, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             print(e)
+        # End try
+    # End smooth_poly()
 
     def map_polyline_to_grid(self, polyline_obj):
         """
@@ -569,6 +578,7 @@ class GDALInterface(GISInterface):
         length_and_centroids = map2grid.shp2grid(
             polyline_obj, self.model_mesh, shp_type='poly', data_folder=self.out_data_folder)
         return length_and_centroids
+    # End map_polyline_to_grid()
 
     def map_polygon_to_grid(self, polygon_obj, out_fname, pixel_size=None,
                             bounds=None, feature_name=None, field_type=ogr.OFTInteger):
@@ -586,6 +596,7 @@ class GDALInterface(GISInterface):
         return polygon2raster.array_from_rasterize(polygon_obj, out_fname=out_fname,
                                                    pixel_size=pixel_size, bounds=bounds,
                                                    feature_name=feature_name, field_type=field_type)
+    # End map_polygon_to_grid()
 
     def polygon2points(self, polygon_obj, to_fname=None, density=10):
 
@@ -595,6 +606,7 @@ class GDALInterface(GISInterface):
         points = self.getXYpairs(points_obj)
 
         return points
+    # End polygon2points()
 
     def read_points_data_from_csv(self, filename, path=None):
         """
@@ -605,7 +617,7 @@ class GDALInterface(GISInterface):
 
         returns ??
         """
-        pass
+        raise NotImplementedError("Method not implemented yet")
     # End read_points_data_from_csv()
 
     def read_points_data(self, filename, path=None):
@@ -669,10 +681,13 @@ class GDALInterface(GISInterface):
         To be implemented ... don't necessarily need to use GDAL but could be
         based on the k-d tree as in the GWModelBuilder
         """
-        pass
+        raise NotImplementedError("Method not implemented yet")
     # End map_points_to_3Dmesh()
 
     def getXYpairs(self, points_obj, feature_id=1):
+        """
+        TODO: Docs
+        """
 
         Layer = points_obj.GetLayer()
         Layer.ResetReading()
@@ -800,8 +815,6 @@ class GDALInterface(GISInterface):
             top_levels = self.point_values_from_raster(points, top)
             bot_levels = self.point_values_from_raster(points, bot)
 
-            # for index, depth in enumerate(depths):
-            #    print 't:',top_levels[index],'d:',depth,'b:',bot_levels[index]
             top_levels = np.array(top_levels)
             bot_levels = np.array(bot_levels)
             depths = np.array(depths)
