@@ -2,19 +2,19 @@ import datetime
 import inspect
 import os
 import warnings
-from types import MethodType
-
-import numpy as np
-import pandas as pd
 
 import flopy
 import flopy.utils.binaryfile as bf
-import viz.flopy_viz as fviz  # Visualization extension methods
+import numpy as np
+import pandas as pd
 from flopy.utils.sfroutputfile import SfrFile
+
+import viz.flopy_viz as fviz  # Visualization extension methods
 # For legacy purposes, allow use of other flopy related classes
 from MT3DModel import MT3DModel
 from MT3DPostProcess import MT3DPostProcess
 from Radon_EC_simple import Radon_EC_simple
+from types import MethodType
 
 
 class ModflowModel(object):
@@ -26,7 +26,7 @@ class ModflowModel(object):
         """
         self.model_data = model_data
         self.name = model_data.name
-        if data_folder is None:
+        if not data_folder:
             # the addition of os.path.sep is for legacy purposes
             self.data_folder = os.path.join(os.getcwd(), 'model_' + self.name) + os.path.sep
         else:
@@ -255,6 +255,7 @@ class ModflowModel(object):
     # End createSFRpackage()
 
     def createGagepackage(self, gages, files=None):
+        """TODO: Docs:"""
         # gages should contain seg, rch, unit, outtype [set = 9]
         if files is None:
             files = ['Gage.gage']
@@ -268,16 +269,18 @@ class ModflowModel(object):
     # End createGagepackage()
 
     def createDRNpackage(self, lrcsc=None):
+        """TODO: Docs:"""
         self.drn = flopy.modflow.ModflowDrn(self.mf, ipakcb=53, stress_period_data=lrcsc)
         if self.verbose and self.check:
             self.drn.check()
     # End createDRNpackage()
 
     def createGHBpackage(self, lrcsc=None):
+        """TODO: Docs:"""
         self.ghb = flopy.modflow.ModflowGhb(self.mf, ipakcb=53, stress_period_data=lrcsc)
         if self.verbose and self.check:
             self.ghb.check()
-    # end createGHBpackage
+    # end createGHBpackage()
 
     def createRCHpackage(self, rchrate=None):
         """
@@ -286,7 +289,7 @@ class ModflowModel(object):
         self.rch = flopy.modflow.ModflowRch(self.mf, ipakcb=53, rech=rchrate, nrchop=3)
         if self.verbose and self.check:
             self.rch.check()
-    # end createRCHpackage
+    # End createRCHpackage()
 
     def createWELpackage(self, lrcq=None):
         """
@@ -302,7 +305,7 @@ class ModflowModel(object):
         self.wel = flopy.modflow.ModflowWel(self.mf, ipakcb=53, stress_period_data=lrcq)
         if self.verbose and self.check:
             self.wel.check()
-    # end createWElpackage
+    # End createWElpackage()
 
     def createOCpackage(self):
         """
@@ -334,16 +337,19 @@ class ModflowModel(object):
     # End createLMTpackage()
 
     def finaliseModel(self):
+        """TODO: Docs:"""
         # Write the MODFLOW model input files
         warnings.warn("Deprecated method called. Use `finalize_model()` instead", DeprecationWarning)
         self.finalize_model()
     # end finaliseModel
 
     def finalize_model(self):
+        """TODO: Docs:"""
         self.mf.write_input()
     # End finalize_model()
 
     def add_bc_to_target(self, bc_array, target):
+        """TODO: Docs:"""
         for key in bc_array:
             try:
                 target[key] += bc_array[key]
@@ -423,25 +429,26 @@ class ModflowModel(object):
     # End buildMODFLOW()
 
     def checkMODFLOW(self):
+        """TODO: Docs:"""
         self.mf.check()
     # End checkMODFLOW
 
     def runMODFLOW(self, silent=True):
         '''
-        Function to run the modflow model with the optional argument for
-        suppressing any output to screen.
+        Run the MODFLOW model.
+        Calls the `checkConvergence` method to capture model run failures that are
+        not picked up by flopy.
 
-        Call to checkConvergence is to capture model run failures that are not
-        picked up in the flopy run_model function.
+        :param silent: bool, optional argument for suppressing any output to screen.
+
+        :returns: bool, successful run with convergence.
         '''
         success, buff = self.mf.run_model(silent=silent)
         return self.checkConvergence(fail=not success)
     # End runMODFLOW()
 
     def checkConvergence(self, path=None, name=None, fail=False):
-        """
-        TODO: Docs
-        """
+        """TODO: Docs"""
         converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP",  # Clear statement of model fail in list file
                                  " PERCENT DISCREPANCY =         200.00",  # Convergence but extreme discrepancy in results
                                  " NaN "  # Something big went wrong but somehow convergence was reached?
@@ -558,7 +565,7 @@ class ModflowModel(object):
     # End getFinalHeads()
 
     def getRivFlux(self, name):
-        """TODO Docs"""
+        """TODO: Docs"""
         cbbobj = self.importCbb()
         riv_flux = cbbobj.get_data(text='RIVER LEAKAGE', full3D=True)
 
@@ -664,19 +671,31 @@ class ModflowModel(object):
         return arr_zoned
     # End loop_over_zone()
 
-    def ConcsByZone(self, concs):
-        """TODO Docs"""
+    def concs_by_zone(self, concs):
+        """TODO: Docs"""
         return self.loop_over_zone(concs)
+
+    def ConcsByZone(self, concs):
+        warnings.warn("Use of deprecated method `ConcsByZone`, use `concs_by_zone` instead",
+                      DeprecationWarning)
+        return self.concs_by_zone(concs)
     # End ConcsByZone()
 
-    def HeadsByZone(self, heads):
-        """TODO Docs"""
+    def heads_by_zone(self, heads):
+        """TODO: Docs"""
         return self.loop_over_zone(heads)
+
+    def HeadsByZone(self, heads):
+        warnings.warn("Use of deprecated method `HeadsByZone`, use `heads_by_zone` instead",
+                      DeprecationWarning)
+        return self.heads_by_zone(heads)
     # End HeadsByZone()
 
     def writeObservations(self):
         """
         Write out observation data.
+
+        :returns: None
         """
         # Set model output arrays to None to initialise
         head = None
