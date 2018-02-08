@@ -525,10 +525,10 @@ class ModflowModel(object):
         """
         Get latest head level.
 
-        :param headobj:
+        :param headobj: flopy head object,
         """
         if not headobj:
-            headobj = self.importHeads()
+            headobj = self.import_heads()
         times = headobj.get_times()
         return headobj.get_data(totim=times[-1])
     # End get_heads()
@@ -627,17 +627,20 @@ class ModflowModel(object):
         return riv_exchange
     # End getRivFluxNodes()
 
-    def getAverageDepthToGW(self, mask=None):
+    def get_average_depth_to_GW(self, mask=None):
         """TODO Docs"""
-        headobj = self.importHeads()
-        times = headobj.get_times()
-        head = headobj.get_data(totim=times[-1])
-
-        if mask is not None:
+        head = self.get_heads()
+        if mask:
             return np.mean(self.top[mask] - head[0][mask])
         else:
             return np.mean(self.top - head[0])
         # End if
+    # End get_average_depth_to_GW()
+
+    def getAverageDepthToGW(self, mask=None):
+        warnings.warn("Use of deprecated method `getAverageDepthToGW`, use `get_average_depth_to_GW` instead",
+                      DeprecationWarning)
+        return self.get_average_depth_to_GW(mask)
     # End getAverageDepthToGW()
 
     def loop_over_zone(self, array):
@@ -687,7 +690,7 @@ class ModflowModel(object):
             if obs_type == 'head':
                 # Check if model outputs have already been imported and if not import
                 if not head:
-                    headobj = self.importHeads()
+                    headobj = self.import_heads()
                     head = headobj.get_alldata()
             elif obs_type in stream_options:
                 try:
@@ -698,6 +701,8 @@ class ModflowModel(object):
             else:
                 continue
             # End if
+
+            self.get_active_obs_group()
 
             obs_df = obs_group[obs_set]['time_series']
             obs_df = obs_df[obs_df['active'] == True]
@@ -761,7 +766,7 @@ class ModflowModel(object):
         if obs_type == 'head':
             # Check if model outputs have already been imported and if not import
             if not head:
-                headobj = self.importHeads()
+                headobj = self.import_heads()
                 head = headobj.get_alldata()
         elif obs_type == 'stage':
             pass
@@ -773,6 +778,27 @@ class ModflowModel(object):
         dtw = self.model_data.model_mesh3D[0][0][sim_obs[1]][sim_obs[2]] - sim_head
         return sim_head, dtw
     # End getObservation()
+
+    def get_active_obs_group(self, obs_group, nper=None):
+        """
+        Get active observations within a group.
+
+        :param obs_group: Pandas DataFrame, holding observation time series
+        :param nper: int, optional period number
+        """
+        assert ('time_series' in obs_group.columns) and \
+               ('active' in obs_group.columns) and \
+               ('interval' in obs_group.columns), \
+            "Given DataFrame is missing required columns"
+        obs_df = obs_group['time_series']
+        obs_df = obs_df[obs_df['active'] == True]
+
+        if nper:
+            obs_df = obs_df[obs_df['interval'] == nper]
+        # End if
+
+        return obs_df
+    # End get_active_obs_group()
 
     def compare_observed_head(self, obs_set, simulated, nper=0):
         """
@@ -792,9 +818,7 @@ class ModflowModel(object):
         self.comp_zone = []
         self.obs_loc_val_zone = []
 
-        obs_df = obs_group['time_series']
-        obs_df = obs_df[obs_df['active'] == True]
-        obs_df = obs_df[obs_df['interval'] == nper]
+        obs_df = self.get_active_obs_group(obs_group, nper)
         sim_map_dict = obs_group['mapped_observations']
         for observation in obs_df['name']:
             idx = obs_df[obs_df['name'] == observation].index.tolist()[0]
@@ -815,13 +839,6 @@ class ModflowModel(object):
     # End compare_observed_head()
 
     def CompareObservedHead(self, obs_set, simulated, nper=0):
-        """
-        TODO Docs
-
-        :param obs_set: dict, observation set
-        :param simulated: dict, simulated result set
-        :param nper: int, number of periods
-        """
         warnings.warn("Use of deprecated method `CompareObservedHead`, use `compare_observed_head` instead",
                       DeprecationWarning)
         return self.compare_observed_head(obs_set, simulated, nper)
@@ -838,9 +855,8 @@ class ModflowModel(object):
         :returns: list[list], as set in `obs_sim_zone`
         """
         self.obs_sim_zone = []
-        obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
-        obs_df = obs_df[obs_df['active'] == True]
-        obs_df = obs_df[obs_df['interval'] == nper]
+        obs_group = self.model_data.observations.obs_group[obs_set]
+        obs_df = self.get_active_obs_group(obs_group, nper)
         sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
 
         for observation in obs_df['name']:
@@ -869,20 +885,43 @@ class ModflowModel(object):
         return self.compare_observed(obs_set, simulated, nper)
     # End ComparedObserved()
 
-    def import_heads(self, path=None, name=None):
-        """TODO Docs"""
+    def import_heads_from_file(self, path=None, name=None):
+        """
+        Import head data from specified file.
+        Temporary method to handle deprecated behaviour.
+
+        :param path: str, path to file
+        :param name: str, filename to load data from
+
+        :returns: flopy headobj data
+        """
         if path:
             headobj = bf.HeadFile(os.path.join(path, name + '.hds'))
-            return headobj
         else:
+            headobj = self.import_heads()
+        return headobj
+    # End import_heads_from_file()
+
+    def import_heads(self):
+        """
+        Import head data associated with this model.
+
+        :returns: flopy headobj data
+        """
+        if not hasattr(self, 'headobj'):
             self.headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
-            return self.headobj
         # End if
+
+        return self.headobj
     # End import_heads()
 
     def importHeads(self, path=None, name=None):
-        warnings.warn("Deprecated method called. Use `finalize_model()` instead", DeprecationWarning)
-        return self.import_heads(path, name)
+        if not path:
+            warnings.warn("Deprecated method called. Use `import_heads()` instead", DeprecationWarning)
+            return self.import_heads()
+        else:
+            warnings.warn("Deprecated method called. Use `import_heads_from_file()` instead", DeprecationWarning)
+            return self.import_heads_from_file(path, name)
     # End importHeads()
 
     def importSfrOut(self, path=None, name=None, ext='.sfr.out'):
@@ -907,9 +946,7 @@ class ModflowModel(object):
     # End importCbb()
 
     def waterBalance(self, iter_num, plot=True, save=False, nper=0):
-        """
-        TODO: Docs
-        """
+        """TODO: Docs"""
         cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
 
         water_balance_components = cbbobj.textlist
@@ -945,13 +982,13 @@ class ModflowModel(object):
 
         wat_bal_df = pd.DataFrame(water_bal_summed_values, water_bal_summed_titles)
         wat_bal_df.columns = ['Flux m^3/d']
-        wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.]
+        wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.0]
 
         if plot:
             self.water_balance_plot(iter_num, wat_bal_df, save)
         else:
             return wat_bal_df
-        # end if
+        # End if
     # End waterBalance()
 
     def waterBalanceTS(self, plot=True):
