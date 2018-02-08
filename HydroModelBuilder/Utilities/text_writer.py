@@ -4,14 +4,15 @@ Text Writer.
 
 
 def write_line(fp, line, delimit=' '):
-    """
-    Write given list of strings to file on a single line with an appended new line character.
+    """Write given list of strings to file on a single line with an appended new line character.
 
     :param fp: File Object
     :param line: list or str, text to write out.
                  If type is list, converts all elements to string and joins them using the specified delimiter.
-    :param delimit: str, text to use to separate out line entry. Defaults to single space.
+    :param delimit: str, text to use to separate out line entry. (Default value = ' ')
+
     """
+
     if isinstance(line, list):
         line = [str(el) for el in line]
         line = delimit.join(line)
@@ -25,13 +26,13 @@ def write_line(fp, line, delimit=' '):
 
 
 def write_multiline(fp, lines, delimit=' '):
-    """
-    Write given list of line strings to a file.
+    """Write given list of line strings to a file.
 
     :param fp: File Object
     :param lines: list[list], with each list element representing a single line
-    :param delimit: str, text to use to separate line entry. Defaults to single space.
+    :param delimit: str, text to use to separate line entry. (Default value = ' ')
     """
+
     all_lines = []
     for line in lines:
         line = [str(el) for el in line]

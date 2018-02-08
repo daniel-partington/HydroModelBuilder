@@ -14,6 +14,7 @@ from HydroModelBuilder.Utilities.text_writer import write_line, write_multiline
 
 
 class PESTInterface(object):
+    """TODO: Docs"""
 
     def __init__(self, name=None, directory=None, csv_copy=False,
                  excel_copy=False, params=None, obs=None, obs_grp=None,
@@ -37,8 +38,7 @@ class PESTInterface(object):
         self.PEST_data['PESTobs'] = self.PESTobs(obs_grp=self.obs_grp)
 
     def PESTcon(self):
-        """
-        Control data for the *.pst file of pest, which takes the form:
+        """Control data for the *.pst file of pest, which takes the form:
 
         * control data
         RSTFLE PESTMODE
@@ -122,8 +122,8 @@ class PESTInterface(object):
 
         *** end file ***
 
-        NOTE: Run pestchek to insure that all control data has been entered appropriately
-        """
+        NOTE: Run pestchek to insure that all control data has been entered appropriately"""
+
         control_data = {'RSTFLE': 'restart',
                         'PESTMODE': 'estimation',
                         'PRECIS': 'single',
@@ -188,8 +188,7 @@ class PESTInterface(object):
         self.PEST_data['PESTcon']['predictive_analysis'] = predictive_analysis
 
     def PESTpar(self, params=None):
-        """
-        Generate the PEST parameter file.
+        """Generate the PEST parameter file.
 
         For column 'PARNAME' the maximum length is 12 characters
         PARTRANS options = ['log', 'fixed', 'tied']
@@ -197,10 +196,11 @@ class PESTInterface(object):
 
         Outputs a copy of the generated DataFrame as a csv if `csv_copy` property is set to `True`.
 
-        :param params: dict, of PEST parameters
+        :param params: dict, of PEST parameters. (Default value = None)
 
         :returns: dict, PEST parameters
         """
+
         header = ['PARNAME', 'PARTRANS', 'PARCHGLIM', 'PARVAL1', 'PARLBND', 'PARUBND',
                   'PARGP', 'SCALE', 'OFFSET', 'PARTIED', 'models', 'unit', 'comment']
 
@@ -228,13 +228,12 @@ class PESTInterface(object):
     # End PESTpar()
 
     def genPESTpgp(self):
-        """
-        Generate PEST parameter groups.
+        """Generate PEST parameter groups.
 
         Outputs a copy of the generated DataFrame as a csv if `csv_copy` property is set to `True`.
 
-        :returns: None, `PESTgrp` key is updated in the `PEST_data` property
-        """
+        :returns: None, `PESTgrp` key is updated in the `PEST_data` property"""
+
         header = ['PARGPNME', 'INCTYP', 'DERINC', 'DERINCLB', 'FORCEN', 'DERINCMUL', 'DERMTHD']
         INCTYPdefault = 'relative'
         DERINCdefault = 0.01
@@ -263,8 +262,7 @@ class PESTInterface(object):
     # End genPESTpgp()
 
     def PESTobs(self, obs_grp):
-        """
-        Collate PEST observations into a DataFrame.
+        """Collate PEST observations into a DataFrame.
 
         Outputs a copy of the generated DataFrame as a csv if `csv_copy` property is set to `True`.
 
@@ -272,6 +270,7 @@ class PESTInterface(object):
 
         :returns: DataFrame, observation group time series
         """
+
         for index, key in enumerate(obs_grp.keys()):
             obs_grp_ts = obs_grp[key]['time_series'].copy()
             # Filter out null observations that were out of date range or
@@ -298,6 +297,11 @@ class PESTInterface(object):
     # End PESTobs()
 
     def _createCSVcopyFromDataFrame(self, df, name):
+        """
+        :param df:
+        :param name:
+        """
+
         fname = os.path.join(self.directory, name + '.csv')
         if os.path.exists(fname):
             print(fname + ' file exists already')
@@ -307,6 +311,8 @@ class PESTInterface(object):
     # End _createCSVcopyFromDataFrame()
 
     def writePESTdict2csv(self):
+        """TODO: Docs"""
+
         with open(os.path.join(self.directory, self.name + '.csv'), 'w') as f:
             w = csv.DictWriter(f, self.PEST_data.keys())
             w.writeheader()
@@ -315,15 +321,15 @@ class PESTInterface(object):
     # End writePESTdict2csv()
 
     def genParameters(self, method='dataframe'):
-        """
-        Generate *name*_parameters.txt containing all models parameters.
+        """Generate *name*_parameters.txt containing all models parameters.
 
         Parameters names and values are taken from 'PARNAME' and 'PARVAL1' in the PESTpar function.
 
         If method is 'csv', read in PEST parameters and observations from `PESTpar.csv` and `PESTobs.csv`
 
-        :param method: str, one of 'csv', 'excel', or 'dataframe'
+        :param method: str, one of 'csv', 'excel', or 'dataframe'. (Default value = 'dataframe')
         """
+
         # Ensure valid method argument is used
         assert method.lower() in ['csv', 'excel', 'dataframe'], "Method '{}' not recognized".format(method)
 
@@ -338,8 +344,7 @@ class PESTInterface(object):
                                          columns=['PARNAME', 'PARVAL1'], index=False)
 
     def genPestfiles(self, models_ID=None):
-        """
-        Generate a PEST folder and PEST files for a given chain of models_ID.
+        """Generate a PEST folder and PEST files for a given chain of models_ID.
 
         All necessary PEST inputs are taken from PEST dict containing dicts or dataframes:
         * control data are read from PESTcon
@@ -348,8 +353,9 @@ class PESTInterface(object):
         * observations are read from PESTobs
         * observation groups are taken as the unique entries of column OBGNME in PESTobs
 
-        :param models_ID: list, of model IDs. Defaults to ['default'].
+        :param models_ID: list, of model IDs. Defaults to ['default']. (Default value = None)
         """
+
         print('# Generating PEST files, %s #\n' % (datetime.datetime.now()))
         models_ID = ['default'] if not models_ID else models_ID
         PEST_name = 'pest'
@@ -627,11 +633,13 @@ class PESTInterface(object):
         print('\nPEST files generation completed!\n')
 
     def updateparameterswithpestbestpar(self, pestparfile):
-        """
-        Generate parameters.txt containing all models parameters.
+        """Generate parameters.txt containing all models parameters.
 
         Parameters names and values are taken from 'PARNAME' and 'PARVAL1' in PESTpar
+
+        :param pestparfile:
         """
+
         raise NotImplementedError("`updateparameterswithpestbestpar` method is incomplete and should not be used.")
         print('Generating parameters.txt\n')
 

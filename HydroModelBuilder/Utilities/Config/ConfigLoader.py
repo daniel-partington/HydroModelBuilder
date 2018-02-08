@@ -5,19 +5,16 @@ Configuration Loader.
 import os
 import subprocess
 import sys
+import warnings
 
 import simplejson as json
-import warnings
 from jsmin import jsmin
 
 
-
 class ConfigLoader(object):
-    """
-    Configuration Loader.
+    """Configuration Loader.
 
-    Loads model configuration setup from json files
-    """
+    Loads model configuration setup from json files"""
 
     def __init__(self, config_file=None):
         """Configuration Loader Constructor."""
@@ -102,20 +99,21 @@ class ConfigLoader(object):
     # End __init__()
 
     def set_environment(self, project_name, user_env_name=None):
-        """
-        Set intended project environment. Name must match one of those defined in the config file.
+        """Set intended project environment. Name must match one of those defined in the config file.
 
         In addition to changing configurations, this also changes directories to the project folder
         as given in the config file.
 
+        :param project_name:
         :param user_env_name: str, name of the user environment.
                               If not given (i.e. set to None), uses the logged in username.
-                              Defaults to None.
+                              (Default value = None)
         """
+
         if user_env_name is None:
             user_env_name = subprocess.check_output("whoami").strip()
         # End if
-        
+
         try:
             self.model_config[project_name]["environment"][user_env_name]
         except KeyError:
@@ -140,10 +138,9 @@ class ConfigLoader(object):
     # End set_environment()
 
     def get_setting(self, params):
-        """
-        Retrieve value from settings.
+        """Retrieve value from settings.
 
-        :param params: List, list of parameters to drill down
+        :param params: list, of parameters to drill down
                        e.g. ["models", "Climate", "path"] will get value(s) for
                             CONFIG.settings["models"]["Climate"]["path"]
 
@@ -157,6 +154,7 @@ class ConfigLoader(object):
     # End get_setting()
 
 # End ConfigLoader()
+
 
 # Create global variable for use
 CONFIG = ConfigLoader()

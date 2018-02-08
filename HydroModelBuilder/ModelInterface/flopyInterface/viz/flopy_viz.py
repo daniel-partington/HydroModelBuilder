@@ -1,17 +1,24 @@
 import os
 
+import flopy
+import flopy.utils.binaryfile as bf
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import six
-from matplotlib import colors
-
-import flopy
-import flopy.utils.binaryfile as bf
 from flopy.utils.sfroutputfile import SfrFile
+from matplotlib import colors
 
 
 def plotRiverFromRiverSegData(self, ax, names=None, **kwargs):
+    """
+    :param ax: param names:  (Default value = None)
+
+    :param names:  (Default value = None)
+
+    :param **kwargs:
+    """
+
     river_mapping = self.model_data.river_mapping
     if names is not None:
         keys = [i for i in names if i in river_mapping.keys()]
@@ -36,13 +43,15 @@ def plotRiverFromRiverSegData(self, ax, names=None, **kwargs):
 
 
 def water_balance_plot(self, iter_num, wat_bal_df, save):
-    """
-    Plot water balance data.
+    """Plot water balance data.
 
     :param iter_num: int, iteration number to use in filename
-    :param wat_bal_df: Pandas DataFrame, water balance data
+
+    :param wat_bal_df: DataFrame, water balance data
+
     :param save: bool, save plot or not
     """
+
     # Setup params to get water balance aspect ratio looking nice
     # aspect = float(12.5715/((wat_bal_df.max()[0]-wat_bal_df.min()[0])/float(wat_bal_df.shape[1])))
 
@@ -63,6 +72,8 @@ def water_balance_plot(self, iter_num, wat_bal_df, save):
 
 
 def SFRoutput_plot(self):
+    """TODO: Docs"""
+
     raise NotImplementedError("Tried to call unfinished method!")
     sfrout = SfrFile(os.path.join(self.data_folder, self.name + ".sfr.out"))
     sfr_df = sfrout.get_dataframe()
@@ -71,6 +82,7 @@ def SFRoutput_plot(self):
 
 
 def compareAllObs(self):
+    """TODO: Docs"""
 
     headobj = self.importHeads()
     times = headobj.get_times()
@@ -167,6 +179,12 @@ def compareAllObs(self):
 
         # for PBIAS
         def pbias(simulated, observed):
+            """
+            :param simulated: param observed:
+
+            :param observed:
+            """
+
             return np.sum(simulated - observed) * 100 / np.sum(observed)
 
         ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.3 * (ymax - ymin),
@@ -174,6 +192,12 @@ def compareAllObs(self):
 
         # For rmse
         def rmse(simulated, observed):
+            """
+            :param simulated: param observed:
+
+            :param observed:
+            """
+
             return np.sqrt(((simulated - observed) ** 2).mean())
 
         ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.2 * (ymax - ymin),
@@ -234,6 +258,9 @@ def compareAllObs(self):
 
 
 def compareAllObs_metrics(self, to_file=False):
+    """
+    :param to_file: Default value = False)
+    """
 
     headobj = self.importHeads()
     times = headobj.get_times()
@@ -269,12 +296,24 @@ def compareAllObs_metrics(self, to_file=False):
 
         # for PBIAS
         def pbias(simulated, observed):
+            """
+            :param simulated: param observed:
+
+            :param observed:
+            """
+
             return np.sum(simulated - observed) * 100 / np.sum(observed)
 
         PBIAS = pbias(scattery, scatterx)
 
         # For rmse
         def rmse(simulated, observed):
+            """
+            :param simulated: param observed:
+
+            :param observed:
+            """
+
             return np.sqrt(((simulated - observed) ** 2).mean())
 
         RMSE = rmse(scattery, scatterx)
@@ -289,6 +328,9 @@ def compareAllObs_metrics(self, to_file=False):
 
 
 def viewHeadsByZone(self, nper='all'):
+    """
+    :param nper: Default value = 'all')
+    """
 
     # Create the headfile object
     headobj = self.importHeads()
@@ -397,6 +439,11 @@ def viewHeadsByZone(self, nper='all'):
 
 
 def viewHeadsByZone2(self, iter_num, nper='all'):
+    """
+    :param iter_num: param nper:  (Default value = 'all')
+
+    :param nper:  (Default value = 'all')
+    """
 
     # Create the headfile object
     headobj = self.importHeads()
@@ -594,12 +641,24 @@ def viewHeadsByZone2(self, iter_num, nper='all'):
 
         # for PBIAS
         def pbias(simulated, observed):
+            """
+            :param simulated: param observed:
+
+            :param observed:
+            """
+
             return np.sum(simulated - observed) * 100 / np.sum(observed)
 
         ax.text(150, 40, 'PBIAS = %4.2f%%' % (pbias(scattery, scatterx)))
 
         # For rmse
         def rmse(simulated, observed):
+            """
+            :param simulated: param observed:
+
+            :param observed:
+            """
+
             return np.sqrt(((simulated - observed) ** 2).mean())
 
         ax.text(150, 20, 'RMSE = %4.2f' % (rmse(scattery, scatterx)))
@@ -612,6 +671,7 @@ def viewHeadsByZone2(self, iter_num, nper='all'):
 
 
 def viewHeads(self):
+    """TODO: Docs"""
 
     # Create the headfile object
     headobj = self.importHeads()
@@ -725,7 +785,11 @@ def viewHeads(self):
 
 
 def viewHeadLayer(self, layer=0, figsize=(20, 10)):
+    """
+    :param layer: (Default value = 0)
 
+    :param figsize: (Default value = (20, 10))
+    """
     # Create the headfile object
     headobj = self.importHeads()
     cbbobj = self.importCbb()
@@ -774,6 +838,8 @@ def viewHeadLayer(self, layer=0, figsize=(20, 10)):
 
 
 def viewHeads2(self):
+    """TODO: Docs"""
+
     # Create the headfile object
     headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
     cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
@@ -946,6 +1012,8 @@ def viewHeads2(self):
 
 
 def viewGHB(self):
+    """TODO: Docs"""
+
     # Create the headfile object
     headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
     cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
