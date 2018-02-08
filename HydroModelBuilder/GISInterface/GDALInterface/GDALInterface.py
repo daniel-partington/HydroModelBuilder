@@ -23,35 +23,43 @@ from HydroModelBuilder.GISInterface.GISInterface import GISInterface
 
 
 class GDALInterface(GISInterface):
-    """
-    The GDALInterface works within the GISInterface class to apply a range of
+    """The GDALInterface works within the GISInterface class to apply a range of
     common spatial tasks using the open source GDAL library.
-
 
     Things to fix ...
     inconsistent use of 'mesh' and 'grid', need consistent terminology. Will change
-    all to 'mesh' as it is more generic.
-
-    """
+    all to 'mesh' as it is more generic."""
 
     def __init__(self):
 
         pass
 
     def _load_shapefile(self, shapefile_name, shapefile_path=None):
+        """
+
+        :param shapefile_name:
+        :param shapefile_path:  (Default value = None)
+        """
         pass
+    # End _load_shapefile()
 
     def _test_osgeo_load(self, obj, file_name):
+        """
+
+        :param obj:
+        :param file_name:
+        """
+
         if obj is None:
             sys.exit('Could not open {}'.format(file_name))
 
     def set_model_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None):
-        """
-        Function to set the model boundary using a shapefile, assuming polygon type:
+        """Function to set the model boundary using a shapefile, assuming polygon type:
         1. For structured mesh this will create a rectangle that creates an envelope on the polygon
 
+        :param shapefile_name:
+        :param shapefile_path:  (Default value = None)
         """
-
         # Check first that file hasn't been previously processed
         base_name = os.path.join(self.out_data_folder, shapefile_name[:-4])
         new_file = base_name + "_model.shp"
@@ -115,7 +123,11 @@ class GDALInterface(GISInterface):
 
     def set_data_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None,
                                                  buffer_dist=None):
-
+        """
+        :param shapefile_name:
+        :param shapefile_path:  (Default value = None)
+        :param buffer_dist: Default value = None)
+        """
         if shapefile_path is None:
             shapefile_name = shapefile_name
         else:
@@ -137,31 +149,36 @@ class GDALInterface(GISInterface):
         return self.data_boundary, self.boundary_data_file
 
     def set_model_boundary_from_corners(self, xmin, xmax, ymin, ymax):
-        """
-        Function to set model boundary based on x and y bounds: xmin, xmax, ymin, ymax
+        """Function to set model boundary based on x and y bounds: xmin, xmax, ymin, ymax::
 
                     ._________.(xmax, ymax)
                     |         |
                     |         |
                     |         |
                     ._________.
-         (xmin,ymin)
-        """
+                (xmin,ymin)
 
+        :param xmin:
+
+        :param xmax:
+
+        :param ymin:
+
+        :param ymax:
+        """
         self.model_boundary[0] = xmin
         self.model_boundary[1] = xmax
         self.model_boundary[2] = ymin
         self.model_boundary[3] = ymax
+    # End set_model_boundary_from_corners
 
     def define_structured_mesh(self, gridHeight, gridWidth):
-        """
-        Function to define a structured mesh
+        """Function to define a structured mesh
 
         :param gridHeight: Uniform grid height to be used in defining structured mesh
-        :param gridWidth: Uniform grid width to be used in defining structured mesh
-
-
+        :param gridWidth: Uniform grid width to
         """
+
         new_file = os.path.join(self.out_data_folder,
                                 'structured_model_grid_{}m'.format(int(gridHeight)),
                                 'structured_model_grid_{}m.shp'.format(int(gridHeight)))
@@ -185,11 +202,10 @@ class GDALInterface(GISInterface):
         return self.model_mesh
 
     def read_rasters(self, files, path=None):
-        """
-        Reads in raster files, e.g. for hydrostratigraphy.
+        """Reads in raster files, e.g. for hydrostratigraphy.
 
         :param files: List of file names for the rasters that are to be read in.
-        :param path: Path of the files, which is optional, default path is working directory
+        :param path: Path of the files. (Default value = None)
         """
         rasters = {}
 
@@ -236,11 +252,14 @@ class GDALInterface(GISInterface):
             ds = None  # close raster file
 
         return rasters
+    # End read_rasters())
 
     def get_raster_info(self, fname):
-        '''
-        Function to open raster and create dictionary with raster info
-        '''
+        """Function to open raster and create dictionary with raster info
+
+        :param fname:
+        """
+
         gdal.UseExceptions()
         raster = {}
         raster_data = gdal.Open(fname, 0)
@@ -256,6 +275,14 @@ class GDALInterface(GISInterface):
 
     def raster_reproject_by_grid(self, infile, outfile, epsg_to=None,
                                  bounds=None, resample_method=None):
+        """
+
+        :param infile:
+        :param outfile:
+        :param epsg_to: (Default value = None)
+        :param bounds: (Default value = None)
+        :param resample_method: (Default value = None)
+        """
 
         if epsg_to == None:
             epsg_to = self.pcs_EPSG
@@ -282,8 +309,7 @@ class GDALInterface(GISInterface):
         # end try
 
     def map_rasters_to_grid(self, raster_files, raster_path, raster_driver=None):
-        """
-        Map the rasters in raster_collection to the model grid
+        """Map the rasters in raster_collection to the model grid
 
         If the model grid is a structured mesh, then the reproject
         raster can be used to do this mapping
@@ -297,11 +323,16 @@ class GDALInterface(GISInterface):
         gdal.GRA_Mode
         gdal.GRA_NearestNeighbour
 
+
+        :param raster_files:
+        :param raster_path:
+        :param raster_driver: (Default value = None)
+        :param raster_path:
         """
         if type(raster_files) != list:
             # Assume single file given as string:
-            raster_files = [raster_files]    
-        
+            raster_files = [raster_files]
+
         simplified_raster_array = {}
 
         if self._mesh_type == 'structured':
@@ -378,6 +409,12 @@ class GDALInterface(GISInterface):
             print 'Something went wrong ... mesh type is not recognised: %s' % self._mesh_type
 
     def get_raster_array(self, raster_fname, band=1):
+        """
+
+        :param raster_fname:
+        :param band:  (Default value = 1)
+        """
+
         ds = gdal.Open(raster_fname)
         raster_band = ds.GetRasterBand(band)
         array = raster_band.ReadAsArray()
@@ -385,6 +422,11 @@ class GDALInterface(GISInterface):
 
     def map_raster_to_regular_grid_return_array(self, raster_fname,
                                                 resample_method='near'):
+        """
+
+        :param raster_fname:
+        :param resample_method:  (Default value = 'near')
+        """
 
         if not os.path.exists(raster_fname):
             sys.exit("File {} does not exist".format(raster_fname))
@@ -416,27 +458,45 @@ class GDALInterface(GISInterface):
         return self.get_raster_array(new_raster_fname)
 
     def map_heads_to_mesh_by_layer(self):
-        """
-        Maps head observations to each layer
+        """Maps head observations to each layer
 
-        returns array of head values with same shape as the mesh
+        :returns: array of head values with same shape as the mesh
         """
         pass
+    # End map_heads_to_mesh_by_layer()
 
     def create_basement_bottom(self, hu_raster_path, surface_raster_file, basement_top_raster_file,
                                basement_bot_raster_file, output_path, raster_driver=None):
-        """
-        Utility to build a bottom basement array where it doesn't exist based on top of bedrock,
-        surface elevation and a thickness function
+        """Utility to build a bottom basement array where it doesn't exist based on top of bedrock,
+        surface elevation and a thickness function.
 
         writes a raster file for the bottom basement array
+
+        :param hu_raster_path:
+        :param surface_raster_file:
+
+        :param basement_top_raster_file:
+        :param basement_bot_raster_file:
+
+        :param output_path:
+        :param raster_driver:  (Default value = None)
         """
+
         basement.create_basement_bottom(hu_raster_path, surface_raster_file,
                                         basement_top_raster_file, basement_bot_raster_file,
                                         output_path, raster_driver=raster_driver)
 
     def build_3D_mesh_from_rasters(self, raster_files, raster_path, minimum_thickness,
                                    maximum_thickness):
+        """
+
+        :param raster_files:
+        :param raster_path:
+
+        :param minimum_thickness:
+        :param maximum_thickness:
+        """
+
         if self.name is None:
             self.name = 'Default'
         return map_raster2mesh.map_raster_array_to_mesh(raster_path, raster_files,
@@ -446,11 +506,12 @@ class GDALInterface(GISInterface):
                                                         maximum_thickness)
 
     def read_poly(self, filename, path="", poly_type='polyline', new_filename_only=False):
-        """
-        Read in shapefile data, e.g. for stream definition
+        """Read in shapefile data, e.g. for stream definition
 
         :param filename: filename for the polyline that is to be read in.
-        :param path: Path of the files, which is optional, default path is working directory
+        :param path: Path of the files. (Default value = "")
+        :param poly_type: (Default value = 'polyline')
+        :param new_filename_only: (Default value = False)
         """
 
         if poly_type == 'polyline':
@@ -502,6 +563,10 @@ class GDALInterface(GISInterface):
         # end if
 
     def smooth_poly(self, poly_file, smooth_factor=0.0001):
+        """
+        :param poly_file:
+        :param smooth_factor:  (Default value = 0.0001)
+        """
         # Smooth  poly shape using ogr
         poly_out = poly_file.split(os.path.sep)[-1]
         poly_out = poly_out.split('.')[0]
@@ -515,37 +580,46 @@ class GDALInterface(GISInterface):
             print(e)
 
     def map_polyline_to_grid(self, polyline_obj):
-        """
-        Map the polyline object to the grid
+        """Map the polyline object to the grid
 
         :param polyline_obj
-        :param model_grid
 
-        returns masked array highlighting cells where polylines intersects
-
+        :returns: masked array highlighting where polylines intersects.
         """
+
         length_and_centroids = map2grid.shp2grid(
             polyline_obj, self.model_mesh, shp_type='poly', data_folder=self.out_data_folder)
         return length_and_centroids
+    # End map_polyline_to_grid()
 
     def map_polygon_to_grid(self, polygon_obj, out_fname, pixel_size=None,
                             bounds=None, feature_name=None, field_type=ogr.OFTInteger):
+        """Map the polygon object to the grid
+
+        :param polygon_obj:
+        :param out_fname:
+        :param pixel_size: (Default value = None)
+        :param bounds: (Default value = None)
+        :param feature_name: (Default value = None)
+        :param field_type: (Default value = ogr.OFTInteger)
+
+        :returns: array and dict. Array contings integers corresponding to different features from polygons.
+                  The dict contains map of array integers
         """
-        Map the polygon object to the grid
 
-        :param polygon_obj
-        :param model_grid
-
-        returns array and dict. Array contings integers corresponding to
-        different features from polygons. The dict contains map of array integers
-        to feature name or id
-
-        """
         return polygon2raster.array_from_rasterize(polygon_obj, out_fname=out_fname,
                                                    pixel_size=pixel_size, bounds=bounds,
                                                    feature_name=feature_name, field_type=field_type)
 
     def polygon2points(self, polygon_obj, to_fname=None, density=10):
+        """
+
+        :param polygon_obj:
+        :param to_fname:  (Default value = None)
+        :param density: (Default value = 10)
+
+        :returns:
+        """
 
         polygon2points.poly2points(polygon_obj, to_fname=to_fname,
                                    density=density, working_directory=self.out_data_folder_grid)
@@ -553,23 +627,21 @@ class GDALInterface(GISInterface):
         points = self.getXYpairs(points_obj)
 
         return points
+    # End polygon2points()
 
     def read_points_data_from_csv(self, filename, path=None):
-        """
-        Read csv files containing points data, e.g. well locations, screening depths.
+        """Read csv files containing points data, e.g. well locations, screening depths.
 
         :param filename: filename for the point data that is to be read in.
-        :param path: Path of the files, which is optional, default path is working directory
-
-        returns ??
+        :param path: Path of the file. (Default value = None)
         """
+        pass
 
     def read_points_data(self, filename, path=None):
-        """
-        Read in point data from shapefile, e.g. observation bore locations, rainfall gauges
+        """Read in point data from shapefile, e.g. observation bore locations, rainfall gauges
 
         :param filename: filename for the point shapefile that is to be read in.
-        :param path: Path of the files, which is optional, default path is working directory
+        :param path: Path of the files. (Default value = None)
         """
         base = os.path.splitext(os.path.basename(filename))[0]
         new_f = base + "_clipped.shp"
@@ -604,57 +676,70 @@ class GDALInterface(GISInterface):
         return ds
 
     def map_points_to_grid(self, points_obj, feature_id=None):
+        """Map the points object to the grid
+
+        :param points_obj:
+        :param feature_id:  (Default value = None)
+
+        :returns: nmasked array highlighting where polylines intersects
         """
-        Map the points object to the grid
 
-        :param opints_obj
-        :param feature_id
-
-        returns masked array highlighting cells where polylines intersects
-
-        """
         ids_and_centroids = map2grid.shp2grid(points_obj, self.model_mesh, feature_id=feature_id,
                                               shp_type='points', data_folder=self.out_data_folder)
 
         return ids_and_centroids
 
     def map_points_to_3Dmesh(self, points_obj, model_mesh=None, feature_id=None):
-        """
-        To be implemented ... don't necessarily need to use GDAL but could be
-        based on the k-d tree as in the GWModelBuilder
+        """To be implemented ... don't necessarily need to use GDAL but could be
+        based on the k-d tree as in the GWModelBuilder.
+
+        :param points_obj:
+        :param model_mesh:  (Default value = None)
+        :param feature_id: (Default value = None)
         """
         pass
+    # End map_points_to_3Dmesh()
 
     def getXYpairs(self, points_obj, feature_id=1):
+        """
 
+        :param points_obj:
+        :param feature_id:  (Default value = 1)
+        """
         Layer = points_obj.GetLayer()
         Layer.ResetReading()
-        # points_list = []
         point_ids = {}
         for feat in Layer:
             geom = feat.GetGeometryRef()
             geom_str = geom.ExportToWkt()
-            # points_list += geom_str.split('(')[1].split(')')[0]
             coords = geom_str.split('(')[1].split(')')[0]
             coords = coords.split(' ')
             coords = (float(coords[0]), float(coords[1]))
             point_ids[str(feat.GetField(feature_id))] = coords
         Layer = None
         return point_ids
+    # End getXYpairs()
 
     def point_values_from_raster(self, points, raster_obj):
-        """
-        Get values from raster at given points defined by list or by points object
-        points must be a list made up of point lists or points shapefile object
+        """Get values from raster at given points defined by list or by points object
+        points must be a list made up of point lists or points shapefile object.
+
+        :param points:
+        :param raster_obj:
         """
 
         return point_values_from_raster.get_point_values_from_raster(points, raster_obj)
+    # End point_values_from_raster()
 
     def create_line_string_from_points(self, points, file_in, file_out,
                                        driver_name='ESRI Shapefile'):
-        '''
-        Function to convert set of points into a linestring and write to shapefile
-        '''
+        """Function to convert set of points into a linestring and write to shapefile
+
+        :param points:
+        :param file_in:
+        :param file_out:
+        :param driver_name:  (Default value = 'ESRI Shapefile')
+        """
         shp1 = ogr.Open(file_in)
         layer1 = shp1.GetLayer(0)
         srs = layer1.GetSpatialRef()
@@ -674,12 +759,14 @@ class GDALInterface(GISInterface):
         lineFeature.Destroy
         dstshp.Destroy
         dstshp = None
+    # End create_line_string_from_points()
 
     def polyline_explore(self, poly_file):
-        '''
-        Function to extract all points from a polyline
+        """Function to extract all points from a polyline
         and that returns a dict containing all points within each feature
-        '''
+
+        :param poly_file:
+        """
         if type(poly_file) == str:
             poly_ds = ogr.Open(poly_file)
         else:
@@ -698,17 +785,24 @@ class GDALInterface(GISInterface):
                 points_all += geom.GetPoints()
 
         return points_all, points_dict
+    # End polyline_explore()
 
     def _linestring2points(self, linestring):
+        """
+
+        :param linestring:
+        """
         linestring = linestring.split("LINESTRING (")[1].split(")")[0].split(',')
         linestring = [[float(x.split(" ")[0]), float(x.split(" ")[1])] for x in linestring]
-        print("called")
         return linestring
+    # End _linestring2points()
 
     def polyline_explore_2(self, poly_file):
-        '''
-        Function to extract points from multi-linestring
-        '''
+        """Extract points from multi-linestring
+
+        :param poly_file:
+        """
+
         poly_ds = ogr.Open(poly_file)
         poly_layer = poly_ds.GetLayer()
         points_all = []
@@ -718,9 +812,17 @@ class GDALInterface(GISInterface):
                 points_all += self._linestring2points(geo.ExportToWkt())
 
         return points_all
+    # End polyline_explore_2()
 
     def map_points_to_raster_layers(self, points, depths, rasters, points_layer):
+        """
 
+        :param points:
+        :param depths:
+
+        :param rasters:
+        :param points_layer:
+        """
         p_j = os.path.join
         for index, raster in enumerate(rasters):
 
@@ -744,17 +846,20 @@ class GDALInterface(GISInterface):
             bot = None
 
         return points_layer
+    # End map_points_to_raster_layers()
 
     def raster2polygon(self, raster):
-        '''
-        Function to get the first band of a raster and convert it into
-        a polygon
-        '''
+        """Function to get the first band of a raster and convert it into a polygon.
 
+        :param raster:
+        """
         return raster2polygon.raster2polygon(raster)
+    # End raster2polygon()
+# End GDALInterface()
 
 
 class StructuredMesh(object):
+    """TODO: Docs"""
 
     def __init__(self, xmin=None, xmax=None, ymin=None, ymax=None, gridHeight=None, gridWidth=None):
         self.xmin = xmin

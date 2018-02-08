@@ -4,6 +4,18 @@ from math import ceil
 
 
 def main(outputGridfn,xmin,xmax,ymin,ymax,gridHeight,gridWidth, spatialRef):
+    """
+
+    :param outputGridfn: param xmin:
+    :param xmax: param ymin:
+    :param ymax: param gridHeight:
+    :param gridWidth: param spatialRef:
+    :param xmin: 
+    :param ymin: 
+    :param gridHeight: 
+    :param spatialRef: 
+
+    """
 
     # convert sys.argv to float
     xmin = float(xmin)

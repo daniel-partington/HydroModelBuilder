@@ -8,11 +8,16 @@ from osgeo import ogr
 
 
 def create_fishnet(structured_mesh, spatialRef, copy_dest=None):
-    '''
-    Function to create a fishnet for the model grid for structured meshes
+    """Function to create a fishnet for the model grid for structured meshes
     Based off of the recipe on:
     https://pcjericks.github.io/py-gdalogr-cookbook/vector_layers.html#create-fishnet-grid
-    '''
+
+    :param structured_mesh:
+
+    :param spatialRef:
+
+    :param copy_dest: (Default value = None)
+    """
     xmin = structured_mesh.xmin
     xmax = structured_mesh.xmax
     ymin = structured_mesh.ymin
@@ -107,24 +112,15 @@ def create_fishnet(structured_mesh, spatialRef, copy_dest=None):
 
     # Change back to previous working directory
     os.chdir(cwd)
-
-    #mesh_layer = outDataSource.GetLayer()
-    # for feature in mesh_layer:
-    #    grid_cell = feature.GetGeometryRef()
-    #    centroid_txt = grid_cell.Centroid().ExportToWkt()
-    #    centroid_nums = centroid_txt.split('(')[1].split(')')[0]
-    #    centroid = centroid_nums.split(' ')
-    #    print centroid
-    #mesh_layer = None
-
     outDataSource
     outDataSourceCopy = ogr.GetDriverByName("Memory").CopyDataSource(
-            outDataSource, "")
+        outDataSource, "")
 
-    outDataSource = None #.Destroy()
+    outDataSource = None  # .Destroy()
 
-    #return outDataSource  # outputGridfn #ds
+    # return outDataSource  # outputGridfn #ds
     return outDataSourceCopy
+
 
 if __name__ == "__main__":
     # Main to allow standalone testing of this module
@@ -139,6 +135,7 @@ if __name__ == "__main__":
     print Proj_CS.ExportToWkt()
 
     class StructuredMesh(object):
+        """ """
 
         def __init__(self, xmin=None, xmax=None, ymin=None, ymax=None, gridHeight=None, gridWidth=None):
             self.xmin = xmin

@@ -1,10 +1,10 @@
+import flopy
 import matplotlib.pyplot as plt
 import numpy as np
 
-import flopy
-
 
 def compareAllObs(self):
+    """TODO: Docs"""
 
     concobj = self.importConcs()
     times = concobj.get_times()
@@ -73,12 +73,22 @@ def compareAllObs(self):
 
         # for PBIAS
         def pbias(simulated, observed):
+            """
+            :param simulated:
+            :param observed:
+            """
+
             return np.sum(simulated - observed) * 100 / np.sum(observed)
 
         ax.text(150, 40, 'PBIAS = %4.2f%%' % (pbias(scattery, scatterx)))
 
         # For rmse
         def rmse(simulated, observed):
+            """
+            :param simulated: param observed:
+            :param observed:
+            """
+
             return np.sqrt(((simulated - observed) ** 2).mean())
 
         ax.text(150, 20, 'RMSE = %4.2f' % (rmse(scattery, scatterx)))
@@ -135,6 +145,11 @@ def compareAllObs(self):
 
 
 def viewConcsByZone(self, nper='all', specimen=None):
+    """
+    :param nper: (Default value = 'all')
+
+    :param specimen: (Default value = None)
+    """
 
     # Create the headfile object
     concobj = self.importConcs()

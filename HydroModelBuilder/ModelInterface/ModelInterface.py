@@ -7,11 +7,9 @@ import pandas as pd
 
 
 class ModelInterface(object):
-    """
-    The ModelInterface is a class to link the GWModelBuilder with
+    """The ModelInterface is a class to link the GWModelBuilder with
     different modules for handling building and running of specific
-    groundater models, e.g. MODFLOW and HGS
-    """
+    groundater models, e.g. MODFLOW and HGS"""
 
     def __init__(self, model_type, types, data_format):
         """
@@ -27,12 +25,11 @@ class ModelInterface(object):
     # End __init__()
 
     def set_units(self, length='m', time='s', mass='kg'):
-        """
-        Sets the units of measurement used inside the model.
+        """Sets the units of measurement used inside the model.
 
-        :param length: str, length unit. Defaults to meters.
-        :param time: str, time unit. Defaults to seconds.
-        :param mass: str, length unit. Defaults to kg.
+        :param length: str, length unit. Defaults to meters. (Default value = 'm')
+        :param time: str, time unit. Defaults to seconds. (Default value = 's')
+        :param mass: str, length unit. (Default value = 'kg')
         """
         assert length in self.types.length, "Length unit not recognised, use one of {}".format(self.types.length)
         self.units['length'] = length
@@ -45,13 +42,13 @@ class ModelInterface(object):
     # End set_units()
 
     def check_for_existing(self, fn):
-        """
-        Determine if previously processed input files exist in the folder indicated by the `out_data_folder` property.
+        """Determine if previously processed input files exist in the folder indicated by the `out_data_folder` property.
 
         :param fn: str, filename to use including extension
 
         :returns: None, just prints out whether a processed file was found.
         """
+
         file_ext_split = os.path.splitext(fn)
         filename_suffixes = ['_model', '_grid']
         for suffix in filename_suffixes:
@@ -63,12 +60,12 @@ class ModelInterface(object):
     # End check_for_existing()
 
     def save_array(self, filename, array):
-        """
-        Save array data.
+        """Save array data.
 
         :param filename: str, name of file to save data to
         :param array: numpy array, data to save to file
         """
+
         if self.data_format in self.types.data_formats:
             # Extract and run associated function that saves data for this format
             func = self.types.data_formats[self.data_format]
@@ -79,11 +76,11 @@ class ModelInterface(object):
     # End save_array()
 
     def load_array(self, array_file):
-        """
-        Load array data from file.
+        """Load array data from file.
 
         :param array_file: str, name of file to load data from, including path and extension
         """
+
         if array_file.endswith('txt'):
             func = np.loadtxt
         elif array_file.endswith('npy') or array_file.endswith('npz'):
@@ -96,10 +93,20 @@ class ModelInterface(object):
     # End load_array()
 
     def save_dataframe(self, filename, df):
+        """
+        :param filename:
+
+        :param df:
+        """
+
         df.to_hdf(filename + '.h5', 'table')
     # End save_dataframe()
 
     def load_dataframe(self, filename):
+        """
+        :param filename:
+        """
+
         if filename.endswith('.h5'):
             return pd.read_hdf(filename, 'table')
         else:
@@ -108,12 +115,21 @@ class ModelInterface(object):
     # End load_dataframe()
 
     def save_obj(self, obj, filename):
+        """
+        :param obj:
+        :param filename:
+        """
+
         with open(filename + '.pkl', 'wb') as f:
             pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
         # End with
     # End save_obj()
 
     def load_obj(self, filename):
+        """
+        :param filename:
+        """
+
         if filename.endswith('.pkl'):
             with open(filename, 'rb') as f:
                 print "Loading: ", f, filename
@@ -126,6 +142,10 @@ class ModelInterface(object):
     # End load_obj()
 
     def flush(self, mode=None):
+        """
+        :param mode:  (Default value = None)
+        """
+
         if mode == 'data':
             folder = self.out_data_folder
         elif mode == 'model':
@@ -152,13 +172,21 @@ class ModelInterface(object):
     # End flush()
 
     def package_model(self, out_dir, name, attrs, target_attrs):
-        """
-        Option to save all important attributes of model class to allow quick
+        """Option to save all important attributes of model class to allow quick
         loading and manipulation of model without separate data and grid generation
         building scripts
 
         This will not include any GIS type objects
+
+        :param out_dir:
+
+        :param name:
+
+        :param attrs:
+
+        :param target_attrs:
         """
+
         packaged_model = {k: attrs[k] for k in attrs if k in target_attrs}
 
         # Hack to fix up model boundary which contains a gdal object as well:

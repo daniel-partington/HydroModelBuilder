@@ -1,41 +1,39 @@
 import numpy as np
-
-from osgeo import gdal, ogr    
-
+from osgeo import gdal, ogr
 
 RASTERIZE_COLOR_FIELD = "__color__"
 
+
 def test_raster(raster_obj):
-    """
-    Function to test if raster generated has all of the features 
+    """Function to test if raster generated has all of the features
     defined in the polygon from which it was generated.
+
+    :param raster_obj:
     """
     raster_array = raster_obj.ReadAsArray()
     return max([len(np.unique(raster_array[i])) - 1 for i in range(3)])
+# End test_raster()
 
-def rasterize(source_ds, out_fname='default.tif', pixel_size=None, bounds=None, feature_name=None, 
+
+def rasterize(source_ds, out_fname='default.tif', pixel_size=None, bounds=None, feature_name=None,
               field_type=ogr.OFTInteger):
-    """
-    Function to create a raster based on a polygon shapefile. If it is a multi-
+    """Function to create a raster based on a polygon shapefile. If it is a multi-
     polygon shapefile, then a feature name can be used to split the raster up.
-    
-    param
-    
-    """
 
+
+    :param source_ds:
+        :param out_fname:  (Default value = 'default.tif')
+    :param pixel_size: (Default value = None)
+    :param bounds: (Default value = None)
+    :param feature_name: (Default value = None)
+    :param field_type: (Default value = ogr.OFTInteger)
+    :param out_fname:  (Default value = 'default.tif')
+    """
     feature_dict = {}
-    
+
     if pixel_size == None:
         pixel_size = 25
-    
-    # Open the data source
-    #orig_data_source = ogr.Open("farm_v1_prj.shp")
-    # Make a copy of the layer's data source because we'll need to 
-    # modify its attributes table
-    
-    #source_ds = ogr.GetDriverByName("Memory").CopyDataSource(
-    #        orig_data_source, "")
-    
+
     source_layer = source_ds.GetLayer(0)
 
     source_srs = source_layer.GetSpatialRef()
@@ -43,7 +41,7 @@ def rasterize(source_ds, out_fname='default.tif', pixel_size=None, bounds=None, 
         x_min, x_max, y_min, y_max = source_layer.GetExtent()
     else:
         x_min, x_max, y_min, y_max = bounds
-        
+
     # Create a field in the source layer to hold the features colors
     field_def = ogr.FieldDefn(RASTERIZE_COLOR_FIELD, field_type)
     source_layer.CreateField(field_def)
@@ -62,12 +60,12 @@ def rasterize(source_ds, out_fname='default.tif', pixel_size=None, bounds=None, 
     y_res = int((y_max - y_min) / pixel_size)
 
     target_ds = gdal.GetDriverByName('GTiff').Create(out_fname + '.tif', x_res,
-            y_res, 3, gdal.GDT_Byte)
+                                                     y_res, 3, gdal.GDT_Byte)
     target_ds.SetGeoTransform((
-            x_min, pixel_size, 0,
-            y_max, 0, -pixel_size,
-        ))
-    
+        x_min, pixel_size, 0,
+        y_max, 0, -pixel_size,
+    ))
+
     if source_srs:
         # Make the target raster have the same projection as the source
         target_ds.SetProjection(source_srs.ExportToWkt())
@@ -76,28 +74,33 @@ def rasterize(source_ds, out_fname='default.tif', pixel_size=None, bounds=None, 
         target_ds.SetProjection('LOCAL_CS["arbitrary"]')
     # Rasterize
     err = gdal.RasterizeLayer(target_ds, (3, 2, 1), source_layer,
-            burn_values=(0, 0, 0),
-            options=["ATTRIBUTE=%s" % RASTERIZE_COLOR_FIELD, "ALL_TOUCHED=FALSE"])
+                              burn_values=(0, 0, 0),
+                              options=["ATTRIBUTE=%s" % RASTERIZE_COLOR_FIELD, "ALL_TOUCHED=FALSE"])
     if err != 0:
         raise Exception("error rasterizing layer: %s" % err)
-    
+
     if source_layer.GetFeatureCount() > test_raster(target_ds):
         print("Warning: Unique values in raster less than feature count !!!")
-   
-    #target_ds_copy = gdal.GetDriverByName("MEM").CopyDataSource(
-    #        target_ds, target_ds.GetDescription()) 
-    
-    #target_ds = None
-    
-    #return target_ds_copy, feature_dict
-    return target_ds, feature_dict
+    # End if
 
-def array_from_rasterize(source_ds, out_fname='default.tif', pixel_size=None, 
+    # return target_ds_copy, feature_dict
+    return target_ds, feature_dict
+# End rasterize()
+
+
+def array_from_rasterize(source_ds, out_fname='default.tif', pixel_size=None,
                          bounds=None, feature_name=None, field_type=ogr.OFTInteger):
-    
-    raster, feature_dict = rasterize(source_ds, out_fname=out_fname, 
-                                     pixel_size=pixel_size, bounds=bounds, 
+    """
+
+    :param source_ds:
+    :param out_fname:  (Default value = 'default.tif')
+    :param pixel_size: (Default value = None)
+    :param bounds: (Default value = None)
+    :param feature_name: (Default value = None)
+    :param field_type: (Default value = ogr.OFTInteger)
+    """
+    raster, feature_dict = rasterize(source_ds, out_fname=out_fname,
+                                     pixel_size=pixel_size, bounds=bounds,
                                      feature_name=feature_name, field_type=ogr.OFTInteger)
-    
-    return raster.ReadAsArray()[0], feature_dict   
-        
+
+    return raster.ReadAsArray()[0], feature_dict

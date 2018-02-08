@@ -6,10 +6,7 @@ from HydroModelBuilder.GWModelBuilder import GWModelBuilder
 
 class GWModelManager(object):
 
-    """
-    Class in which groundwater model lives including functions to build and
-    run the model.
-    """
+    """Class in which groundwater model lives including functions to build and run the model."""
 
     def __init__(self, model_directory=None):
         self.model_directory = model_directory
@@ -59,12 +56,12 @@ class GWModelManager(object):
 
     # Save and load utility using pickle
     def save_obj(self, obj, filename):
-        """
-        Save object to pickle file.
+        """Save object to pickle file.
 
         :param obj: object, to save.
-        :param filename: str, filename to save object to
+        :param filename: str, filename to save object to.
         """
+
         filename = filename + ".pkl" if not filename.endswith(".pkl") else filename
         with open(filename, 'wb') as f:
             pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
@@ -72,8 +69,7 @@ class GWModelManager(object):
     # End save_obj()
 
     def load_obj(self, filename):
-        """
-        Load object from pickle file.
+        """Load object from pickle file.
 
         :param filename: str, name of file to load object from.
         """
@@ -85,12 +81,12 @@ class GWModelManager(object):
         # End if
 
     def build_GW_model(self, name=None):
-        """
-        Generate a groundwater model using `GWModelBuilder`
+        """Generate a groundwater model using `GWModelBuilder`
 
-        :param name: str, name of model. If `None` given (default) then name shall be 'default' and its number in the
-                     model register.
+        :param name: str, name of model. (Default value = None).
+                     If `None` given then name shall be 'default' and its number in the model register.
         """
+
         if name is None:
             name = 'default{}'.format(self.models + 1)
         self.name = name
@@ -105,6 +101,9 @@ class GWModelManager(object):
     # End build_GW_model()
 
     def emulate_GW_model(self, emulation_method):
+        """
+        :param emulation_method:
+        """
         raise NotImplementedError("Not yet implemented.")
         # Create new GW_model using emulation of existing model
         emulation_methods = ['polynomial chaos expansions', 'PCE', 'multi-fidelity', 'M-F']
@@ -118,8 +117,7 @@ class GWModelManager(object):
     # End if
 
     def updateParameters(self, model_name, parameters):
-        """
-        Update parameters in the groundwater model.
+        """Update parameters in the groundwater model.
 
         :param model_name: str, name of model to update.
         :param parameters: str or dict, parameter(s) to update. If string, assume it is a file to load data from.
@@ -129,8 +127,7 @@ class GWModelManager(object):
     # End updateParameters()
 
     def update_parameters(self, model_name, parameters):
-        """
-        Update parameters in the groundwater model.
+        """Update parameters in the groundwater model.
 
         :param model_name: str, name of model to update.
         :param parameters: str or dict, parameter(s) to update. If string, assume it is a file to load data from.
@@ -170,6 +167,13 @@ class GWModelManager(object):
     # End update_parameters()
 
     def setupPEST(self, model_name, directory=None, csv_copy=False, excel_copy=False, models_ID=None):
+        """
+        :param model_name: str,
+        :param directory:  (Default value = None)
+        :param csv_copy: (Default value = False)
+        :param excel_copy: (Default value = False)
+        :param models_ID: (Default value = None)
+        """
         from HydroModelBuilder.Utilities.PESTInterface.PESTInterface import PESTInterface
         name = self.GW_build[model_name].name
         if not directory:
@@ -189,12 +193,12 @@ class GWModelManager(object):
     # End models()
 
     def load_GW_model(self, GW_model, out_data_folder=None):
-        """
-        Load groundwater model from pickle file.
+        """Load groundwater model from pickle file.
 
         :param GW_model: str, filename of pickled object to load
-        :param out_data_folder: str, OPTIONAL where outputs are written to.
+        :param out_data_folder: str, where outputs are written to. (Default value = None)
         """
+
         packaged_model = self.load_obj(GW_model)
         pkg_model_name = packaged_model['name']
 
@@ -218,11 +222,11 @@ class GWModelManager(object):
     # End load_GW_model()
 
     def load_GW_models(self, GW_models):
-        """
-        Load given list of groundwater model pickle files.
+        """Load given list of groundwater model pickle files.
 
         :param GW_models: list[str], pickle files to load in.
         """
+
         for model in GW_models:
             self.load_GW_model(model)
         # End for

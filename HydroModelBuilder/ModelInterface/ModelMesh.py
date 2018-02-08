@@ -5,9 +5,7 @@ import numpy as np
 
 
 class MeshGenerator(object):
-    """
-    Mesh generation methods.
-    """
+    """Mesh generation methods."""
 
     def __init__(self, Model_Int, GIS_Int):
         """
@@ -42,13 +40,15 @@ class MeshGenerator(object):
     # End __init__()
 
     def build_centroids_array3D(self, array_ordering):
-        """
-        1. Builds an array of cell centroids to be used in interpolating from
+        """1. Builds an array of cell centroids to be used in interpolating from
         other points arrays onto the cell centroids for the 3D mesh
 
         2. Creates a dictionary with centroids as key and lay row col as entries
         If key isn't found then it returns nearest centroid
+
+        :param array_ordering:
         """
+
         (X, Y) = self.model_mesh_centroids
         (lays, rows, cols) = self.model_mesh3D[0].shape
 
@@ -75,15 +75,16 @@ class MeshGenerator(object):
     # End build_centroids_array3D()
 
     def build_centroids_array(self, gridHeight, array_ordering):
-        """
-        1. Builds an array of cell centroids to be used in interpolating from
+        """1. Builds an array of cell centroids to be used in interpolating from
         other points arrays onto the cell centroids
 
         2. Creates a dictionary with centroids as key and row col as entries
         If key isn't found then it returns nearest centroid
 
         :param gridHeight: float, height of grid cells
+        :param array_ordering:
         """
+
         (xmin, xmax, ymin, ymax) = self.model_boundary[0:4]
         gridHeight = gridHeight
 
@@ -116,12 +117,16 @@ class MeshGenerator(object):
     def build_3D_mesh_from_rasters(self, out_data_folder_grid, array_ordering, raster_files, raster_path,
                                    minimum_thickness, maximum_thickness, force=False):
         """
+
+        :param out_data_folder_grid:
+        :param array_ordering:
         :param raster_files: list, raster files to build mesh from
         :param raster_path: str, path to raster files
         :param minimum_thickness: float, minimum thickness
         :param maximum_thickness: float, maximum thickness
-        :param force: bool, if True, forces a rebuild of the mesh
+        :param force: bool, if True, forces a rebuild of the mesh. (Default value = False)
         """
+
         p_j = os.path.join
         mesh_pth = p_j(out_data_folder_grid, 'model_mesh.npy')
         zone_pth = p_j(out_data_folder_grid, 'zone_matrix.npy')
@@ -139,17 +144,21 @@ class MeshGenerator(object):
     # End build_3D_mesh_from_rasters()
 
     def reclassIsolatedCells(self, passes=1, assimilate=False):
-        """
-        Function to remove cells that are surrounded by non-active cells in the horizontal plane
+        """Function to remove cells that are surrounded by non-active cells in the horizontal plane
 
         e.g. if cells with positive integer is surrounded in above, below and to each side, then reassign to -1.
 
-        :param passes: int, number of passes to do
-        :param assimilate: bool, whether to assimilate or not if surrounded by four of the same.
+        :param passes: int, number of passes to do. (Default value = 1)
+        :param assimilate: bool, whether to assimilate or not if surrounded by four of the same. (Default value = False)
         """
+
         mesh3D_1 = self.model_mesh3D[1]
 
         def most_common_oneliner(L):
+            """
+            :param L:
+            """
+
             return max(groupby(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
         # End most_common_oneliner()
 
@@ -221,8 +230,7 @@ class MeshGenerator(object):
     # End reclassIsolatedCells()
 
     def _hacky_centroid_to_mesh(self, gridHeight, centroid, dist_min, points_dist, cache={}):
-        """
-        Nasty (and slow!) workaround due to minor mismatch in centroids from mesh and separate
+        """Nasty (and slow!) workaround due to minor mismatch in centroids from mesh and separate
         generation in this class. Perhaps better to actually define this array in fishnet when
         define_structured_mesh is called
 
@@ -230,7 +238,7 @@ class MeshGenerator(object):
         :param centroid:
         :param dist_min: float, minimum distance
         :param points_dist: method, function to use to calculate distance between points
-        :param cache: dict, cache to store previously calculated distance
+        :param cache: dict, cache to store previously calculated distance. (Default value = {})
         """
         closest_key = cache.get((centroid, dist_min), None)
         if closest_key is None:
@@ -252,17 +260,16 @@ class MeshGenerator(object):
     # End _hacky_centroid_to_mesh()
 
     def map_points_to_3Dmesh(self, kdtree, points, identifier=None):
-        '''
-        Function to map points to the 3D mesh
+        """Function to map points to the 3D mesh
 
         :params kdtree: method, function to apply
         :params points:
-        :params identifier:
+        :params identifier: (Default value = None)
 
-        Returns: A dict with keys of all points (or identifiers) with each
-        corresponding entry containing the i, j and k reference of the nearest
-        cell center to the given point
-        '''
+        :returns: dict, with keys of all points (or identifiers) with each
+                  corresponding entry containing the i, j and k reference of the nearest
+                  cell center to the given point
+        """
         centroid2mesh3Dindex = self.centroid2mesh3Dindex
         model_mesh_points = np.array(centroid2mesh3Dindex.keys())
 
@@ -287,9 +294,12 @@ class MeshGenerator(object):
     # End map_points_to_3Dmesh()
 
     def map_obs_loc2mesh3D(self, observations, kdtree, method='nearest', ignore=[-1]):
-        """
-        This is a function to map the obs locations to the nearest node in the
-        mesh
+        """This is a function to map the obs locations to the nearest node in the mesh
+
+        :param observations:
+        :param kdtree:
+        :param method:  (Default value = 'nearest')
+        :param ignore:  (Default value = [-1])
         """
         if method == 'nearest':
             for key in observations.obs_group:

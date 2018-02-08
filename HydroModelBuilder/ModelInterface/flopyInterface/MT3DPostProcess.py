@@ -1,18 +1,19 @@
 import inspect
 import os
 import warnings
-from types import MethodType
 
+# import flopy
+import flopy.utils.binaryfile as bf
 # import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# import flopy
-import flopy.utils.binaryfile as bf
 import viz.MT3D_PP_viz as pp_viz  # Visualization extension methods
+from types import MethodType
 
 
 class MT3DPostProcess(object):
+    """TODO: Docs"""
 
     def __init__(self, mf_model, mt_name=None):
         self.mf_model = mf_model
@@ -27,11 +28,13 @@ class MT3DPostProcess(object):
     # End __init__()
 
     def importConcs(self):
+        """TODO: Docs"""
         self.concobj = bf.UcnFile(os.path.join(self.mf_model.data_folder, 'MT3D001.UCN'))
         return self.concobj
     # End importConcs()
 
     def importSftConcs(self):
+        """TODO: Docs"""
         self.sft_conc = pd.read_csv(os.path.join(
             self.mf_model.data_folder,
             self.mt_name),
@@ -41,6 +44,9 @@ class MT3DPostProcess(object):
     # End importSftConcs()
 
     def ConcsByZone(self, concs):
+        """
+        :param concs:
+        """
 
         self.mf_model.model_data.model_mesh3D[1]
 
@@ -61,6 +67,13 @@ class MT3DPostProcess(object):
     # End ConcsByZone()
 
     def compare_observed(self, obs_set, simulated, nper=0):
+        """
+        :param obs_set: param simulated:
+
+        :param nper: Default value = 0)
+
+        :param simulated:
+        """
         self.obs_sim_zone = []
         obs_df = self.mf_model.model_data.observations.obs_group[obs_set]['time_series']
         obs_df = obs_df[obs_df['active'] == True]
@@ -87,12 +100,23 @@ class MT3DPostProcess(object):
     # End compare_observed()
 
     def CompareObserved(self, obs_set, simulated, nper=0):
+        """
+        :param obs_set: param simulated:
+
+        :param nper: Default value = 0)
+
+        :param simulated:
+        """
+
         warnings.warn("Use of deprecated method `CompareObserved`, use `compare_observed` instead",
                       DeprecationWarning)
         return self.compare_observed(obs_set, simulated, nper)
     # End CompareObserved()
 
     def writeObservations(self, specimen):
+        """
+        :param specimen:
+        """
 
         # Set model output arrays to None to initialise
         conc = None
