@@ -148,8 +148,7 @@ class ModflowModel(object):
 
     def setupUPWpackage(self):
         """
-        This function is used to set up the upstream weighting package for the
-        NWT solver in MODFLOW
+        Set up the upstream weighting package for the MODFLOW NWT solver.
         """
         # Add UPW package to the MODFLOW model to represent aquifers
         self.upw = flopy.modflow.ModflowUpw(self.mf,
@@ -165,6 +164,15 @@ class ModflowModel(object):
     # End setupUPWpackage()
 
     def createRIVpackage(self, lrcd=None):
+        """
+        Create the MODFLOW river (RIV) package.
+        See [Flopy MF Riv]_ documentation
+
+        .. [Flopy MF Riv] MODFLOW River package
+           (https://modflowpy.github.io/flopydoc/mfriv.html)
+
+        :param lrcd: dict or None, stress period data. Defaults to `None`.
+        """
         self.riv = flopy.modflow.ModflowRiv(self.mf, ipakcb=53, stress_period_data=lrcd)
         if self.verbose and self.check:
             self.riv.check()
@@ -172,12 +180,31 @@ class ModflowModel(object):
     # End createRIVpackage()
 
     def createSTRpackage(self, STRvariables=None):
+        """
+        Create the MODFLOW stream (STR) package.
+        See [Flopy MF STR]_ documentation
+
+        .. [Flopy MF STR] MODFLOW stream package
+           (https://modflowpy.github.io/flopydoc/mfstr.html)
+
+        :param STRvariables: dict or None, stress period data. Defaults to `None`.
+        """
         self.str = flopy.modflow.ModflowStr(self.mf, ipakcb=53, stress_period_data=STRvariables)
         if self.verbose and self.check:
             self.str.check()
     # End createSTRpackage()
 
     def createSFRpackage(self, reach_data, segment_data):
+        """
+        Create the MODFLOW (SFR2) package.
+        See [Flopy MF SFR2]_ documentation
+
+        .. [Flopy MF SFR2] MODFLOW stream-flow routing package
+           (https://modflowpy.github.io/flopydoc/mfsfr2.html)
+
+        :param reach_data: ndarray, array holding reach data.
+        :param segment_data: ndarray, array holding stream segment data.
+        """
         if self.model_data.model_time.t['steady_state']:
             transroute = False
         else:
@@ -269,6 +296,8 @@ class ModflowModel(object):
 
         >>> lrcq = {}
         >>> lrcq[0] = [[0, 7, 7, -100.]] # layer, row, column, flux
+
+        :param lrcq: dict, stress period data.
         """
         self.wel = flopy.modflow.ModflowWel(self.mf, ipakcb=53, stress_period_data=lrcq)
         if self.verbose and self.check:
@@ -381,7 +410,6 @@ class ModflowModel(object):
         if wells_exist:
             self.createWELpackage(wel)
 
-        # IF transport then
         if transport:
             self.createLMTpackage()
 
@@ -473,7 +501,7 @@ class ModflowModel(object):
         '''
         try:
             self.sfr
-        except:
+        except Exception:
             print("SFR package not activated in current model")
             return
         # End try
@@ -497,17 +525,20 @@ class ModflowModel(object):
     def getRivFlux(self, name):
         cbbobj = self.importCbb()
         riv_flux = cbbobj.get_data(text='RIVER LEAKAGE', full3D=True)
+
         times = cbbobj.get_times()
         if type(times) == str:
             str_pers = 1
         else:
             str_pers = len(times)
+        # End if
 
         if self.model_data.boundaries.bc[name]['bc_type'] == 'river':
             time_key = self.model_data.boundaries.bc[name]['bc_array'].keys()[0]
             river = self.model_data.boundaries.bc[name]['bc_array'][time_key]
         else:
             print('Not a river boundary')
+        # End if
 
         riv_exchange = {}
         for per in range(str_pers):
@@ -601,14 +632,17 @@ class ModflowModel(object):
     # End HeadsByZone()
 
     def writeObservations(self):
-
+        """
+        Write out observation data.
+        """
         # Set model output arrays to None to initialise
         head = None
         sfr_df = None
         stream_options = ['stage', 'depth', 'discharge']
         # Write observation to file
-        for obs_set in self.model_data.observations.obs_group.keys():
-            obs_type = self.model_data.observations.obs_group[obs_set]['obs_type']
+        obs_group = self.model_data.observations.obs_group
+        for obs_set in obs_group:
+            obs_type = obs_group[obs_set]['obs_type']
             # Import the required model outputs for processing
             if obs_type == 'head':
                 # Check if model outputs have already been imported and if not import
@@ -618,25 +652,22 @@ class ModflowModel(object):
             elif obs_type in stream_options:
                 try:
                     self.sfr_df
-                except:
+                except Exception:
                     sfr_df = self.importSfrOut()
                 # End except
             else:
                 continue
             # End if
 
-            obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
+            obs_df = obs_group[obs_set]['time_series']
             obs_df = obs_df[obs_df['active'] == True]
-            sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
+            sim_map_dict = obs_group[obs_set]['mapped_observations']
 
+            unique_obs_df_zone = obs_df['zone'].unique()
             if obs_type in stream_options:
-                sfr_location = self.model_data.observations.obs_group[obs_set]['locations']['seg_loc']
-                for zone in obs_df['zone'].unique():
-                    if len(obs_df['zone'].unique()) == 1:
-                        zone_txt = obs_set
-                    else:
-                        zone_txt = obs_set + zone
-                    # End if
+                sfr_location = obs_group[obs_set]['locations']['seg_loc']
+                for zone in unique_obs_df_zone:
+                    zone_txt = obs_set if len(unique_obs_df_zone) == 1 else obs_set + zone
                     with open(os.path.join(self.data_folder, 'observations_' + zone_txt + '.txt'), 'w') as f:
                         obs_df_zone = obs_df[obs_df['zone'] == zone]
                         for observation in obs_df_zone.index:
@@ -645,40 +676,35 @@ class ModflowModel(object):
                             seg = sfr_location.loc[name]
                             sfr = sfr_df
                             col_of_interest = obs_type
+
                             if obs_type == 'discharge':
                                 col_of_interest = 'Qout'
-                            sim_obs = sfr[(sfr['segment'] == seg) &
-                                          (sfr['time'] == interval)][col_of_interest]
+
+                            sim_obs = sfr[(sfr['segment'] == seg) & (sfr['time'] == interval)][col_of_interest]
                             f.write('%f\n' % sim_obs)
                         # End for
                     # End with
                 # End for
-            # End if
-
-            if obs_type == 'head':
-                for zone in obs_df['zone'].unique():
-                    if len(obs_df['zone'].unique()) == 1:
-                        zone_txt = 'head'
-                    else:
-                        zone_txt = zone
-                    # End if
+            elif obs_type == 'head':
+                for zone in unique_obs_df_zone:
+                    zone_txt = 'head' if len(unique_obs_df_zone) == 1 else zone
                     with open(os.path.join(self.data_folder, 'observations_' + zone_txt + '.txt'), 'w') as f:
                         obs_df_zone = obs_df[obs_df['zone'] == zone]
                         for observation in obs_df_zone.index:
                             interval = int(obs_df_zone['interval'].loc[observation])
                             name = obs_df_zone['name'].loc[observation]
-                            (x_cell, y_cell) = self.model_data.mesh2centroid2Dindex[
-                                (sim_map_dict[name][1], sim_map_dict[name][2])]
-                            (lay, row, col) = [sim_map_dict[name][0],
-                                               sim_map_dict[name][1], sim_map_dict[name][2]]
+                            name_dict = sim_map_dict[name]
+                            (x_cell, y_cell) = self.model_data.mesh2centroid2Dindex[(name_dict[1], name_dict[2])]
+                            (lay, row, col) = [name_dict[0], name_dict[1], name_dict[2]]
 
                             sim_heads = [head[interval][lay][row][col]]
-
                             sim_head = np.mean(sim_heads)
                             f.write('%f\n' % sim_head)
                         # End for
                     # End with
                 # End for
+            else:
+                print("Unknown observation type!")
             # End if
         # End for
     # End writeObservations()
@@ -687,7 +713,9 @@ class ModflowModel(object):
         # Set model output arrays to None to initialise
         head = None
 
-        obs_type = self.model_data.observations.obs_group[obs_set]['obs_type']
+        obs_group = self.model_data.observations.obs_group[obs_set]
+
+        obs_type = obs_group['obs_type']
         # Import the required model outputs for processing
         if obs_type == 'head':
             # Check if model outputs have already been imported and if not import
@@ -698,14 +726,23 @@ class ModflowModel(object):
             pass
         # End if
 
-        sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
-        sim_head = head[interval][sim_map_dict[obs][0]][sim_map_dict[obs][1]][sim_map_dict[obs][2]]
-        dtw = self.model_data.model_mesh3D[0][0][
-            sim_map_dict[obs][1]][sim_map_dict[obs][2]] - sim_head
+        sim_map_dict = obs_group['mapped_observations']
+        sim_obs = sim_map_dict[obs]
+        sim_head = head[interval][sim_obs[0]][sim_obs[1]][sim_obs[2]]
+        dtw = self.model_data.model_mesh3D[0][0][sim_obs[1]][sim_obs[2]] - sim_head
         return sim_head, dtw
     # End getObservation()
 
     def compare_observed_head(self, obs_set, simulated, nper=0):
+        """
+        Create and set data for groundwater head comparison.
+
+        :param obs_set: str, name of observation set
+        :param simulated: ndarray, simulated observation set
+        :param nper: int, period number
+
+        :returns: list[list], data as assigned to `obs_loc_val_zone`
+        """
         mesh_1 = self.model_data.model_mesh3D[1]
         obs_group = self.model_data.observations.obs_group[obs_set]
         locations = obs_group['locations']
@@ -713,11 +750,11 @@ class ModflowModel(object):
         self.comparison = []
         self.comp_zone = []
         self.obs_loc_val_zone = []
+
         obs_df = obs_group['time_series']
         obs_df = obs_df[obs_df['active'] == True]
         obs_df = obs_df[obs_df['interval'] == nper]
         sim_map_dict = obs_group['mapped_observations']
-        # self.model_data.observations.obs_group[obs_set]['time_series']['name']:
         for observation in obs_df['name']:
             idx = obs_df[obs_df['name'] == observation].index.tolist()[0]
             obs = obs_df.get_value(idx, 'value')
@@ -732,6 +769,8 @@ class ModflowModel(object):
             zone = mesh_1[sim]
             self.obs_loc_val_zone += [[obs, x_y, zone, sim]]
         # End for
+
+        return self.obs_loc_val_zone
     # End compare_observed_head()
 
     def CompareObservedHead(self, obs_set, simulated, nper=0):
@@ -745,13 +784,22 @@ class ModflowModel(object):
         return self.compare_observed_head(obs_set, simulated, nper)
     # End CompareObservedHead()
 
-    def CompareObserved(self, obs_set, simulated, nper=0):
+    def compare_observed(self, obs_set, simulated, nper=0):
+        """
+        Create a combined observed and simulated dataset and assigns to the `obs_sim_zone` attribute.
+
+        :param obs_set: str, name of observation set
+        :param simulated: ndarray, simulated observation set
+        :param nper: int, period number
+
+        :returns: list[list], as set in `obs_sim_zone`
+        """
         self.obs_sim_zone = []
         obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
         obs_df = obs_df[obs_df['active'] == True]
         obs_df = obs_df[obs_df['interval'] == nper]
         sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
-        # self.model_data.observations.obs_group[obs_set]['time_series']['name']:
+
         for observation in obs_df['name']:
             idx = obs_df[obs_df['name'] == observation].index.tolist()[0]
             obs = obs_df.get_value(idx, 'value')
@@ -764,14 +812,23 @@ class ModflowModel(object):
             y = self.model_data.observations.obs_group[obs_set][
                 'locations']['Northing'].loc[observation]
             if np.isnan(sim):
-                print sim, obs, zone
+                print("Sim is NaN:", sim, obs, zone, "|", observation)
                 continue
             self.obs_sim_zone += [[obs, sim, zone, x, y]]
+        # End for
+
+        return self.obs_sim_zone
+    # End compare_observed()
+
+    def CompareObserved(self, obs_set, simulated, nper=0):
+        warnings.warn("Use of deprecated method `CompareObserved`, use `compare_observed` instead",
+                      DeprecationWarning)
+        return self.compare_observed(obs_set, simulated, nper)
     # End ComparedObserved()
 
     def importHeads(self, path=None, name=None):
         if path:
-            headobj = bf.HeadFile(path + name + '.hds')  # , precision='double')
+            headobj = bf.HeadFile(os.path.join(path, name + '.hds'))
             return headobj
         else:
             self.headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
