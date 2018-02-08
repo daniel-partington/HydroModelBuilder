@@ -1,13 +1,14 @@
 import os
 
-import flopy
-import flopy.utils.binaryfile as bf
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import six
-from flopy.utils.sfroutputfile import SfrFile
 from matplotlib import colors
+
+import flopy
+import flopy.utils.binaryfile as bf
+from flopy.utils.sfroutputfile import SfrFile
 
 
 def plotRiverFromRiverSegData(self, ax, names=None, **kwargs):
@@ -82,7 +83,7 @@ def compareAllObs(self):
     #
     #     # new method sets and returns `obs_sim_zone`
     #     obs_sim_zone_all += self.compare_observed('head', head, nper=i)
-    #     # self.CompareObserved('head', head, nper=i)
+    #     # self.compare_observed('head', head, nper=i)
     #     # obs_sim_zone_all += self.obs_sim_zone
     # # End for
 
@@ -90,7 +91,7 @@ def compareAllObs(self):
     # self.obs_sim_zone += [[obs, sim, zone, x, y]]
     for i in range(self.model_data.model_time.t['steps']):
         head = headobj.get_data(totim=times[i])
-        self.CompareObserved('head', head, nper=i)
+        self.compare_observed('head', head, nper=i)
         obs_sim_zone_all += self.obs_sim_zone
     # End for
 
@@ -246,7 +247,7 @@ def compareAllObs_metrics(self, to_file=False):
 
     for i in range(self.model_data.model_time.t['steps']):
         head = headobj.get_data(totim=times[i])
-        self.CompareObserved('head', head, nper=i)
+        self.compare_observed('head', head, nper=i)
         obs_sim_zone_all += self.obs_sim_zone
 
     scatterx = np.array([h[0] for h in obs_sim_zone_all])
@@ -303,7 +304,7 @@ def viewHeadsByZone(self, nper='all'):
         head_orig = head
         zoned = self.HeadsByZone(head)
         head = zoned
-        self.CompareObserved('head', head_orig, nper=nper)
+        self.compare_observed('head', head_orig, nper=nper)
     # End if
 
     # First step is to set up the plot
@@ -418,13 +419,13 @@ def viewHeadsByZone2(self, iter_num, nper='all'):
         scattery = []
         obs_sim_zone_all = []
         for i in range(len(times)):
-            self.CompareObserved('head', head_orig, nper=i)
+            self.compare_observed('head', head_orig, nper=i)
             scatterx += [h[0] for h in self.obs_sim_zone]
             scattery += [h[1] for h in self.obs_sim_zone]
             obs_sim_zone_all += self.obs_sim_zone
         self.obs_sim_zone = obs_sim_zone_all
     else:
-        self.CompareObserved('head', head_orig, nper=nper)
+        self.compare_observed('head', head_orig, nper=nper)
         scatterx = [h[0] for h in self.obs_sim_zone]
         scattery = [h[1] for h in self.obs_sim_zone]
     # End if

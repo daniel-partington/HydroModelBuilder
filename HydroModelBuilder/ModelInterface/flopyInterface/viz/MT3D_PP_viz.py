@@ -1,6 +1,7 @@
-import flopy
 import matplotlib.pyplot as plt
 import numpy as np
+
+import flopy
 
 
 def compareAllObs(self):
@@ -15,7 +16,7 @@ def compareAllObs(self):
     # The definition of obs_sim_zone looks like:
     for i in range(self.mf_model.model_data.model_time.t['steps']):
         conc = concobj.get_data(totim=times[i])
-        self.CompareObserved('C14', conc, nper=i)
+        self.compare_observed('C14', conc, nper=i)
         obs_sim_zone_all += self.obs_sim_zone
 
     scatterx = np.array([h[0] for h in obs_sim_zone_all])
