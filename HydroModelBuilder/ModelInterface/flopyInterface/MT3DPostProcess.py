@@ -1,13 +1,14 @@
 import inspect
 import os
+import warnings
 from types import MethodType
 
-# import flopy
-import flopy.utils.binaryfile as bf
 # import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+# import flopy
+import flopy.utils.binaryfile as bf
 import viz.MT3D_PP_viz as pp_viz  # Visualization extension methods
 
 
@@ -59,8 +60,7 @@ class MT3DPostProcess(object):
         return concs_zoned
     # End ConcsByZone()
 
-    def CompareObserved(self, obs_set, simulated, nper=0):
-
+    def compare_observed(self, obs_set, simulated, nper=0):
         self.obs_sim_zone = []
         obs_df = self.mf_model.model_data.observations.obs_group[obs_set]['time_series']
         obs_df = obs_df[obs_df['active'] == True]
@@ -84,6 +84,12 @@ class MT3DPostProcess(object):
                 continue
             self.obs_sim_zone += [[obs, sim, zone, x, y]]
         # End for
+    # End compare_observed()
+
+    def CompareObserved(self, obs_set, simulated, nper=0):
+        warnings.warn("Use of deprecated method `CompareObserved`, use `compare_observed` instead",
+                      DeprecationWarning)
+        return self.compare_observed(obs_set, simulated, nper)
     # End CompareObserved()
 
     def writeObservations(self, specimen):
