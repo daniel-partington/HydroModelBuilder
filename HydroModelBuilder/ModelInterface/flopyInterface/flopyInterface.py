@@ -4,13 +4,13 @@ import os
 import warnings
 from types import MethodType
 
-import flopy
-import flopy.utils.binaryfile as bf
 import numpy as np
 import pandas as pd
-from flopy.utils.sfroutputfile import SfrFile
 
+import flopy
+import flopy.utils.binaryfile as bf
 import viz.flopy_viz as fviz  # Visualization extension methods
+from flopy.utils.sfroutputfile import SfrFile
 # For legacy purposes, allow use of other flopy related classes
 from MT3DModel import MT3DModel
 from MT3DPostProcess import MT3DPostProcess
@@ -439,6 +439,9 @@ class ModflowModel(object):
     # End runMODFLOW()
 
     def checkConvergence(self, path=None, name=None, fail=False):
+        """
+        TODO: Docs
+        """
         converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP",  # Clear statement of model fail in list file
                                  " PERCENT DISCREPANCY =         200.00",  # Convergence but extreme discrepancy in results
                                  " NaN "  # Something big went wrong but somehow convergence was reached?
@@ -484,8 +487,8 @@ class ModflowModel(object):
         from the sfr package which can be imported via the sfroutputfile util
         from flopy. The other parameters required are:
 
-        * Ini_Cond = Ini_cond # 3 item list containing Initial flow, radon and ec concentrations
-        * Rn_decay = Rn_decay # constant for Radon decay
+        * Ini_Cond = Ini_cond  # 3 item list containing Initial flow, radon and ec concentrations
+        * Rn_decay = Rn_decay  # constant for Radon decay
 
         # Dataframe variables
         * df['HZ_poro'] # Hyporheic zone porosity
@@ -498,6 +501,12 @@ class ModflowModel(object):
         * df['Trib_EC'] # EC of the inflowing tributary water if present
         * df['Trib_Rn'] # Radon concentration of inflowing tributary water if present
         * df['dx'] # Reach length
+
+        :param df: Pandas DataFrame, output from the SFR package
+        :param Ini_cond: list, [intial flow, radon, and EC concentration]
+        :param Rn_decay: float, constant for radon decay
+
+        :returns: tuple, (flow, radon, EC)
         '''
         try:
             self.sfr
@@ -508,21 +517,48 @@ class ModflowModel(object):
 
         FlRnEC = Radon_EC_simple(df, Ini_cond, Rn_decay=Rn_decay)
         Flow, Rn, EC = FlRnEC.Fl_Rn_EC_simul()
-        return Flow, Rn, EC
 
-    def getHeads(self):
-        headobj = self.importHeads()
+        return Flow, Rn, EC
+    # End Calculate_Rn_from_SFR_with_simple_model()
+
+    def get_heads(self, headobj=None):
+        """
+        Get latest head level.
+
+        :param headobj:
+        """
+        if not headobj:
+            headobj = self.importHeads()
         times = headobj.get_times()
-        head = headobj.get_data(totim=times[-1])
-        return head
+        return headobj.get_data(totim=times[-1])
+    # End get_heads()
+
+    def get_final_heads(self, filename):
+        """
+        Get final head (groundwater levels) at end of simulation from given file.
+
+        :param filename: str, name of head file.
+
+        :returns: ndarray, head levels
+        """
+        headobj = bf.HeadFile(filename)
+        return self.get_heads(headobj)
+    # End get_final_heads()
+
+    def getHeads(self, headobj=None):
+        warnings.warn("Use of deprecated method `getHeads`, use `get_heads` instead",
+                      DeprecationWarning)
+        return self.get_heads(headobj)
+    # End getHeads()
 
     def getFinalHeads(self, filename):
-        headobj = bf.HeadFile(filename)
-        times = headobj.get_times()
-        head = headobj.get_data(totim=times[-1])
-        return head
+        warnings.warn("Use of deprecated method `getFinalHeads`, use `get_final_heads` instead",
+                      DeprecationWarning)
+        return self.get_final_heads(filename)
+    # End getFinalHeads()
 
     def getRivFlux(self, name):
+        """TODO Docs"""
         cbbobj = self.importCbb()
         riv_flux = cbbobj.get_data(text='RIVER LEAKAGE', full3D=True)
 
@@ -557,6 +593,7 @@ class ModflowModel(object):
     # End getRivFlux()
 
     def getRivFluxNodes(self, nodes):
+        """TODO Docs"""
         try:
             cbbobj = self.importCbb()
         except IndexError as e:
@@ -573,7 +610,7 @@ class ModflowModel(object):
 
         river = nodes
         riv_exchange = {}
-        for per in xrange(str_pers):
+        for per in range(str_pers):
             riv_exchange[per] = []
             for cell in river:
                 (l, r, c) = (cell[0], cell[1], cell[2])
@@ -591,7 +628,7 @@ class ModflowModel(object):
     # End getRivFluxNodes()
 
     def getAverageDepthToGW(self, mask=None):
-
+        """TODO Docs"""
         headobj = self.importHeads()
         times = headobj.get_times()
         head = headobj.get_data(totim=times[-1])
@@ -604,6 +641,7 @@ class ModflowModel(object):
     # End getAverageDepthToGW()
 
     def loop_over_zone(self, array):
+        """TODO Docs"""
         mesh_1 = self.model_data.model_mesh3D[1]
         arr_zoned = [np.full(mesh_1.shape[1:3], np.nan)] * int(np.max(mesh_1))
 
@@ -624,10 +662,12 @@ class ModflowModel(object):
     # End loop_over_zone()
 
     def ConcsByZone(self, concs):
+        """TODO Docs"""
         return self.loop_over_zone(concs)
     # End ConcsByZone()
 
     def HeadsByZone(self, heads):
+        """TODO Docs"""
         return self.loop_over_zone(heads)
     # End HeadsByZone()
 
@@ -710,6 +750,7 @@ class ModflowModel(object):
     # End writeObservations()
 
     def getObservation(self, obs, interval, obs_set):
+        """TODO Docs"""
         # Set model output arrays to None to initialise
         head = None
 
@@ -775,6 +816,8 @@ class ModflowModel(object):
 
     def CompareObservedHead(self, obs_set, simulated, nper=0):
         """
+        TODO Docs
+
         :param obs_set: dict, observation set
         :param simulated: dict, simulated result set
         :param nper: int, number of periods
@@ -826,7 +869,8 @@ class ModflowModel(object):
         return self.compare_observed(obs_set, simulated, nper)
     # End ComparedObserved()
 
-    def importHeads(self, path=None, name=None):
+    def import_heads(self, path=None, name=None):
+        """TODO Docs"""
         if path:
             headobj = bf.HeadFile(os.path.join(path, name + '.hds'))
             return headobj
@@ -834,9 +878,17 @@ class ModflowModel(object):
             self.headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
             return self.headobj
         # End if
+    # End import_heads()
+
+    def importHeads(self, path=None, name=None):
+        warnings.warn("Deprecated method called. Use `finalize_model()` instead", DeprecationWarning)
+        return self.import_heads(path, name)
     # End importHeads()
 
     def importSfrOut(self, path=None, name=None, ext='.sfr.out'):
+        """
+        TODO: Docs
+        """
         if path:
             sfrout = SfrFile(os.path.join(path, name + ext))
             self.sfr_df = sfrout.get_dataframe()
@@ -844,6 +896,7 @@ class ModflowModel(object):
             sfrout = SfrFile(os.path.join(self.data_folder, self.name + ext))
             self.sfr_df = sfrout.get_dataframe()
         # End if
+
         return self.sfr_df
     # End importSfrOut()
 
@@ -854,7 +907,9 @@ class ModflowModel(object):
     # End importCbb()
 
     def waterBalance(self, iter_num, plot=True, save=False, nper=0):
-
+        """
+        TODO: Docs
+        """
         cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
 
         water_balance_components = cbbobj.textlist
@@ -900,7 +955,7 @@ class ModflowModel(object):
     # End waterBalance()
 
     def waterBalanceTS(self, plot=True):
-
+        """TODO Docs"""
         cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
 
         water_balance_components = cbbobj.textlist
