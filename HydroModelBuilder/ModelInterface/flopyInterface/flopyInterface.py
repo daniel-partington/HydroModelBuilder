@@ -939,10 +939,16 @@ class ModflowModel(object):
         return self.sfr_df
     # End importSfrOut()
 
-    def importCbb(self):
+    def import_cbb(self):
         """Retrieve data in cell-by-cell budget file"""
         self.cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + ".cbc"))
         return self.cbbobj
+    # End import_cbb()
+
+    def importCbb(self):
+        warnings.warn("Use of deprecated method `importCbb`, use `import_cbb` instead",
+                      DeprecationWarning)
+        return self.import_cbb()
     # End importCbb()
 
     def waterBalance(self, iter_num, plot=True, save=False, nper=0):
