@@ -1,5 +1,8 @@
 import os
 
+import numpy as np
+import pandas as pd
+import flopy
 import flopy.utils.binaryfile as bf
 import matplotlib.pyplot as plt
 from flopy.utils.sfroutputfile import SfrFile
@@ -62,6 +65,59 @@ def SFRoutput_plot(self):
     sfr_df
 # End SFRoutput_plot()
 
+def compareAllObs_metrics(self, to_file=False):
+
+    headobj = self.importHeads()
+    times = headobj.get_times()
+
+    scatterx = []
+    scattery = []
+    obs_sim_zone_all = []
+
+    # The definition of obs_sim_zone looks like:
+    # self.obs_sim_zone += [[obs, sim, zone, x, y]]
+
+    for i in range(self.model_data.model_time.t['steps']):
+        head = headobj.get_data(totim=times[i])
+        self.CompareObserved('head', head, nper=i)
+        obs_sim_zone_all += self.obs_sim_zone
+
+    scatterx = np.array([h[0] for h in obs_sim_zone_all])
+    scattery = np.array([h[1] for h in obs_sim_zone_all])
+
+    sum1 = 0.
+    sum2 = 0.
+
+    if len(scatterx) != 0:
+
+        mean = np.mean(scatterx)
+        for i in range(len(scatterx)):
+            num1 = (scatterx[i] - scattery[i])
+            num2 = (scatterx[i] - mean)
+            sum1 += num1 ** np.float64(2.)
+            sum2 += num2 ** np.float64(2.)
+
+        ME = 1 - sum1 / sum2
+
+        # for PBIAS
+        def pbias(simulated, observed):
+            return np.sum(simulated - observed) * 100 / np.sum(observed)
+
+        PBIAS = pbias(scattery, scatterx)
+
+        # For rmse
+        def rmse(simulated, observed):
+            return np.sqrt(((simulated - observed) ** 2).mean())
+
+        RMSE = rmse(scattery, scatterx)
+
+    if to_file:
+        with open(os.path.join(self.data_folder, 'Head_Obs_Model_Measures.txt'), 'w') as f:
+            f.write('ME PBIAS RMSE\n')
+            f.write('{} {} {}'.format(ME, PBIAS, RMSE))
+
+    return ME, PBIAS, RMSE
+# End compareAllObs_metrics()
 
 def compareAllObs(self):
 
@@ -221,61 +277,174 @@ def compareAllObs(self):
     plt.show()
 # End compareAllObs()
 
-
-def compareAllObs_metrics(self, to_file=False):
-
-    headobj = self.importHeads()
-    times = headobj.get_times()
-
-    scatterx = []
-    scattery = []
-    obs_sim_zone_all = []
-
-    # The definition of obs_sim_zone looks like:
-    # self.obs_sim_zone += [[obs, sim, zone, x, y]]
-
-    for i in range(self.model_data.model_time.t['steps']):
-        head = headobj.get_data(totim=times[i])
-        self.CompareObserved('head', head, nper=i)
-        obs_sim_zone_all += self.obs_sim_zone
-
+def _plot_obs_vs_sim(self, obs_set, obs_sim_zone_all, unc=None):
     scatterx = np.array([h[0] for h in obs_sim_zone_all])
     scattery = np.array([h[1] for h in obs_sim_zone_all])
 
-    sum1 = 0.
-    sum2 = 0.
+    residuals = [loc[0] - loc[1] for loc in obs_sim_zone_all]
+
+    # First step is to set up the plot
+    width = 20
+    height = 5
+    multiplier = 1.
+    fig = plt.figure(figsize=(width * multiplier, height * multiplier))
+
+    ax = fig.add_subplot(1, 2, 1)  # , aspect='equal')
+    ax.set_title('Residuals')
+
+    #colours = ['r', 'orangered', 'y', 'green', 'teal', 'blue', 'fuchsia']
+    ax.hist(residuals, bins=20, alpha=0.5, color='black', histtype='step', label='all')
+
+    plt.legend(loc='upper left', ncol=4, fontsize=11)
+
+    ax = fig.add_subplot(1, 2, 2)
+    ax.set_title('{}: Sim vs Obs ({} points)'.format(obs_set.upper(), len(scatterx)))
+
+    ax.scatter(scatterx, scattery, facecolors='none', alpha=0.5)
+
+    plt.xlabel('Observed')
+    plt.ylabel('Simulated', labelpad=10)
+
+    sum1 = 0.0
+    sum2 = 0.0
 
     if len(scatterx) != 0:
-
         mean = np.mean(scatterx)
         for i in range(len(scatterx)):
             num1 = (scatterx[i] - scattery[i])
             num2 = (scatterx[i] - mean)
-            sum1 += num1 ** np.float64(2.)
-            sum2 += num2 ** np.float64(2.)
+            sum1 += num1**np.float64(2.0)
+            sum2 += num2**np.float64(2.0)
 
         ME = 1 - sum1 / sum2
+
+        ymin, ymax = ax.get_ylim()
+        xmin, xmax = ax.get_xlim()
+
+        ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.4 * (ymax - ymin),
+                'Model Efficiency = %4.2f' % (ME))
 
         # for PBIAS
         def pbias(simulated, observed):
             return np.sum(simulated - observed) * 100 / np.sum(observed)
 
-        PBIAS = pbias(scattery, scatterx)
+        ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.3 * (ymax - ymin),
+                'PBIAS = %4.2f%%' % (pbias(scattery, scatterx)))
 
         # For rmse
         def rmse(simulated, observed):
             return np.sqrt(((simulated - observed) ** 2).mean())
 
-        RMSE = rmse(scattery, scatterx)
+        ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.2 * (ymax - ymin),
+                'RMSE = %4.2f' % (rmse(scattery, scatterx)))
 
-    if to_file:
-        with open(os.path.join(self.data_folder, 'Head_Obs_Model_Measures.txt'), 'w') as f:
-            f.write('ME PBIAS RMSE\n')
-            f.write('{} {} {}'.format(ME, PBIAS, RMSE))
+    xlim, ylim = ax.get_xlim(), ax.get_ylim()
+    new = (min(xlim[0], ylim[0]), max(xlim[1], ylim[1]))
+    new_upper = (min(xlim[0], ylim[0]) + unc, max(xlim[1], ylim[1]) + unc)
+    new_lower = (min(xlim[0], ylim[0]) - unc, max(xlim[1], ylim[1]) - unc)
+    ax.plot(new, new, color='grey')
+    ax.plot(new_upper, new_upper, color='grey')
+    ax.plot(new_lower, new_lower, color='grey')
+    ax.fill_between(new, new_lower, new_upper, color='grey', alpha=0.3)
+    ax.set_xlim(new)
+    ax.set_ylim(new)
 
-    return ME, PBIAS, RMSE
-# End compareAllObs_metrics()
+def compareAllObs2(self):
 
+    # Set model output arrays to None to initialise
+    head = None
+    sfr_df = None
+    stream_options = ['stage', 'depth', 'discharge']
+    # Write observation to file
+    for obs_set in self.model_data.observations.obs_group.keys():
+        if self.model_data.observations.obs_group[obs_set]['real'] == False:
+            continue
+        # end if
+        print("Processing {}".format(obs_set))
+        
+        obs_sim_zone_all = []
+
+        obs_type = self.model_data.observations.obs_group[obs_set]['obs_type']
+        # Import the required model outputs for processing
+        if obs_type == 'head':
+            # Check if model outputs have already been imported and if not import
+            if not head:
+                headobj = self.importHeads()
+                head = headobj.get_alldata()
+        elif obs_type in stream_options:
+            try:
+                sfr_df = self.sfr_df
+            except:
+                sfr_df = self.importSfrOut()
+            # End except
+        else:
+            continue
+        # End if
+            
+        obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
+        obs_df = obs_df[obs_df['active'] == True]
+        sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
+
+        if obs_type in stream_options:
+            sfr_location = self.model_data.observations.obs_group[obs_set]['locations']['seg_loc']
+            #sfr_chainage = self.model_data.observations.obs_group[obs_set]['locations']['Distance_Eppalock']
+            for zone in obs_df['zone'].unique():
+                if len(obs_df['zone'].unique()) == 1:
+                    zone_txt = obs_set
+                else:
+                    zone_txt = obs_set + zone
+                # End if
+                obs_df_zone = obs_df[obs_df['zone'] == zone]
+                for observation in obs_df_zone.index:
+                    interval = int(obs_df_zone['interval'].loc[observation])
+                    name = obs_df_zone['name'].loc[observation]
+                    obs = obs_df_zone['value'].loc[observation]
+                    #time = obs_df_zone['datetime'].loc[observation]
+                    seg = sfr_location.loc[name]
+                    #chainage = sfr_chainage.loc[name]
+                    sfr = sfr_df
+                    col_of_interest = obs_type
+                    if obs_type == 'discharge':
+                        col_of_interest = 'Qout'
+                    sim_obs = sfr[(sfr['segment'] == seg) &
+                                  (sfr['time'] == interval)][col_of_interest].tolist()[0]
+
+                    obs_sim_zone_all += [[obs, sim_obs, seg]] #, chainage, time]]
+                                  
+                # End for
+            # End for
+        # End if
+
+        if obs_type == 'head':
+            for zone in obs_df['zone'].unique():
+                if len(obs_df['zone'].unique()) == 1:
+                    zone_txt = 'head'
+                else:
+                    zone_txt = zone
+                # End if
+                obs_df_zone = obs_df[obs_df['zone'] == zone]
+                for observation in obs_df_zone.index:
+                    interval = int(obs_df_zone['interval'].loc[observation])
+                    name = obs_df_zone['name'].loc[observation]
+                    obs = obs_df_zone['value'].loc[observation]
+                    (x_cell, y_cell) = self.model_data.mesh2centroid2Dindex[
+                        (sim_map_dict[name][1], sim_map_dict[name][2])]
+                    (lay, row, col) = [sim_map_dict[name][0],
+                                       sim_map_dict[name][1], sim_map_dict[name][2]]
+
+                    sim_heads = [head[interval][lay][row][col]]
+
+                    sim_head = np.mean(sim_heads) #???
+                    obs_sim_zone_all += [[obs, sim_head, zone]]
+
+                # End for
+            # End for
+        # End if
+
+        self._plot_obs_vs_sim(obs_set, obs_sim_zone_all, unc=2)       
+
+
+# End compareAllObs()
 
 def viewHeadsByZone(self, nper='all'):
 
@@ -723,12 +892,12 @@ def viewHeadLayer(self, layer=0, figsize=(20, 10)):
 
     # Create the headfile object
     headobj = self.importHeads()
-    cbbobj = self.importCbb()
+    #cbbobj = self.importCbb()
     times = headobj.get_times()
     head = headobj.get_data(totim=times[-1])
 
-    frf = cbbobj.get_data(text='FLOW RIGHT FACE')[0]
-    fff = cbbobj.get_data(text='FLOW FRONT FACE')[0]
+    #frf = cbbobj.get_data(text='FLOW RIGHT FACE')[0]
+    #fff = cbbobj.get_data(text='FLOW FRONT FACE')[0]
 
     # First step is to set up the plot
     fig = plt.figure(figsize=figsize)
