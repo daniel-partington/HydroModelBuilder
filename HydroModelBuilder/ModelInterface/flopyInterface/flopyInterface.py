@@ -22,7 +22,6 @@ class ModflowModel(object):
         :param model_data: ModelManager instance, containing all the data for the model
         :param data_folder: str, path to data folder (MODFLOW model run files)
         """
-
         self.model_data = model_data
         self.name = model_data.name
         if not data_folder:
@@ -116,9 +115,7 @@ class ModflowModel(object):
         """Create and setup MODFLOW BAS package.
 
         :param nlay: int, number of layers
-
         :param nrow: int, number of rows
-
         :param ncol: int, number of columns
         """
 
@@ -136,7 +133,6 @@ class ModflowModel(object):
         """TODO: Docs
 
         :param headtol:
-
         :param fluxtol:
         """
         # Specify NWT settings
@@ -213,7 +209,6 @@ class ModflowModel(object):
 
 
         :param reach_data: ndarray, array holding reach data.
-
         :param segment_data: ndarray, array holding stream segment data.
         """
 
@@ -270,7 +265,6 @@ class ModflowModel(object):
         """TODO: Docs:
 
         :param gages:
-
         :param files:  (Default value = None)
         """
 
@@ -311,7 +305,6 @@ class ModflowModel(object):
     def createRCHpackage(self, rchrate=None):
         """Add RCH package to the MODFLOW model to represent recharge
 
-
         :param rchrate:  (Default value = None)
         """
 
@@ -327,7 +320,6 @@ class ModflowModel(object):
 
         >>> lrcq = {}
         >>> lrcq[0] = [[0, 7, 7, -100.]] # layer, row, column, flux
-
 
         :param lrcq: dict, stress period data. (Default value = None)
         """
@@ -382,7 +374,6 @@ class ModflowModel(object):
         """TODO: Docs:
 
         :param bc_array:
-
         :param target:
         """
 
@@ -400,13 +391,9 @@ class ModflowModel(object):
     def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False):
         """Build MODFLOW model.
 
-
         :param transport:  (Default value = False)
-
         :param write:  (Default value = True)
-
         :param verbose:  (Default value = True)
-
         :param check:  (Default value = False)
         """
         self.mf = flopy.modflow.Modflow(self.name, exe_name=self.executable,
@@ -623,7 +610,6 @@ class ModflowModel(object):
 
     def getFinalHeads(self, filename):
         """
-
         :param filename: returns: ndarray, head level
         """
 
@@ -635,7 +621,7 @@ class ModflowModel(object):
     def getRivFlux(self, name):
         """Get river flux data.
 
-        :param name: str,
+        :param name: str, name of river boundary
 
         :returns: dict, river exchange values
         """
@@ -732,8 +718,7 @@ class ModflowModel(object):
 
     def getAverageDepthToGW(self, mask=None):
         """
-
-        :param mask: Default value = None
+        :param mask: (Default value = None)
         """
 
         warnings.warn("Use of deprecated method `getAverageDepthToGW`, use `get_average_depth_to_GW` instead",
@@ -798,7 +783,6 @@ class ModflowModel(object):
 
     def HeadsByZone(self, heads):
         """
-
         :param heads:
         """
         warnings.warn("Use of deprecated method `HeadsByZone`, use `heads_by_zone` instead",
@@ -886,9 +870,7 @@ class ModflowModel(object):
         """TODO Docs
 
         :param obs:
-
         :param interval:
-
         :param obs_set:
         """
         # Set model output arrays to None to initialise
@@ -918,9 +900,7 @@ class ModflowModel(object):
         """TODO Docs
 
         :param obs:
-
         :param interval:
-
         :param obs_set:
         """
         warnings.warn("Use of deprecated method `getObservation`, use `get_observation` instead",
@@ -990,11 +970,8 @@ class ModflowModel(object):
 
     def CompareObservedHead(self, obs_set, simulated, nper=0):
         """
-
         :param obs_set:
-
         :param simulated:
-
         :param nper:  (Default value = 0)
         """
         warnings.warn("Use of deprecated method `CompareObservedHead`, use `compare_observed_head` instead",
@@ -1036,11 +1013,8 @@ class ModflowModel(object):
 
     def CompareObserved(self, obs_set, simulated, nper=0):
         """
-
         :param obs_set:
-
         :param simulated:
-
         :param nper:  (Default value = 0)
         """
         warnings.warn("Use of deprecated method `CompareObserved`, use `compare_observed` instead",
@@ -1080,11 +1054,8 @@ class ModflowModel(object):
 
     def importHeads(self, path=None, name=None):
         """
-
         :param path: Default value = None)
-
-        :param name:  (Default value = None
-
+        :param name:  (Default value = None)
         :param name:  (Default value = None)
         """
 
@@ -1100,12 +1071,22 @@ class ModflowModel(object):
         """TODO: Docs
 
         :param path:  (Default value = None)
-
         :param name:  (Default value = None)
-
         :param ext:  (Default value = '.sfr.out')
         """
+        warnings.warn("Deprecated method called. Use `import_sfr_out()` instead", DeprecationWarning)
+        return self.import_sfr_out(path, name, ext)
+    # End importSfrOut()
 
+    def import_sfr_out(self, path=None, name=None, ext='.sfr.out'):
+        """TODO: Docs
+
+        :param path:  (Default value = None)
+        :param name:  (Default value = None)
+        :param ext:  (Default value = '.sfr.out')
+
+        :returns: DataFrame, SFR data
+        """
         if path:
             sfrout = SfrFile(os.path.join(path, name + ext))
             self.sfr_df = sfrout.get_dataframe()
@@ -1115,7 +1096,7 @@ class ModflowModel(object):
         # End if
 
         return self.sfr_df
-    # End importSfrOut()
+    # End import_sfr_out()
 
     def import_cbb(self):
         """Retrieve data in cell-by-cell budget file"""
@@ -1136,14 +1117,10 @@ class ModflowModel(object):
         """TODO: Docs
 
         :param iter_num:
-
         :param plot:  (Default value = True)
-
         :param save:  (Default value = False)
-
         :param nper:  (Default value = 0)
         """
-
         cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
 
         water_balance_components = cbbobj.textlist
