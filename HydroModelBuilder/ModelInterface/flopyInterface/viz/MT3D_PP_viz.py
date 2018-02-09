@@ -6,7 +6,7 @@ import numpy as np
 def compareAllObs(self):
     """TODO: Docs"""
 
-    concobj = self.importConcs()
+    concobj = self.import_concs()
     times = concobj.get_times()
 
     scatterx = []
@@ -152,7 +152,7 @@ def viewConcsByZone(self, nper='all', specimen=None):
     """
 
     # Create the headfile object
-    concobj = self.importConcs()
+    concobj = self.import_concs()
     times = concobj.get_times()
     if nper == 'all':
         conc = concobj.get_alldata()
