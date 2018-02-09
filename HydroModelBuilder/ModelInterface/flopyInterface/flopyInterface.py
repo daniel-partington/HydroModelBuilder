@@ -2,6 +2,7 @@ import datetime
 import inspect
 import os
 import warnings
+from types import MethodType
 
 import flopy
 import flopy.utils.binaryfile as bf
@@ -10,11 +11,7 @@ import pandas as pd
 from flopy.utils.sfroutputfile import SfrFile
 
 import viz.flopy_viz as fviz  # Visualization extension methods
-# For legacy purposes, allow use of other flopy related classes
-from MT3DModel import MT3DModel
-from MT3DPostProcess import MT3DPostProcess
 from Radon_EC_simple import Radon_EC_simple
-from types import MethodType
 
 
 class ModflowModel(object):
@@ -779,7 +776,6 @@ class ModflowModel(object):
 
     def ConcsByZone(self, concs):
         """
-
         :param concs:
 
         :returns: ndarray
@@ -1001,30 +997,25 @@ class ModflowModel(object):
         """Create a combined observed and simulated dataset and assigns to the `obs_sim_zone` attribute.
 
         :param obs_set: str, name of observation set
-
         :param simulated: ndarray, simulated observation set
-
         :param nper: int, period number. (Default value = 0)
 
         :returns: list[list], as set in `obs_sim_zone`
         """
-
         self.obs_sim_zone = []
         obs_group = self.model_data.observations.obs_group[obs_set]
         obs_df = self.get_active_obs_group(obs_group, nper)
-        sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
+        sim_map_dict = obs_group['mapped_observations']
 
         for observation in obs_df['name']:
             idx = obs_df[obs_df['name'] == observation].index.tolist()[0]
             obs = obs_df.get_value(idx, 'value')
-            sim = simulated[sim_map_dict[observation][0]][
-                sim_map_dict[observation][1]][sim_map_dict[observation][2]]
-            zone = self.model_data.model_mesh3D[1][sim_map_dict[observation][0]][
-                sim_map_dict[observation][1]][sim_map_dict[observation][2]]
-            x = self.model_data.observations.obs_group[obs_set][
-                'locations']['Easting'].loc[observation]
-            y = self.model_data.observations.obs_group[obs_set][
-                'locations']['Northing'].loc[observation]
+
+            sim_obs = sim_map_dict[observation]
+            sim = simulated[sim_obs[0]][sim_obs[1]][sim_obs[2]]
+            zone = self.model_data.model_mesh3D[1][sim_obs[0]][sim_obs[1]][sim_obs[2]]
+            x = obs_group['locations']['Easting'].loc[observation]
+            y = obs_group['locations']['Northing'].loc[observation]
             if np.isnan(sim):
                 print("Sim is NaN:", sim, obs, zone, "|", observation)
                 continue
@@ -1043,7 +1034,6 @@ class ModflowModel(object):
 
         :param nper:  (Default value = 0)
         """
-
         warnings.warn("Use of deprecated method `CompareObserved`, use `compare_observed` instead",
                       DeprecationWarning)
         return self.compare_observed(obs_set, simulated, nper)
