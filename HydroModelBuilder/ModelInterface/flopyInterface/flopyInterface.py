@@ -832,15 +832,13 @@ class ModflowModel(object):
                 continue
             # End if
 
-            self.get_active_obs_group()
-
-            obs_df = obs_group[obs_set]['time_series']
-            obs_df = obs_df[obs_df['active'] == True]
-            sim_map_dict = obs_group[obs_set]['mapped_observations']
+            group_set = obs_group[obs_set]
+            obs_df = self.get_active_obs_group(group_set)
+            sim_map_dict = group_set['mapped_observations']
 
             unique_obs_df_zone = obs_df['zone'].unique()
             if obs_type in stream_options:
-                sfr_location = obs_group[obs_set]['locations']['seg_loc']
+                sfr_location = group_set['locations']['seg_loc']
                 for zone in unique_obs_df_zone:
                     zone_txt = obs_set if len(unique_obs_df_zone) == 1 else obs_set + zone
                     with open(os.path.join(self.data_folder, 'observations_' + zone_txt + '.txt'), 'w') as f:
@@ -884,7 +882,7 @@ class ModflowModel(object):
         # End for
     # End writeObservations()
 
-    def getObservation(self, obs, interval, obs_set):
+    def get_observation(self, obs, interval, obs_set):
         """TODO Docs
 
         :param obs:
@@ -893,7 +891,6 @@ class ModflowModel(object):
 
         :param obs_set:
         """
-
         # Set model output arrays to None to initialise
         head = None
 
@@ -915,22 +912,35 @@ class ModflowModel(object):
         sim_head = head[interval][sim_obs[0]][sim_obs[1]][sim_obs[2]]
         dtw = self.model_data.model_mesh3D[0][0][sim_obs[1]][sim_obs[2]] - sim_head
         return sim_head, dtw
+    # End get_observation()
+
+    def getObservation(self, obs, interval, obs_set):
+        """TODO Docs
+
+        :param obs:
+
+        :param interval:
+
+        :param obs_set:
+        """
+        warnings.warn("Use of deprecated method `getObservation`, use `get_observation` instead",
+                      DeprecationWarning)
+        return self.get_observation(obs, interval, obs_set)
     # End getObservation()
 
     def get_active_obs_group(self, obs_group, nper=None):
         """Get active observations within a group.
 
         :param obs_group: Pandas DataFrame, holding observation time series
-
         :param nper: int, optional period number (Default value = None)
 
         :returns: DataFrame
         """
-
         assert ('time_series' in obs_group.columns) and \
                ('active' in obs_group.columns) and \
                ('interval' in obs_group.columns), \
             "Given DataFrame is missing required columns"
+
         obs_df = obs_group['time_series']
         obs_df = obs_df[obs_df['active'] == True]
 
@@ -987,7 +997,6 @@ class ModflowModel(object):
 
         :param nper:  (Default value = 0)
         """
-
         warnings.warn("Use of deprecated method `CompareObservedHead`, use `compare_observed_head` instead",
                       DeprecationWarning)
         return self.compare_observed_head(obs_set, simulated, nper)
@@ -1048,11 +1057,12 @@ class ModflowModel(object):
 
         :returns: flopy headobj data
         """
-
         if path:
             headobj = bf.HeadFile(os.path.join(path, name + '.hds'))
         else:
             headobj = self.import_heads()
+        # End if
+
         return headobj
     # End import_heads_from_file()
 
@@ -1061,7 +1071,6 @@ class ModflowModel(object):
 
         :returns: flopy headobj data
         """
-
         if not hasattr(self, 'headobj'):
             self.headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
         # End if
