@@ -392,7 +392,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             continue
 
         thickness[index / 2] = mesh[index / 2] - mesh[index / 2 + 1]
-        zone_matrix[index / 2][thickness[index / 2] < 0] = -1
+        zone_matrix[index / 2][thickness[index / 2] <= 0] = -1
     # End for
 
     zone_matrix = reclassIsolatedCells(zone_matrix)
@@ -442,7 +442,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             plt.colorbar()
         # End for
 
-    tester = False
+    tester = True
     if tester == True:
         # print thickness
         thickness2 = {}
@@ -459,7 +459,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             fig = plt.figure()
             fig.add_subplot(1, 3, 1, aspect='equal')
             plt.imshow(thickness2[i], interpolation='none')
-            plt.title('Thickness in active cells: ', hu_raster_files[i * 2][0:5])
+            plt.title('Thickness in active cells: {}'.format(hu_raster_files[i * 2][0:5]))
             plt.colorbar()
             fig.add_subplot(1, 3, 2, aspect='equal')
             plt.imshow(thick_zero[i], interpolation='none')
