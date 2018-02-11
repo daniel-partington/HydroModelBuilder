@@ -26,10 +26,15 @@ class PilotPointsLinear(object):
         pass 
      
     def set_uniform_points(self, length, num_points): 
+        '''
+        Generate a list of length num_points, that has even increments length / num_points
+        param: length, float of length
+        param: num_points, integer 
+        
+        '''
         self.length = length 
         self.num_points = num_points 
-        self.points = [length / x for x in range(1, num_points)] + [0.] 
-        self.points = self.points[::-1] 
+        self.points = [length / float(num_points - 1) * x for x in range(num_points)]
  
     def interpolate_unknown_points_from_df_col(self, df_col, points_vals): 
         return np.interp(df_col.tolist(), self.points, points_vals) 
