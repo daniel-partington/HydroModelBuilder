@@ -370,14 +370,20 @@ class GWModelBuilder(object):
 
     def set_model_boundary_from_corners(self, xmin, xmax, ymin, ymax):
         """
-        Function to set model boundary based on x and y bounds: xmin, xmax, ymin, ymax
+        WARNING: Duplicate function of one found in GDALInterface.
+        Function to set model boundary based on x and y bounds::
 
                     ._________.(xmax, ymax)
                     |         |
                     |         |
                     |         |
                     ._________.
-         (xmin,ymin)
+            (xmin,ymin)
+
+        :param xmin: float, bottom left x-position
+        :param xmax: float, upper right x-position
+        :param ymin: float, bottom left y-position
+        :param ymax: float, upper right y-position
         """
         self.model_boundary[0] = xmin
         self.model_boundary[1] = xmax
@@ -576,7 +582,7 @@ class GWModelBuilder(object):
                 dist_total += dist(points[index], points[index - 1])
         return dist_total
     # End points_dist_collection()
-    
+
     def create_river_dataframe(self, name, poly_file, surface_raster_file,
                                plotting=False, avoid_collocation=False, verbose=False):
 
@@ -605,12 +611,12 @@ class GWModelBuilder(object):
                 continue
             # End if
             lengths += [self._points_dist_collection([amalg_riv_points_collection[i - 1][-1]] +
-                                               amalg_riv_points_collection[i], dist)]
+                                                     amalg_riv_points_collection[i], dist)]
         # End for
 
         if verbose:
             print("Process the surface raster for elevations")
-            
+
         surf_raster_fname = os.path.join(self.out_data_folder_grid, 'surf_raster_processed_{}.pkl'.format(name))
         if os.path.exists(surf_raster_fname):
             print(" --- Using previously processed surface raster data --- ")
@@ -626,7 +632,7 @@ class GWModelBuilder(object):
                                                                                      srm['uly'] - srm['rows'] *
                                                                                      srm['pixel_y'],
                                                                                      srm['uly']))
-            
+
             surf_raster_points = np.array(surf_centroids.keys())
             if verbose:
                 print("Using kd_tree to find surface raster cells closest to river points")
@@ -728,7 +734,7 @@ class GWModelBuilder(object):
         river_seg.loc[:, 'i'] = [x[1] for x in amalg_riv_points_naive_layer]
         river_seg.loc[:, 'j'] = [x[2] for x in amalg_riv_points_naive_layer]
         river_seg.loc[:, 'amalg_riv_points_collection'] = [amalg_riv_points_collection[x]
-                                                    for x in xrange(len(amalg_riv_points_collection.keys()))]
+                                                           for x in xrange(len(amalg_riv_points_collection.keys()))]
 
         self.river_mapping[name] = river_seg
 
@@ -830,7 +836,7 @@ class GWModelBuilder(object):
         rows = int((ymax - ymin) / y_pixel)
         x = np.linspace(xmin + x_pixel / 2.0, xmax - x_pixel / 2.0, cols)
         y = np.linspace(ymax - y_pixel / 2.0, ymin + y_pixel / 2.0, rows)
-        
+
         centroid2mesh2Dindex = {}
         for row in xrange(rows):
             for col in xrange(cols):
@@ -1066,8 +1072,8 @@ class GWModelBuilder(object):
                 # Need to get points from points_obj
                 points = []
                 points_label = []
-                
-                # Get feature id's as well from 
+
+                # Get feature id's as well from
                 identifier = ""
                 temp = self.map_points_to_2Dmesh(points, identifier)
             else:
