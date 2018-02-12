@@ -1,7 +1,6 @@
 import inspect
 import os
 import warnings
-from types import MethodType
 
 # import flopy
 import flopy.utils.binaryfile as bf
@@ -10,10 +9,10 @@ import numpy as np
 import pandas as pd
 
 import viz.MT3D_PP_viz as pp_viz  # Visualization extension methods
-from flopyInterface import ModflowModel
+from types import MethodType
 
 
-class MT3DPostProcess(ModflowModel):
+class MT3DPostProcess(object):
     """TODO: Docs"""
 
     def __init__(self, mf_model, mt_name=None):
@@ -51,6 +50,78 @@ class MT3DPostProcess(ModflowModel):
         return self.sft_conc
     # End importSftConcs()
 
+    def concs_by_zone(self, concs):
+        self.mf_model.concs_by_zone(concs)
+    # End concs_by_zone()
+
+    def ConcsByZone(self, concs):
+        warnings.warn("Use of deprecated method `importConcs`, use `import_concs` instead",
+                      DeprecationWarning)
+        return self.mf_model.concs_by_zone(concs)
+    # End ConcsByZone()
+
+    def compare_observed(self, obs_set, simulated, nper=0):
+        """
+        :param obs_set:
+        :param simulated:
+        :param nper:  (Default value = 0)
+        """
+        return self.mf_model.compare_observed(obs_set, simulated, nper)
+    # End compare_observed()
+
+    def CompareObserved(self, obs_set, simulated, nper=0):
+        warnings.warn("Use of deprecated method `CompareObserved`, use `compare_observed` instead",
+                      DeprecationWarning)
+        return self.mf_model.compare_observed(obs_set, simulated, nper)
+    # End ComparedObserved()
+
+    def compare_observed(self, obs_set, simulated, nper=0):
+        """
+        :param obs_set: param simulated:
+
+        :param nper: Default value = 0)
+
+        :param simulated:
+        """
+        self.obs_sim_zone = []
+        obs_df = self.mf_model.model_data.observations.obs_group[obs_set]['time_series']
+        obs_df = obs_df[obs_df['active'] == True]
+        # obs_df = obs_df[obs_df['interval'] == nper]
+        sim_map_dict = self.mf_model.model_data.observations.obs_group[
+            obs_set]['mapped_observations']
+        # self.model_data.observations.obs_group[obs_set]['time_series']['name']:
+        for observation in obs_df['name']:
+            idx = obs_df[obs_df['name'] == observation].index.tolist()[0]
+            obs = obs_df.get_value(idx, 'value')
+            sim = simulated[sim_map_dict[observation][0]][
+                sim_map_dict[observation][1]][sim_map_dict[observation][2]]
+            zone = self.mf_model.model_data.model_mesh3D[1][sim_map_dict[observation][0]][
+                sim_map_dict[observation][1]][sim_map_dict[observation][2]]
+            x = self.mf_model.model_data.observations.obs_group[
+                obs_set]['locations']['Easting'].loc[observation]
+            y = self.mf_model.model_data.observations.obs_group[
+                obs_set]['locations']['Northing'].loc[observation]
+            if np.isnan(sim):
+                print(sim, obs, zone)
+                continue
+            self.obs_sim_zone += [[obs, sim, zone, x, y]]
+        # End for
+    # End compare_observed()
+
+    def CompareObserved(self, obs_set, simulated, nper=0):
+        """
+        :param obs_set: param simulated:
+
+        :param nper: Default value = 0)
+
+        :param simulated:
+        """
+
+        warnings.warn("Use of deprecated method `CompareObserved`, use `compare_observed` instead",
+                      DeprecationWarning)
+        return self.compare_observed(obs_set, simulated, nper)
+    # End CompareObserved()
+
     def writeObservations(self, specimen):
         """
         :param specimen:
@@ -73,7 +144,7 @@ class MT3DPostProcess(ModflowModel):
                 if (obs_type == 'concentration') & (specimen == 'C14'):
                     # Check if model outputs have already been imported and if not import
                     if not conc:
-                        concobj = self.import_concs()
+                        concobj = self.importConcs()
                         conc = concobj.get_alldata()  # (totim=times[0])
                     # End if
                 elif (obs_type == 'EC') & (specimen == 'EC'):

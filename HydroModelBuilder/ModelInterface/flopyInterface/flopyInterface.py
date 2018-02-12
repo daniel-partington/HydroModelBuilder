@@ -2,7 +2,6 @@ import datetime
 import inspect
 import os
 import warnings
-from types import MethodType
 
 import flopy
 import flopy.utils.binaryfile as bf
@@ -11,7 +10,10 @@ import pandas as pd
 from flopy.utils.sfroutputfile import SfrFile
 
 import viz.flopy_viz as fviz  # Visualization extension methods
+from MT3DModel import MT3DModel  # allow import from this module
+from MT3DPostProcess import MT3DPostProcess
 from Radon_EC_simple import Radon_EC_simple
+from types import MethodType
 
 
 class ModflowModel(object):
@@ -731,7 +733,6 @@ class ModflowModel(object):
 
         :param array:
         """
-
         mesh_1 = self.model_data.model_mesh3D[1]
         arr_zoned = [np.full(mesh_1.shape[1:3], np.nan)] * int(np.max(mesh_1))
 
@@ -756,7 +757,6 @@ class ModflowModel(object):
 
         :param concs:
         """
-
         return self.loop_over_zone(concs)
 
     def ConcsByZone(self, concs):
@@ -765,7 +765,6 @@ class ModflowModel(object):
 
         :returns: ndarray
         """
-
         warnings.warn("Use of deprecated method `ConcsByZone`, use `concs_by_zone` instead",
                       DeprecationWarning)
         return self.concs_by_zone(concs)
