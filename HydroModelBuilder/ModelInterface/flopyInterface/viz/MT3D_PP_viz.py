@@ -1,7 +1,8 @@
 import os
-import numpy as np
-import matplotlib.pyplot as plt
+
 import flopy
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def compareAllObs(self):
@@ -176,8 +177,8 @@ def viewConcsByZone(self, nper='all', specimen=None):
     multiplier = 1.
     fig = plt.figure(figsize=(width * multiplier, height * multiplier))
 
-    vmin = np.amin(conc[conc > 0.])  # 0.0
-    vmax = np.amax(conc)  # 100.0
+    vmin = np.amin(conc[conc > 0.])
+    vmax = np.amax(conc)
 
     ax = fig.add_subplot(2, 4, 1, aspect='equal')
 
@@ -189,13 +190,13 @@ def viewConcsByZone(self, nper='all', specimen=None):
     modelmap.plot_bc('RIV', plotAll=True)
     try:
         modelmap.plot_bc('WEL', plotAll=True)
-    except:
+    except Exception:
         pass
     modelmap.plot_bc('GHB', plotAll=True)
     modelmap.plot_bc('SFR', plotAll=True)
     try:
         modelmap.plot_bc('DRN', plotAll=True)
-    except:
+    except Exception:
         pass
     ax.axes.xaxis.set_ticklabels([])
 
@@ -203,10 +204,10 @@ def viewConcsByZone(self, nper='all', specimen=None):
     ax.set_title('Coonambidgal')
     modelmap = flopy.plot.ModelMap(model=self.mf_model.mf)
     min_conc = -100.0
-    max_conc = 100. #1E6
+    max_conc = 100.0
     temp = max_conc
     max_conc = vmax
-    vmax=100.0
+    vmax = 100.0
 
     array = modelmap.plot_array(
         conc[0], masked_values=[-999.98999023, max_conc, min_conc], alpha=0.5, vmin=vmin, vmax=vmax)
@@ -266,6 +267,7 @@ def viewConcsByZone(self, nper='all', specimen=None):
 
     plt.show()
 # End viewConcsByZone()
+
 
 def _plot_obs_vs_sim(self, obs_set, obs_sim_zone_all, unc=None):
     scatterx = np.array([h[0] for h in obs_sim_zone_all])
@@ -339,6 +341,7 @@ def _plot_obs_vs_sim(self, obs_set, obs_sim_zone_all, unc=None):
     ax.set_xlim(new)
     ax.set_ylim(new)
 
+
 def compareAllObs2(self, specimen):
 
     conc = None
@@ -349,9 +352,9 @@ def compareAllObs2(self, specimen):
 
     # Write observation to file
     for obs_set in obs_group:
-        
+
         obs_sim_zone_all = []
-        
+
         obs_type = obs_group[obs_set]['obs_type']
         # Import the required model outputs for processing
         if obs_type not in ['concentration', 'EC', 'Radon']:
@@ -394,7 +397,7 @@ def compareAllObs2(self, specimen):
                 if obs_type == 'EC':
                     col_of_interest = 'SFR-CONCENTRATION'
                 sim_obs = sft[(sft['SFR-NODE'] == seg) &
-                               (sft['TIME'] == times[interval])][col_of_interest].tolist()[0]
+                              (sft['TIME'] == times[interval])][col_of_interest].tolist()[0]
                 obs_sim_zone_all += [[obs, sim_obs, seg]]
 
         if obs_group[obs_set]['domain'] == 'porous':
@@ -411,8 +414,8 @@ def compareAllObs2(self, specimen):
                 obs_sim_zone_all += [[obs, sim_obs, zone]]
             # End for
         # End if
-        
-        self._plot_obs_vs_sim(obs_set, obs_sim_zone_all, unc=2)       
+
+        self._plot_obs_vs_sim(obs_set, obs_sim_zone_all, unc=2)
 
 
 # End compareAllObs()
