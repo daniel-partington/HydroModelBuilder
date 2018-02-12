@@ -4,8 +4,9 @@ import numpy as np
 
 
 def compareAllObs(self):
+    """TODO: Docs"""
 
-    concobj = self.importConcs()
+    concobj = self.import_concs()
     times = concobj.get_times()
 
     scatterx = []
@@ -15,7 +16,7 @@ def compareAllObs(self):
     # The definition of obs_sim_zone looks like:
     for i in range(self.mf_model.model_data.model_time.t['steps']):
         conc = concobj.get_data(totim=times[i])
-        self.CompareObserved('C14', conc, nper=i)
+        self.compare_observed('C14', conc, nper=i)
         obs_sim_zone_all += self.obs_sim_zone
 
     scatterx = np.array([h[0] for h in obs_sim_zone_all])
@@ -72,12 +73,22 @@ def compareAllObs(self):
 
         # for PBIAS
         def pbias(simulated, observed):
+            """
+            :param simulated:
+            :param observed:
+            """
+
             return np.sum(simulated - observed) * 100 / np.sum(observed)
 
         ax.text(150, 40, 'PBIAS = %4.2f%%' % (pbias(scattery, scatterx)))
 
         # For rmse
         def rmse(simulated, observed):
+            """
+            :param simulated: param observed:
+            :param observed:
+            """
+
             return np.sqrt(((simulated - observed) ** 2).mean())
 
         ax.text(150, 20, 'RMSE = %4.2f' % (rmse(scattery, scatterx)))
@@ -134,9 +145,14 @@ def compareAllObs(self):
 
 
 def viewConcsByZone(self, nper='all', specimen=None):
+    """
+    :param nper: (Default value = 'all')
+
+    :param specimen: (Default value = None)
+    """
 
     # Create the headfile object
-    concobj = self.importConcs()
+    concobj = self.import_concs()
     times = concobj.get_times()
     if nper == 'all':
         conc = concobj.get_alldata()

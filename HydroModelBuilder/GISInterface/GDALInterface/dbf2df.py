@@ -1,9 +1,9 @@
-import pysal as ps
 import pandas as pd
+import pysal as ps
+
 
 def dbf2df(dbf_path, index=None, cols=False, incl_index=False):
-    '''
-    Read a dbf file as a pandas.DataFrame, optionally selecting the index
+    """Read a dbf file as a pandas.DataFrame, optionally selecting the index
     variable and which columns are to be loaded.
     __author__  = "Dani Arribas-Bel <darribas@asu.edu> "
     ...
@@ -23,7 +23,17 @@ def dbf2df(dbf_path, index=None, cols=False, incl_index=False):
     -------
     df          : DataFrame
                   pandas.DataFrame object created
-    '''
+
+
+
+    :param dbf_path:
+
+    :param index:  (Default value = None)
+
+    :param cols: (Default value = False)
+
+    :param incl_index: (Default value = False)
+    """
     db = ps.open(dbf_path)
     if cols:
         if incl_index:
@@ -39,9 +49,11 @@ def dbf2df(dbf_path, index=None, cols=False, incl_index=False):
     else:
         db.close()
         return pd.DataFrame(data)
-        
+
+
 if __name__ == "__main__":
-    
-    df_ConstructionLog = dbf2df(r"C:\Workspace\part0075\MDB modelling\ngis_shp_VIC\ngis_shp_VIC\NGIS_ConstructionLog.dbf", cols=["BoreID","TopElev","BottomElev","Constructi"])
-    df_HydrogeologicUnit = dbf2df(r"C:\Workspace\part0075\MDB modelling\ngis_shp_VIC\ngis_shp_VIC\NGIS_HydrogeologicUnit.dbf")
-    
+
+    df_ConstructionLog = dbf2df(r"C:\Workspace\part0075\MDB modelling\ngis_shp_VIC\ngis_shp_VIC\NGIS_ConstructionLog.dbf", cols=[
+                                "BoreID", "TopElev", "BottomElev", "Constructi"])
+    df_HydrogeologicUnit = dbf2df(
+        r"C:\Workspace\part0075\MDB modelling\ngis_shp_VIC\ngis_shp_VIC\NGIS_HydrogeologicUnit.dbf")

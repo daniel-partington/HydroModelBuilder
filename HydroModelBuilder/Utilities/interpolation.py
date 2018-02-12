@@ -5,17 +5,21 @@ Created on Wed May 11 21:21:51 2016
 """
 
 import numpy as np
-from scipy.interpolate import Rbf
-from scipy.interpolate import griddata
+from scipy.interpolate import Rbf, griddata
 
 
 def GridData(points, values, xi, method='nearest'):
-    """
-    Options for griddata method are ['nearest', 'linear', 'cubic']
+    """Options for griddata method are ['nearest', 'linear', 'cubic']
 
     This has been modded to use nearest method outside of interpolation points
     convex hull.
+
+    :param points:
+    :param values:
+    :param xi:
+    :param method:  (Default value = 'nearest')
     """
+
     if method in ['linear', 'cubic']:
         z1 = griddata(points, values, xi, method=method)
         z0 = griddata(points, values, xi, method='nearest')
@@ -30,10 +34,16 @@ def GridData(points, values, xi, method='nearest'):
 
 
 def RadialBasisFunctions2D(points, values, xi, function='multiquadric', epsilon=2):
-    """
-    Available types of interpolation are:
+    """Available types of interpolation are:
     ['multiquadric', 'inverse', 'gaussian', 'linear', 'cubic', 'quintic', 'thin_plate']
+
+    :param points:
+    :param values:
+    :param xi:
+    :param function:  (Default value = 'multiquadric')
+    :param epsilon:  (Default value = 2)
     """
+
     rbf = Rbf(np.array(points)[:, 0], np.array(points)[:, 1], np.array(values), epsilon=epsilon, function=function)
     ZI = rbf(xi[0], xi[1])
     return ZI
@@ -41,9 +51,14 @@ def RadialBasisFunctions2D(points, values, xi, function='multiquadric', epsilon=
 
 
 def RadialBasisFunctions3D(points, values, xi, function='multiquadric', epsilon=2):
-    """
-    Available types of interpolation are:
+    """Available types of interpolation are:
     ['multiquadric', 'inverse', 'gaussian', 'linear', 'cubic', 'quintic', 'thin_plate']
+
+    :param points:
+    :param values:
+    :param xi:
+    :param function:  (Default value = 'multiquadric')
+    :param epsilon:  (Default value = 2)
     """
     rbf = Rbf(points[0], points[1], points[2], values, epsilon=epsilon, function=function)
     ValuesI = rbf(xi[0], xi[1], xi[2])
@@ -52,6 +67,18 @@ def RadialBasisFunctions3D(points, values, xi, function='multiquadric', epsilon=
 
 
 def Interpolator(mesh_type, points, values, to_array, method='linear', use='griddata', function='multiquadric', epsilon=2):
+    """
+
+    :param mesh_type:
+    :param points:
+    :param values:
+    :param to_array:
+    :param method:  (Default value = 'linear')
+    :param use:  (Default value = 'griddata')
+    :param function:  (Default value = 'multiquadric')
+    :param epsilon:  (Default value = 2)
+    """
+
     if mesh_type == 'structured' and len(points.shape) == 2:
         if use == 'griddata':
             to_values = GridData(points, values, to_array, method=method)
@@ -79,6 +106,12 @@ if __name__ == "__main__":
 
     # Testing
     def func(x, y):
+        """
+
+        :param x:
+        :param y:
+        """
+
         return x * (1 - x) * np.cos(4 * np.pi * x) * np.sin(4 * np.pi * y**2)**2
 
     grid_x, grid_y = np.mgrid[0:1:50j, 0:1:200j]
@@ -91,6 +124,12 @@ if __name__ == "__main__":
     values_interp = Interpolator('structured', points, values, xi, method='cubic')
 
     def func(x, y):
+        """
+
+        :param x:
+        :param y:
+        """
+
         return x * (1 - x) * np.cos(4 * np.pi * x) * np.sin(4 * np.pi * y**2)**2
 
     grid_x, grid_y = np.mgrid[0:1:100j, 0:1:200j]

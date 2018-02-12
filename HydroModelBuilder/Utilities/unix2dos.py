@@ -3,6 +3,11 @@
 import sys
 
 def unix2dos(path):
+    """
+
+    :param path: 
+
+    """
     text = open(path, "U").read() 
     text = text.replace("\n", "\r\n") 
     open(path, "wb").write(text) 

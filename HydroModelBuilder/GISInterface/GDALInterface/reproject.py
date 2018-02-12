@@ -1,9 +1,11 @@
 # Code derived from:
 # https://jgomezdans.github.io/gdal_notes/reprojection.html
 import os
+import subprocess
 
-from osgeo import gdal, gdalconst, ogr, osr
 import numpy as np
+from osgeo import gdal, gdalconst, ogr, osr
+
 
 """
 This contains functions for reprojecting:
@@ -20,6 +22,12 @@ This contains functions for reprojecting:
 
 
 def gdal_error_handler(err_class, err_num, err_msg):
+    """
+
+    :param err_class:
+        :param err_num:
+    :param err_msg:
+    """
     errtype = {
         gdal.CE_None: 'None',
         gdal.CE_Debug: 'Debug',
@@ -35,10 +43,14 @@ def gdal_error_handler(err_class, err_num, err_msg):
 
 
 def coordinate_transform(pointX, pointY, coordTransform):
+    """A function to transform a point on the horizontal plane using
+    CoordinateTransformation object from GDAL osr.
+
+    :param pointX:
+    :param pointY:
+    :param coordTransform:
     """
-    A function to transform a point on the horizontal plane
-    using CoordinateTransformation object from GDAL osr.
-    """
+
     # create a geometry from coordinates
     point = ogr.Geometry(ogr.wkbPoint)
     point.AddPoint(pointX, pointY)
@@ -57,8 +69,7 @@ def reproject_raster(ds,  # raster dataset
                      copy_dest=None,
                      raster_driver="GTiff",
                      set_bounds=None):
-    """
-    A function to reproject and resample a GDAL dataset from within
+    """A function to reproject and resample a GDAL dataset from within
     Python. The idea here is to reproject from one system to another, as well
     as to change the pixel size. The procedure is slightly long-winded, but
     goes like this:
@@ -74,8 +85,16 @@ def reproject_raster(ds,  # raster dataset
 
     Returns projected gdal raster object at the end
 
+    :param ds:
+    :param pixel_spacing:  (Default value = None)
+    :param src_cs: Default value = None)
+    :param dst_cs: Default value = None)
+    :param reproj_method: Default value = gdal.GRA_Bilinear)
+    :param create_copy: Default value = False)
+    :param copy_dest: Default value = None)
+    :param raster_driver: Default value = "GTiff")
+    :param set_bounds: Default value = None)
     """
-
     # Define the projection for "from", and get from dataset if not provided
     if src_cs == None:
         # Check raster GCS
@@ -124,7 +143,7 @@ def reproject_raster(ds,  # raster dataset
     # Perform the projection/resampling
     gdal.ReprojectImage(ds, dest, src_cs.ExportToWkt(), dst_cs.ExportToWkt(), reproj_method)
 
-    #reproj_ds = dest.ReadAsArray()
+    # reproj_ds = dest.ReadAsArray()
     # Let's save it as a GeoTIFF.
     if create_copy:
         driver = gdal.GetDriverByName(raster_driver)
@@ -142,12 +161,20 @@ def reproject_raster(ds,  # raster dataset
     return dest
 
 
-import subprocess
-
 """
 see www.gdal.org/ogr2ogr.html
 """
+
+
 def ogr2ogr(src_datasource_name, dst_datasource_name, layer_name_list=[], **kwargs):
+    """
+
+    :param src_datasource_name:
+    :param dst_datasource_name:
+    :param layer_name_list: (Default value = [])
+    :param dst_datasource_name:
+    :param **kwargs:
+    """
     if os.path.exists(dst_datasource_name):
         os.remove(dst_datasource_name)
 
@@ -165,7 +192,7 @@ def ogr2ogr(src_datasource_name, dst_datasource_name, layer_name_list=[], **kwar
         "-skipfailures",
         "-overwrite",
     ] + extras + [
-        dst_datasource_name, 
+        dst_datasource_name,
         src_datasource_name
     ] + layer_name_list)
 
@@ -178,15 +205,22 @@ def reproject_layer(lyr_src,
                     create_copy=False,
                     copy_dest=None,
                     geom_type=None):
+    """
+    :param lyr_src:
+    :param src_cs:  (Default value = None)
+    :param dst_cs: (Default value = None)
+    :param create_copy: (Default value = False)
+    :param copy_dest: (Default value = None)
+    :param geom_type: (Default value = None)
+    """
 
-    ogr2ogr(src_datasource_name=lyr_src.GetName(), 
-        dst_datasource_name=copy_dest,
-        t_srs=dst_cs,
-    )
+    ogr2ogr(src_datasource_name=lyr_src.GetName(),
+            dst_datasource_name=copy_dest,
+            t_srs=dst_cs,
+            )
     driver = ogr.GetDriverByName("ESRI Shapefile")
     ds = driver.Open(copy_dest)
     return ds
-
 
 
 if __name__ == "__main__":
@@ -224,8 +258,8 @@ if __name__ == "__main__":
     # Test for layer reprojection
     driver = ogr.GetDriverByName("ESRI Shapefile")
     ds = driver.Open(
-        r"C:\Workspace\part0075\MDB modelling\testbox\input_data\Waterways\River_Murray.shp", 0)                     
-        #r"C:\Workspace\part0075\MDB modelling\Campaspe_model\GIS\GIS_preprocessed\Surface_Water\Streams\Campaspe_Riv.shp", 0)
+        r"C:\Workspace\part0075\MDB modelling\testbox\input_data\Waterways\River_Murray.shp", 0)
+    # r"C:\Workspace\part0075\MDB modelling\Campaspe_model\GIS\GIS_preprocessed\Surface_Water\Streams\Campaspe_Riv.shp", 0)
     poly_obj = ds.GetLayer()
     if poly_obj == None:
         print 'Could not open '

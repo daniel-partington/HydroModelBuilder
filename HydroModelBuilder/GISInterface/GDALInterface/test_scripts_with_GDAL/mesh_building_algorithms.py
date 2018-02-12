@@ -8,11 +8,23 @@ import numpy as np
 
 
 def mesh_overlay(layers):
+    """
+
+    :param layers: 
+
+    """
     dz = 1    
     min(layers[0])
 
 
 def fit_mesh(layers, lay_min = 0.1, lay_max = 100.0):
+    """
+
+    :param layers: param lay_min:  (Default value = 0.1)
+    :param lay_max: Default value = 100.0)
+    :param lay_min:  (Default value = 0.1)
+
+    """
     mesh = np.zeros(len(layers[0])/2 + 1)
     zone = np.zeros(len(layers[0])/2)
     shifted = np.full((len(layers[0])/2), False, dtype=bool)
