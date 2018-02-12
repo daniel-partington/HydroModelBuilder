@@ -6,7 +6,7 @@ import flopy
 import flopy.utils.binaryfile as bf
 import matplotlib.pyplot as plt
 from flopy.utils.sfroutputfile import SfrFile
-
+from HydroModelBuilder.Utilities.model_assessment import metric_me, metric_pbias, metric_rmse, plot_obs_vs_sim
 
 def plotRiverFromRiverSegData(self, ax, names=None, **kwargs):
     river_mapping = self.model_data.river_mapping
@@ -85,31 +85,11 @@ def compareAllObs_metrics(self, to_file=False):
     scatterx = np.array([h[0] for h in obs_sim_zone_all])
     scattery = np.array([h[1] for h in obs_sim_zone_all])
 
-    sum1 = 0.
-    sum2 = 0.
+    ME = metric_me(scattery, scatterx)
 
-    if len(scatterx) != 0:
+    PBIAS = metric_pbias(scattery, scatterx)
 
-        mean = np.mean(scatterx)
-        for i in range(len(scatterx)):
-            num1 = (scatterx[i] - scattery[i])
-            num2 = (scatterx[i] - mean)
-            sum1 += num1 ** np.float64(2.)
-            sum2 += num2 ** np.float64(2.)
-
-        ME = 1 - sum1 / sum2
-
-        # for PBIAS
-        def pbias(simulated, observed):
-            return np.sum(simulated - observed) * 100 / np.sum(observed)
-
-        PBIAS = pbias(scattery, scatterx)
-
-        # For rmse
-        def rmse(simulated, observed):
-            return np.sqrt(((simulated - observed) ** 2).mean())
-
-        RMSE = rmse(scattery, scatterx)
+    RMSE = metric_rmse(scattery, scatterx)
 
     if to_file:
         with open(os.path.join(self.data_folder, 'Head_Obs_Model_Measures.txt'), 'w') as f:
@@ -188,38 +168,17 @@ def compareAllObs(self):
     plt.xlabel('Observed')
     plt.ylabel('Simulated', labelpad=10)
 
-    sum1 = 0.0
-    sum2 = 0.0
+    ymin, ymax = ax.get_ylim()
+    xmin, xmax = ax.get_xlim()
 
-    if len(scatterx) != 0:
-        mean = np.mean(scatterx)
-        for i in range(len(scatterx)):
-            num1 = (scatterx[i] - scattery[i])
-            num2 = (scatterx[i] - mean)
-            sum1 += num1**np.float64(2.0)
-            sum2 += num2**np.float64(2.0)
+    ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.4 * (ymax - ymin),
+            'Model Efficiency = %4.2f' % (metric_me(scattery, scatterx)))
 
-        ME = 1 - sum1 / sum2
+    ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.3 * (ymax - ymin),
+            'PBIAS = %4.2f%%' % (metric_pbias(scattery, scatterx)))
 
-        ymin, ymax = ax.get_ylim()
-        xmin, xmax = ax.get_xlim()
-
-        ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.4 * (ymax - ymin),
-                'Model Efficiency = %4.2f' % (ME))
-
-        # for PBIAS
-        def pbias(simulated, observed):
-            return np.sum(simulated - observed) * 100 / np.sum(observed)
-
-        ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.3 * (ymax - ymin),
-                'PBIAS = %4.2f%%' % (pbias(scattery, scatterx)))
-
-        # For rmse
-        def rmse(simulated, observed):
-            return np.sqrt(((simulated - observed) ** 2).mean())
-
-        ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.2 * (ymax - ymin),
-                'RMSE = %4.2f' % (rmse(scattery, scatterx)))
+    ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.2 * (ymax - ymin),
+            'RMSE = %4.2f' % (metric_rmse(scattery, scatterx)))
 
     ax.plot(ax.get_ylim(), ax.get_ylim())
 
@@ -276,78 +235,6 @@ def compareAllObs(self):
     plt.colorbar()
     plt.show()
 # End compareAllObs()
-
-def _plot_obs_vs_sim(self, obs_set, obs_sim_zone_all, unc=None):
-    scatterx = np.array([h[0] for h in obs_sim_zone_all])
-    scattery = np.array([h[1] for h in obs_sim_zone_all])
-
-    residuals = [loc[0] - loc[1] for loc in obs_sim_zone_all]
-
-    # First step is to set up the plot
-    width = 20
-    height = 5
-    multiplier = 1.
-    fig = plt.figure(figsize=(width * multiplier, height * multiplier))
-
-    ax = fig.add_subplot(1, 2, 1)  # , aspect='equal')
-    ax.set_title('Residuals')
-
-    #colours = ['r', 'orangered', 'y', 'green', 'teal', 'blue', 'fuchsia']
-    ax.hist(residuals, bins=20, alpha=0.5, color='black', histtype='step', label='all')
-
-    plt.legend(loc='upper left', ncol=4, fontsize=11)
-
-    ax = fig.add_subplot(1, 2, 2)
-    ax.set_title('{}: Sim vs Obs ({} points)'.format(obs_set.upper(), len(scatterx)))
-
-    ax.scatter(scatterx, scattery, facecolors='none', alpha=0.5)
-
-    plt.xlabel('Observed')
-    plt.ylabel('Simulated', labelpad=10)
-
-    sum1 = 0.0
-    sum2 = 0.0
-
-    if len(scatterx) != 0:
-        mean = np.mean(scatterx)
-        for i in range(len(scatterx)):
-            num1 = (scatterx[i] - scattery[i])
-            num2 = (scatterx[i] - mean)
-            sum1 += num1**np.float64(2.0)
-            sum2 += num2**np.float64(2.0)
-
-        ME = 1 - sum1 / sum2
-
-        ymin, ymax = ax.get_ylim()
-        xmin, xmax = ax.get_xlim()
-
-        ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.4 * (ymax - ymin),
-                'Model Efficiency = %4.2f' % (ME))
-
-        # for PBIAS
-        def pbias(simulated, observed):
-            return np.sum(simulated - observed) * 100 / np.sum(observed)
-
-        ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.3 * (ymax - ymin),
-                'PBIAS = %4.2f%%' % (pbias(scattery, scatterx)))
-
-        # For rmse
-        def rmse(simulated, observed):
-            return np.sqrt(((simulated - observed) ** 2).mean())
-
-        ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.2 * (ymax - ymin),
-                'RMSE = %4.2f' % (rmse(scattery, scatterx)))
-
-    xlim, ylim = ax.get_xlim(), ax.get_ylim()
-    new = (min(xlim[0], ylim[0]), max(xlim[1], ylim[1]))
-    new_upper = (min(xlim[0], ylim[0]) + unc, max(xlim[1], ylim[1]) + unc)
-    new_lower = (min(xlim[0], ylim[0]) - unc, max(xlim[1], ylim[1]) - unc)
-    ax.plot(new, new, color='grey')
-    ax.plot(new_upper, new_upper, color='grey')
-    ax.plot(new_lower, new_lower, color='grey')
-    ax.fill_between(new, new_lower, new_upper, color='grey', alpha=0.3)
-    ax.set_xlim(new)
-    ax.set_ylim(new)
 
 def compareAllObs2(self):
 
@@ -441,7 +328,7 @@ def compareAllObs2(self):
             # End for
         # End if
 
-        self._plot_obs_vs_sim(obs_set, obs_sim_zone_all, unc=2)       
+        plot_obs_vs_sim(obs_set, obs_sim_zone_all, unc=2)       
 
 
 # End compareAllObs()
@@ -741,32 +628,12 @@ def viewHeadsByZone2(self, iter_num, nper='all'):
 
     scatterx = np.array(scatterx)
     scattery = np.array(scattery)
-    sum1 = 0.
-    sum2 = 0.
 
-    if len(scatterx) != 0:
-        mean = np.mean(scatterx)
-        for i in range(len(scatterx)):
-            num1 = (scatterx[i] - scattery[i])
-            num2 = (scatterx[i] - mean)
-            sum1 += num1 ** np.float64(2.)
-            sum2 += num2 ** np.float64(2.)
+    ax.text(150, 75, 'Model Efficiency = %4.2f' % (metric_me(scattery, scatterx)))
 
-        ME = 1 - sum1 / sum2
+    ax.text(150, 40, 'PBIAS = %4.2f%%' % (metric_pbias(scattery, scatterx)))
 
-        ax.text(150, 75, 'Model Efficiency = %4.2f' % (ME))
-
-        # for PBIAS
-        def pbias(simulated, observed):
-            return np.sum(simulated - observed) * 100 / np.sum(observed)
-
-        ax.text(150, 40, 'PBIAS = %4.2f%%' % (pbias(scattery, scatterx)))
-
-        # For rmse
-        def rmse(simulated, observed):
-            return np.sqrt(((simulated - observed) ** 2).mean())
-
-        ax.text(150, 20, 'RMSE = %4.2f' % (rmse(scattery, scatterx)))
+    ax.text(150, 20, 'RMSE = %4.2f' % (metric_rmse(scattery, scatterx)))
 
     ax.plot(ax.get_ylim(), ax.get_ylim())
     fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
