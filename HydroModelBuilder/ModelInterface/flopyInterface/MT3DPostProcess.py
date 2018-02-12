@@ -51,7 +51,7 @@ class MT3DPostProcess(object):
     # End importSftConcs()
 
     def concs_by_zone(self, concs):
-        self.mf_model.concs_by_zone(concs)
+        return self.mf_model.concs_by_zone(concs)
     # End concs_by_zone()
 
     def ConcsByZone(self, concs):
