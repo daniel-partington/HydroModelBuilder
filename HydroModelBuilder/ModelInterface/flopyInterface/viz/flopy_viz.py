@@ -1,10 +1,10 @@
 import os
 
-import numpy as np
-import pandas as pd
 import flopy
 import flopy.utils.binaryfile as bf
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from flopy.utils.sfroutputfile import SfrFile
 
 
@@ -65,6 +65,7 @@ def SFRoutput_plot(self):
     sfr_df
 # End SFRoutput_plot()
 
+
 def compareAllObs_metrics(self, to_file=False):
 
     headobj = self.importHeads()
@@ -118,6 +119,7 @@ def compareAllObs_metrics(self, to_file=False):
 
     return ME, PBIAS, RMSE
 # End compareAllObs_metrics()
+
 
 def compareAllObs(self):
 
@@ -277,6 +279,7 @@ def compareAllObs(self):
     plt.show()
 # End compareAllObs()
 
+
 def _plot_obs_vs_sim(self, obs_set, obs_sim_zone_all, unc=None):
     scatterx = np.array([h[0] for h in obs_sim_zone_all])
     scattery = np.array([h[1] for h in obs_sim_zone_all])
@@ -349,6 +352,7 @@ def _plot_obs_vs_sim(self, obs_set, obs_sim_zone_all, unc=None):
     ax.set_xlim(new)
     ax.set_ylim(new)
 
+
 def compareAllObs2(self):
 
     # Set model output arrays to None to initialise
@@ -361,7 +365,7 @@ def compareAllObs2(self):
             continue
         # end if
         print("Processing {}".format(obs_set))
-        
+
         obs_sim_zone_all = []
 
         obs_type = self.model_data.observations.obs_group[obs_set]['obs_type']
@@ -380,7 +384,7 @@ def compareAllObs2(self):
         else:
             continue
         # End if
-            
+
         obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
         obs_df = obs_df[obs_df['active'] == True]
         sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
@@ -409,8 +413,8 @@ def compareAllObs2(self):
                     sim_obs = sfr[(sfr['segment'] == seg) &
                                   (sfr['time'] == interval)][col_of_interest].tolist()[0]
 
-                    obs_sim_zone_all += [[obs, sim_obs, seg]] #, chainage, time]]
-                                  
+                    obs_sim_zone_all += [[obs, sim_obs, seg]]  # , chainage, time]]
+
                 # End for
             # End for
         # End if
@@ -434,14 +438,14 @@ def compareAllObs2(self):
 
                     sim_heads = [head[interval][lay][row][col]]
 
-                    sim_head = np.mean(sim_heads) #???
+                    sim_head = np.mean(sim_heads)  # ???
                     obs_sim_zone_all += [[obs, sim_head, zone]]
 
                 # End for
             # End for
         # End if
 
-        self._plot_obs_vs_sim(obs_set, obs_sim_zone_all, unc=2)       
+        self._plot_obs_vs_sim(obs_set, obs_sim_zone_all, unc=2)
 
 
 # End compareAllObs()
