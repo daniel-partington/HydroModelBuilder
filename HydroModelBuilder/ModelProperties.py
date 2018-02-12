@@ -439,7 +439,8 @@ class ModelBuilderType(object):
     def __init__(self):
         self.model_types = ['Modflow', 'HGS']
         self.mesh_types = ['structured', 'unstructured']
-        # data formats and associated save function
+        # data formats and associated save function that accepts
+        # the parameters: filename, data_array
         self.data_formats = {
             'ascii': np.savetxt,
             'binary': np.save
