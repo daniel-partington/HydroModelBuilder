@@ -55,7 +55,7 @@ class MT3DPostProcess(object):
     # End concs_by_zone()
 
     def ConcsByZone(self, concs):
-        warnings.warn("Use of deprecated method `importConcs`, use `import_concs` instead",
+        warnings.warn("Use of deprecated method `ConcsByZone`, use `concs_by_zone` instead",
                       DeprecationWarning)
         return self.mf_model.concs_by_zone(concs)
     # End ConcsByZone()
