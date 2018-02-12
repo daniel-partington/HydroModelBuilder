@@ -159,15 +159,15 @@ def viewConcsByZone(self, nper='all', specimen=None):
     if nper == 'all':
         conc = concobj.get_alldata()
         conc = np.mean(conc, axis=0)
-        zoned = self.ConcsByZone(conc)
+        zoned = self.concs_by_zone(conc)
         conc = zoned
     elif nper == 'final':
         conc = concobj.get_data(totim=times[-1])
-        zoned = self.ConcsByZone(conc)
+        zoned = self.concs_by_zone(conc)
         conc = zoned
     else:
         conc = concobj.get_data(totim=times[nper])
-        zoned = self.ConcsByZone(conc)
+        zoned = self.concs_by_zone(conc)
         conc = zoned
     # End if
 
