@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 
@@ -438,7 +439,11 @@ class ModelBuilderType(object):
     def __init__(self):
         self.model_types = ['Modflow', 'HGS']
         self.mesh_types = ['structured', 'unstructured']
-        self.data_formats = ['ascii', 'binary']
+        # data formats and associated save function
+        self.data_formats = {
+            'ascii': np.savetxt,
+            'binary': np.save
+        }
         self.length = ['mm', 'cm', 'm', 'km']
         self.volume = ['ml', 'l', 'kl', 'Ml', 'Gl', 'm3']
         self.time = ['s', 'h', 'd', 'w', 'y']
