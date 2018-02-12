@@ -2,6 +2,7 @@ import os
 from itertools import groupby
 
 import numpy as np
+import pandas as pd
 
 
 class MeshGenerator(object):
@@ -293,23 +294,31 @@ class MeshGenerator(object):
         return point2mesh_map
     # End map_points_to_3Dmesh()
 
-    def map_obs_loc2mesh3D(self, observations, kdtree, method='nearest', ignore=[-1]):
+    def map_obs_loc2mesh3D(self, observations, kdtree, method='nearest', ignore=[-1], verbose=False):
         """This is a function to map the obs locations to the nearest node in the mesh
 
         :param observations:
         :param kdtree:
         :param method:  (Default value = 'nearest')
         :param ignore:  (Default value = [-1])
+        :param verbose: bool, (Default value = False)
         """
         if method == 'nearest':
             for key in observations.obs_group:
+                if verbose:
+                    print('Mapping obs: {}'.format(key))
                 if observations.obs_group[key]['domain'] == 'porous':
-                    points = [list(x) for x in observations.obs_group[
-                        key]['locations'].to_records(index=False)]
-                    observations.obs_group[key]['mapped_observations'] = \
-                        self.map_points_to_3Dmesh(kdtree,
-                                                  points,
-                                                  identifier=observations.obs_group[key]['locations'].index)
+                    if type(observations.obs_group[key]['locations']) == pd.core.frame.DataFrame:
+                        points = [list(x) for x in observations.obs_group[
+                            key]['locations'].to_records(index=False)]
+                    
+                        observations.obs_group[key]['mapped_observations'] = \
+                            self.map_points_to_3Dmesh(kdtree,
+                                                      points,
+                                                      identifier=observations.obs_group[key]['locations'].index)
+                    else:
+                        observations.obs_group[key]['mapped_observations'] = observations.obs_group[key]['locations']
+                    # End if
 
                     # Check that 'mapped_observations' are in active cells and if not then set
                     # the observation to inactive
@@ -377,5 +386,4 @@ class MeshGenerator(object):
             # End for
         # End if
 
-        # return observations
     # End map_obs_loc2mesh3D()

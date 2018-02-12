@@ -26,22 +26,22 @@ class PilotPointsLinear(object):
         pass
 
     def set_uniform_points(self, length, num_points):
-        """
-        :param length:
-        :param num_points:
-        """
+        '''
+        Generate a list of length num_points, that has even increments length / num_points
+        param: length, float of length
+        param: num_points, integer
 
+        '''
         self.length = length
         self.num_points = num_points
-        self.points = [length / x for x in range(1, num_points)] + [0.]
-        self.points = self.points[::-1]
+        self.points = [length / float(num_points - 1) * x for x in range(num_points)]
 
     def interpolate_unknown_points_from_df_col(self, df_col, points_vals):
-        """
+        """TODO: Docs
+
         :param df_col:
         :param points_vals:
         """
-
         return np.interp(df_col.tolist(), self.points, points_vals)
 
 
@@ -67,13 +67,11 @@ class PilotPoints(object):
         self.num_ppoints_by_zone = {}
 
     def write_settings_fig(self, colrow='yes', date=r'mm/dd/yyyy'):
-        """ write the "settings.fig" file that is required to be present
-        when running ppk2fac
+        """Write the "settings.fig" file that is required to be present when running ppk2fac
 
         :param colrow:  (Default value = 'yes')
         :param date:  (Default value = r'mm/dd/yyyy')
         """
-
         out_fname = os.path.join(self.output_directory, 'settings.fig')
         with open(out_fname, 'w') as f:
             f.write('colrow={} \n'.format(colrow))
@@ -111,7 +109,6 @@ class PilotPoints(object):
 
         :returns: array, points zone array and initial values.
         """
-
         # First get the number of zones and layers from the mesh_array object
         zones = [x + 1 for x in range(len(np.unique(mesh_array[1])) - 1)]
         points_dict = {}
@@ -203,7 +200,6 @@ class PilotPoints(object):
         :param delc:  (Default value = None)
         :param delr:  (Default value = None)
         """
-
         layer = 0
         row, col = mesh_array[1][layer].shape[0], mesh_array[1][layer].shape[1]
         with open(os.path.join(self.output_directory, grid_spec_fname), 'w') as f:
@@ -214,7 +210,7 @@ class PilotPoints(object):
 
     def write_pilot_points_file(self, pilot_points, pp_zones, initial_values,
                                 points_fname='points.pts', prefix=None):
-        """ write the pilot point files containing name, easting, northing, zone and value for each pilot point.
+        """Write the pilot point files containing name, easting, northing, zone and value for each pilot point.
 
         :param pilot_points:
         :param pp_zones:
@@ -233,8 +229,7 @@ class PilotPoints(object):
 
     def update_pilot_points_file_by_zone(self, new_values, zone,
                                          points_fname='points.pts', prefix=None):
-        """ write the pilot point files containing name, easting,
-        northing, zone and value for each pilot point
+        """Write the pilot point files containing name, easting, northing, zone and value for each pilot point
 
         :param new_values:
         :param zone:
@@ -259,7 +254,6 @@ class PilotPoints(object):
         :param zone_array:
         :param zone_fname:  (Default value = 'zone.inf')
         """
-
         layer = 0
         row, col = zone_array[layer].shape[0], zone_array[layer].shape[1]
         zone_array = zone_array[int(zone_fname[4])]
@@ -276,9 +270,8 @@ class PilotPoints(object):
     def write_struct_file(self, mesh_array, struct_fname='struct.dat', nugget=0.0,
                           transform='log', numvariogram=1, variogram=0.15,
                           vartype=2, bearing=0.0, a=500.0, anisotropy=1.0):
-        """Write the structure file for use in ppk2fac using default
-        values as specified in the arguments to the function, which can then be
-        manually modified throught "struct_file_out"
+        """Write the structure file for use in ppk2fac using default values as specified
+        in the arguments to the function, which can then be manually modified through "struct_file_out"
 
         :param mesh_array:
         :param struct_fname:  (Default value = 'struct.dat')
@@ -337,7 +330,6 @@ class PilotPoints(object):
         :param sd_fname:  (Default value = 'sd.ref')
         :param reg_fname:  (Default value = 'reg.dat')
         """
-
         zones = len(np.unique(mesh_array[1])) - 1
         with open(os.path.join(self.output_directory, instruct_fname), 'w') as f:
             f.write('{} \n'.format(grid_spec_fname))
@@ -517,7 +509,6 @@ class PilotPoints(object):
         :param values_dir:  (Default value = '')
         :param out_dir:  (Default value = '')
         """
-
         val_array = np.zeros_like(zone_array)
         zones = [x + 1 for x in range(len(np.unique(zone_array)) - 1)]
 
@@ -539,13 +530,12 @@ class PilotPoints(object):
         # return val_array
 
     def save_mesh3D_array(self, filename='val_array', data_format='binary'):
-        """ save the created 3D mesh array to file with filename
-        as 'filename' and as either 'data_format' as 'binary' or 'ascii'
+        """Save the created 3D mesh array to file with filename as 'filename' 
+        and as either 'data_format' as 'binary' or 'ascii'
 
         :param filename:  (Default value = 'val_array')
         :param data_format:  (Default value = 'binary')
         """
-
         if data_format == 'ascii':
             np.savetxt(filename, self.val_array)
         elif data_format == 'binary':
@@ -556,8 +546,8 @@ class PilotPoints(object):
 
     def setup_pilot_points_by_zones(self, mesh_array, zones, search_radius,
                                     verbose=True, prefixes=None):
-        """ set up pilot points files, zone files, ppk2fac instructions,
-        and to run ppk2fac to create the factors files required for fac2real.
+        """Set up pilot points files, zone files, ppk2fac instructions, and to run ppk2fac
+        to create the factors files required for fac2real.
 
         This is based on creating a pilot point grid per zone in the mesh.
 
@@ -567,7 +557,6 @@ class PilotPoints(object):
         :param verbose:  (Default value = True)
         :param prefixes:  (Default value = None)
         """
-
         for zone in range(zones):
             if prefixes is not None:
                 prefix = prefixes[zone]
@@ -611,15 +600,13 @@ class PilotPoints(object):
                                          instruct_fname='fac2real{}.in'.format(zone))
 
     def generate_cov_mat_by_zones(self, zones):
-        """ set up ppcov instructions,
-        then run ppcov to create the covmat files required for building the
-        covariance matrix.
+        """Set up ppcov instructions, then run ppcov to create the covmat files
+        required for building the covariance matrix.
 
         This is based on creating a pilot point grid per zone in the mesh.
 
         :param zones:
         """
-
         for zone in range(zones):
             self.write_ppcov_instruct('points{}.pts'.format(zone),
                                       'struct.dat',
@@ -632,7 +619,7 @@ class PilotPoints(object):
             self.run_ppcov(self.ppcov_exe, instruct_fname='ppcov{}.in'.format(zone))
 
     def run_pyfac2real_by_zones(self, zones):
-        """ run fac2real via the python implementation and based on number of zones.
+        """Run fac2real via the python implementation and based on number of zones.
 
         This should only be used after running setup_pilot_points_by_zones
 
@@ -655,7 +642,7 @@ class PilotPoints(object):
                                               out_dir=self.output_directory)
 
     def update_pilot_points_files_by_zones(self, zones, new_values_dict):
-        """
+        """TODO: Docs
 
         :param zones:
         :param new_values_dict:
@@ -677,7 +664,6 @@ def mesh3DToVtk(mesh_array, grid_info, val_array, val_name, out_path, vtk_out):
     :param out_path:
     :param vtk_out:
     """
-
     from HydroModelBuilder.GISInterface.GDALInterface import array2Vtk
 
     mesh, zone_matrix = mesh_array[0], mesh_array[1]
@@ -688,122 +674,5 @@ def mesh3DToVtk(mesh_array, grid_info, val_array, val_name, out_path, vtk_out):
 
 
 if __name__ == "__main__":
-
-    from HydroModelBuilder.GWModelManager import GWModelManager
-
-    resolution = 5000
-    zone_map = {1: 'qa', 2: 'utb', 3: 'utqa', 4: 'utam', 5: 'utaf', 6: 'lta',
-                7: 'bse'}
-    HGU_map = {'bse': 'Bedrock', 'utb': 'Newer Volcanics Basalts',
-               'utaf': 'Calivil', 'lta': 'Renmark',
-               'qa': 'Coonambidgal Sands', 'utqa': 'Shepparton Sands',
-               'utam': 'Loxton-Parilla Sands'}
-
-    # Get an example mesh from a previous model build
-    MM = GWModelManager()
-    model_folder = r'C:/Workspace/part0075/MDB modelling/testbox/00_Campaspe_Cascade/01_steady_state/structured_model_grid_{}m'.format(
-        resolution)
-    MM.load_GW_model(os.path.join(model_folder, r"01_steady_state_packaged.pkl"))
-    name = MM.GW_build.keys()[0]
-    mesh_array = MM.GW_build[name].model_mesh3D
-    zones = len(np.unique(mesh_array[1])) - 1
-    cell_centers = MM.GW_build[name].model_mesh_centroids
-    model_boundary = MM.GW_build[name].model_boundary
-
-    # Generate pilot points from existing mesh with zones and cell centers
-    # allow for assignment of pilot points at every nth active zone cell using
-    # skip function.
-
-    pp = PilotPoints(output_directory=model_folder)
-
-    if resolution == 1000:
-        skip = [0, 0, 6, 0, 6, 6, 6]
-        skip_active = [49, 20, 0, 34, 0, 0, 0]
-    elif resolution == 500:
-        skip = [0, 0, 12, 0, 12, 12, 12]
-        skip_active = [100, 40, 0, 70, 0, 0, 0]
-    else:
-        skip = [0,  0, 3, 0, 2, 3, 3]
-        skip_active = [3, 20, 0, 4, 0, 0, 0]
-
-    a = pp.generate_points_from_mesh(mesh_array, cell_centers,
-                                     skip=skip,
-                                     skip_active=skip_active,
-                                     zone_prop_dict={0: 30.0, 1: 2.0, 2: 2.0, 3: 50.0, 4: 45.0, 5: 30.0, 6: 10.0},
-                                     #zone_prop_dict={0:0.2, 1:0.3, 2:0.4, 3:0.5, 4:0.6, 5:0.2, 6:0.10},
-                                     add_noise=False
-                                     )
-
-    pp.write_settings_fig()
-    pp.write_grid_spec(mesh_array, model_boundary, delc=resolution, delr=resolution)
-    pp.write_struct_file(mesh_array, nugget=0.0,
-                         transform='log', numvariogram=1, variogram=0.15,
-                         vartype=2, bearing=0.0, a=20000.0, anisotropy=1.0)
-
-    if resolution == 1000:
-        search_radius = [30000, 20000, 20000, 20000, 20000, 20000, 20000]
-    else:
-        search_radius = [30000, 20000, 40000, 20000, 40000, 50000, 20000]
-
-    pp.setup_pilot_points_by_zones(mesh_array, zones, search_radius)
-
-    pp.generate_cov_mat_by_zones(zones)
-
-    pp.run_pyfac2real_by_zones(zones)
-
-    hk = pp.val_array
-
-    nrow, ncol = mesh_array[1][0].shape[0], mesh_array[1][0].shape[1]
-    delc, delr = [resolution] * 2
-    x0, y0 = model_boundary[0], model_boundary[3]
-    grid_info = [ncol, nrow, delc, delr, x0, y0]
-    #mesh3DToVtk(mesh_array, grid_info, hk, 'hk', '', 'hk')
-
-    ###########################################################################
-    from HydroModelBuilder.ModelInterface.flopyInterface import flopyInterface
-    data_folder = r"C:/Workspace/part0075/MDB modelling/testbox/PEST5000/master"
-    modflow_model = flopyInterface.ModflowModel(MM.GW_build[name], data_folder=data_folder)
-    modflow_model.buildMODFLOW()
-    import flopy
-    import matplotlib.pyplot as plt
-    b = a[0]
-    # First step is to set up the plot
-    width = 20
-    height = 10
-    multiplier = 1.
-    fig = plt.figure(figsize=(width * multiplier, height * multiplier))
-
-    for key in b.keys():
-        fname = os.path.join(pp.output_directory, 'values{}.ref'.format(key))
-        with open(fname, 'r') as f:
-            lines = f.readlines()
-            vals = []
-            for index, line in enumerate(lines):
-                # if index == 0: continue
-                temp = line.strip('\n').split()
-                vals += [float(x) for x in line.strip('\n').split()]
-
-        #vmin = 1
-        #vmax = 2
-        vals = np.array(vals)
-        vals = np.reshape(vals, mesh_array[0][0].shape)
-        #fig = plt.figure()
-        ax = fig.add_subplot(2, 4, key + 1, aspect='equal')
-        ax.set_title(HGU_map[zone_map[key + 1]])
-        modelmap = flopy.plot.ModelMap(model=modflow_model.mf)
-        array = modelmap.plot_array(a[3][key], masked_values=[0], alpha=0.8, cmap='gray', vmin=0, vmax=2)
-        # modelmap.plot_grid()
-        # array = modelmap.plot_array(hk[key], masked_values=[1E6, 0], alpha=1.0)#,
-        array = modelmap.plot_array(hk[key], masked_values=[0], alpha=1.0)  # ,
-        # vmin=vmin, vmax=vmax)
-        # array = modelmap.plot_array(vals, masked_values=[1E6], alpha=1.0)#,
-        # vmin=vmin, vmax=vmax)
-        start, end = ax.get_xlim()
-        start = start // 1000 * 1000 + 1000
-        end = end // 1000 * 1000 - 1000
-        ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
-        plt.scatter([x[0] for x in b[key]], [x[1] for x in b[key]], facecolors='none', color='black', alpha=0.5)
-        cbar_ax = fig.add_axes()  # [0.67, 0.055, 0.01, 0.42])
-        fig.colorbar(array, cax=cbar_ax)
-
-    fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
+    # Shifted testing script to ../../tests folder
+    pass

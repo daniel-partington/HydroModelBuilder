@@ -1,3 +1,5 @@
+import os
+
 import flopy
 import matplotlib.pyplot as plt
 import numpy as np
@@ -175,8 +177,8 @@ def viewConcsByZone(self, nper='all', specimen=None):
     multiplier = 1.
     fig = plt.figure(figsize=(width * multiplier, height * multiplier))
 
-    vmin = np.amin(conc[conc > 0.])  # 0.0
-    vmax = np.amax(conc)  # 100.0
+    vmin = np.amin(conc[conc > 0.])
+    vmax = np.amax(conc)
 
     ax = fig.add_subplot(2, 4, 1, aspect='equal')
 
@@ -186,17 +188,26 @@ def viewConcsByZone(self, nper='all', specimen=None):
     modelmap.plot_ibound()
 
     modelmap.plot_bc('RIV', plotAll=True)
-    modelmap.plot_bc('WEL', plotAll=True)
+    try:
+        modelmap.plot_bc('WEL', plotAll=True)
+    except Exception:
+        pass
     modelmap.plot_bc('GHB', plotAll=True)
     modelmap.plot_bc('SFR', plotAll=True)
-    modelmap.plot_bc('DRN', plotAll=True)
+    try:
+        modelmap.plot_bc('DRN', plotAll=True)
+    except Exception:
+        pass
     ax.axes.xaxis.set_ticklabels([])
 
     ax = fig.add_subplot(2, 4, 2, aspect='equal')
     ax.set_title('Coonambidgal')
     modelmap = flopy.plot.ModelMap(model=self.mf_model.mf)
-    max_conc = -100.0
-    min_conc = 1E6
+    min_conc = -100.0
+    max_conc = 100.0
+    temp = max_conc
+    max_conc = vmax
+    vmax = 100.0
 
     array = modelmap.plot_array(
         conc[0], masked_values=[-999.98999023, max_conc, min_conc], alpha=0.5, vmin=vmin, vmax=vmax)
@@ -256,3 +267,155 @@ def viewConcsByZone(self, nper='all', specimen=None):
 
     plt.show()
 # End viewConcsByZone()
+
+
+def _plot_obs_vs_sim(self, obs_set, obs_sim_zone_all, unc=None):
+    scatterx = np.array([h[0] for h in obs_sim_zone_all])
+    scattery = np.array([h[1] for h in obs_sim_zone_all])
+
+    residuals = [loc[0] - loc[1] for loc in obs_sim_zone_all]
+
+    # First step is to set up the plot
+    width = 20
+    height = 5
+    multiplier = 1.
+    fig = plt.figure(figsize=(width * multiplier, height * multiplier))
+
+    ax = fig.add_subplot(1, 2, 1)  # , aspect='equal')
+    ax.set_title('Residuals')
+
+    #colours = ['r', 'orangered', 'y', 'green', 'teal', 'blue', 'fuchsia']
+    ax.hist(residuals, bins=20, alpha=0.5, color='black', histtype='step', label='all')
+
+    plt.legend(loc='upper left', ncol=4, fontsize=11)
+
+    ax = fig.add_subplot(1, 2, 2)
+    ax.set_title('{}: Sim vs Obs ({} points)'.format(obs_set.upper(), len(scatterx)))
+
+    ax.scatter(scatterx, scattery, facecolors='none', alpha=0.5)
+
+    plt.xlabel('Observed')
+    plt.ylabel('Simulated', labelpad=10)
+
+    sum1 = 0.0
+    sum2 = 0.0
+
+    if len(scatterx) != 0:
+        mean = np.mean(scatterx)
+        for i in range(len(scatterx)):
+            num1 = (scatterx[i] - scattery[i])
+            num2 = (scatterx[i] - mean)
+            sum1 += num1**np.float64(2.0)
+            sum2 += num2**np.float64(2.0)
+
+        ME = 1 - sum1 / sum2
+
+        ymin, ymax = ax.get_ylim()
+        xmin, xmax = ax.get_xlim()
+
+        ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.4 * (ymax - ymin),
+                'Model Efficiency = %4.2f' % (ME))
+
+        # for PBIAS
+        def pbias(simulated, observed):
+            return np.sum(simulated - observed) * 100 / np.sum(observed)
+
+        ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.3 * (ymax - ymin),
+                'PBIAS = %4.2f%%' % (pbias(scattery, scatterx)))
+
+        # For rmse
+        def rmse(simulated, observed):
+            return np.sqrt(((simulated - observed) ** 2).mean())
+
+        ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.2 * (ymax - ymin),
+                'RMSE = %4.2f' % (rmse(scattery, scatterx)))
+
+    xlim, ylim = ax.get_xlim(), ax.get_ylim()
+    new = (min(xlim[0], ylim[0]), max(xlim[1], ylim[1]))
+    new_upper = (min(xlim[0], ylim[0]) + unc, max(xlim[1], ylim[1]) + unc)
+    new_lower = (min(xlim[0], ylim[0]) - unc, max(xlim[1], ylim[1]) - unc)
+    ax.plot(new, new, color='grey')
+    ax.plot(new_upper, new_upper, color='grey')
+    ax.plot(new_lower, new_lower, color='grey')
+    ax.fill_between(new, new_lower, new_upper, color='grey', alpha=0.3)
+    ax.set_xlim(new)
+    ax.set_ylim(new)
+
+
+def compareAllObs2(self, specimen):
+
+    conc = None
+    sft_conc = None
+    obs_group = self.mf_model.model_data.observations.obs_group
+
+    obs_sim_zone_all = []
+
+    # Write observation to file
+    for obs_set in obs_group:
+
+        obs_sim_zone_all = []
+
+        obs_type = obs_group[obs_set]['obs_type']
+        # Import the required model outputs for processing
+        if obs_type not in ['concentration', 'EC', 'Radon']:
+            continue
+        else:
+            print("Processing {}".format(obs_set))
+            if (obs_type == 'concentration') & (specimen == 'C14'):
+                # Check if model outputs have already been imported and if not import
+                if not conc:
+                    concobj = self.importConcs()
+                    conc = concobj.get_alldata()  # (totim=times[0])
+                # End if
+            elif (obs_type == 'EC') & (specimen == 'EC'):
+                try:
+                    sft_conc['TIME']
+                except:
+                    sft_conc = self.importSftConcs()
+            elif obs_type == 'Radon':
+                continue
+            else:
+                continue
+            # End if
+        # End if
+
+        obs_df = obs_group[obs_set]['time_series']
+        obs_df = obs_df[obs_df['active'] == True]
+        sim_map_dict = obs_group[obs_set]['mapped_observations']
+
+        if obs_group[obs_set]['domain'] == 'stream':
+            sft_location = obs_group[obs_set]['locations']['seg_loc']
+
+            for observation in obs_df.index:
+                interval = int(obs_df['interval'].loc[observation])
+                name = obs_df['name'].loc[observation]
+                obs = obs_df['value'].loc[observation]
+                seg = sft_location.loc[name]
+                sft = sft_conc
+                times = sft['TIME'].unique()
+                col_of_interest = obs_type
+                if obs_type == 'EC':
+                    col_of_interest = 'SFR-CONCENTRATION'
+                sim_obs = sft[(sft['SFR-NODE'] == seg) &
+                              (sft['TIME'] == times[interval])][col_of_interest].tolist()[0]
+                obs_sim_zone_all += [[obs, sim_obs, seg]]
+
+        if obs_group[obs_set]['domain'] == 'porous':
+            for observation in obs_df.index:
+                interval = int(obs_df['interval'].loc[observation])
+                name = obs_df['name'].loc[observation]
+                obs = obs_df['value'].loc[observation]
+                zone = obs_df['zone'].loc[observation]
+
+                (lay, row, col) = [sim_map_dict[name][0],
+                                   sim_map_dict[name][1], sim_map_dict[name][2]]
+                sim_conc = [conc[interval][lay][row][col]]
+                sim_obs = np.mean(sim_conc)
+                obs_sim_zone_all += [[obs, sim_obs, zone]]
+            # End for
+        # End if
+
+        self._plot_obs_vs_sim(obs_set, obs_sim_zone_all, unc=2)
+
+
+# End compareAllObs()
