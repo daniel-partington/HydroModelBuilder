@@ -1,14 +1,23 @@
 import os
 
-import numpy as np
-import pandas as pd
 import flopy
 import flopy.utils.binaryfile as bf
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import six
 from flopy.utils.sfroutputfile import SfrFile
 from HydroModelBuilder.Utilities.model_assessment import metric_me, metric_pbias, metric_rmse, plot_obs_vs_sim
 
 def plotRiverFromRiverSegData(self, ax, names=None, **kwargs):
+    """
+    :param ax: param names:  (Default value = None)
+
+    :param names:  (Default value = None)
+
+    :param **kwargs:
+    """
+
     river_mapping = self.model_data.river_mapping
     if names is not None:
         keys = [i for i in names if i in river_mapping.keys()]
@@ -33,12 +42,15 @@ def plotRiverFromRiverSegData(self, ax, names=None, **kwargs):
 
 
 def water_balance_plot(self, iter_num, wat_bal_df, save):
-    """
-    Plot water balance data.
+    """Plot water balance data.
 
-    :param wat_bal_df: Pandas DataFrame, water balance data
+    :param iter_num: int, iteration number to use in filename
+
+    :param wat_bal_df: DataFrame, water balance data
+
     :param save: bool, save plot or not
     """
+
     # Setup params to get water balance aspect ratio looking nice
     # aspect = float(12.5715/((wat_bal_df.max()[0]-wat_bal_df.min()[0])/float(wat_bal_df.shape[1])))
 
@@ -59,11 +71,14 @@ def water_balance_plot(self, iter_num, wat_bal_df, save):
 
 
 def SFRoutput_plot(self):
+    """TODO: Docs"""
+
     raise NotImplementedError("Tried to call unfinished method!")
     sfrout = SfrFile(os.path.join(self.data_folder, self.name + ".sfr.out"))
     sfr_df = sfrout.get_dataframe()
     sfr_df
 # End SFRoutput_plot()
+
 
 def compareAllObs_metrics(self, to_file=False):
 
@@ -99,21 +114,30 @@ def compareAllObs_metrics(self, to_file=False):
     return ME, PBIAS, RMSE
 # End compareAllObs_metrics()
 
+
 def compareAllObs(self):
+    """TODO: Docs"""
 
     headobj = self.importHeads()
     times = headobj.get_times()
 
-    scatterx = []
-    scattery = []
     obs_sim_zone_all = []
+
+    # Could do it like this but need to doublecheck intent
+    # for i, t in enumerate(times):
+    #     head = headobj.get_data(totime=t)
+    #
+    #     # new method sets and returns `obs_sim_zone`
+    #     obs_sim_zone_all += self.compare_observed('head', head, nper=i)
+    #     # self.compare_observed('head', head, nper=i)
+    #     # obs_sim_zone_all += self.obs_sim_zone
+    # # End for
 
     # The definition of obs_sim_zone looks like:
     # self.obs_sim_zone += [[obs, sim, zone, x, y]]
-
     for i in range(self.model_data.model_time.t['steps']):
         head = headobj.get_data(totim=times[i])
-        self.CompareObserved('head', head, nper=i)
+        self.compare_observed('head', head, nper=i)
         obs_sim_zone_all += self.obs_sim_zone
     # End for
 
@@ -182,19 +206,17 @@ def compareAllObs(self):
 
     ax.plot(ax.get_ylim(), ax.get_ylim())
 
-    ax = fig.add_subplot(1, 3, 3)  # , aspect=0.9)
+    ax = fig.add_subplot(1, 3, 3)
     ax.set_title('Residuals in space')
 
-    modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+    modelmap = flopy.plot.ModelMap(model=self.mf)
     modelmap.plot_ibound()
 
     x = np.array([h[3] for h in obs_sim_zone_all])
     y = np.array([h[4] for h in obs_sim_zone_all])
-    zone = [h[2] for h in obs_sim_zone_all]
-    residuals = [h[0] - h[1] for h in obs_sim_zone_all]
+    zone = np.array([h[2] for h in obs_sim_zone_all])
+    residuals = np.array([h[0] - h[1] for h in obs_sim_zone_all])
 
-    from matplotlib import colors
-    import six
     colors_ = list(six.iteritems(colors.cnames))
 
     # Add the single letter colors.
@@ -215,7 +237,6 @@ def compareAllObs(self):
     rgba_colors = np.zeros((len(x), 4))
 
     # for red the first column needs to be one
-    zone = np.array(zone)
     for i in range(1, 8):
         rgba_colors[:, 0][zone == i] = rgb_ref[i - 1][0]
         rgba_colors[:, 1][zone == i] = rgb_ref[i - 1][1]
@@ -248,7 +269,7 @@ def compareAllObs2(self):
             continue
         # end if
         print("Processing {}".format(obs_set))
-        
+
         obs_sim_zone_all = []
 
         obs_type = self.model_data.observations.obs_group[obs_set]['obs_type']
@@ -267,7 +288,7 @@ def compareAllObs2(self):
         else:
             continue
         # End if
-            
+
         obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
         obs_df = obs_df[obs_df['active'] == True]
         sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
@@ -296,8 +317,8 @@ def compareAllObs2(self):
                     sim_obs = sfr[(sfr['segment'] == seg) &
                                   (sfr['time'] == interval)][col_of_interest].tolist()[0]
 
-                    obs_sim_zone_all += [[obs, sim_obs, seg]] #, chainage, time]]
-                                  
+                    obs_sim_zone_all += [[obs, sim_obs, seg]]  # , chainage, time]]
+
                 # End for
             # End for
         # End if
@@ -321,7 +342,7 @@ def compareAllObs2(self):
 
                     sim_heads = [head[interval][lay][row][col]]
 
-                    sim_head = np.mean(sim_heads) #???
+                    sim_head = np.mean(sim_heads)  # ???
                     obs_sim_zone_all += [[obs, sim_head, zone]]
 
                 # End for
@@ -334,6 +355,9 @@ def compareAllObs2(self):
 # End compareAllObs()
 
 def viewHeadsByZone(self, nper='all'):
+    """
+    :param nper: Default value = 'all')
+    """
 
     # Create the headfile object
     headobj = self.importHeads()
@@ -349,15 +373,7 @@ def viewHeadsByZone(self, nper='all'):
         head_orig = head
         zoned = self.HeadsByZone(head)
         head = zoned
-
-    if nper == 'all':
-        scatterx = []
-        scattery = []
-        obs_sim_zone_all = []
-    else:
-        self.CompareObserved('head', head_orig, nper=nper)
-        scatterx = [h[0] for h in self.obs_sim_zone]
-        scattery = [h[1] for h in self.obs_sim_zone]
+        self.compare_observed('head', head_orig, nper=nper)
     # End if
 
     # First step is to set up the plot
@@ -387,8 +403,14 @@ def viewHeadsByZone(self, nper='all'):
     max_head = np.amax(head)
     min_head = np.amin(head)
 
-    array = modelmap.plot_array(
-        head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
+    modelmap_plot_values = {
+        'masked_values': [-999.98999023, max_head, min_head, np.nan],
+        'alpha': 0.5,
+        'vmin': vmin,
+        'vmax': vmax
+    }
+
+    array = modelmap.plot_array(head[0], **modelmap_plot_values)
 
     ax.xaxis.set_ticklabels([])
     ax.yaxis.set_ticklabels([])
@@ -397,9 +419,8 @@ def viewHeadsByZone(self, nper='all'):
 
     ax = fig.add_subplot(2, 4, 3, aspect='equal')
     ax.set_title('Shepparton')
-    modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
-    array = modelmap.plot_array(
-        head[2], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
+    modelmap = flopy.plot.ModelMap(model=self.mf)
+    array = modelmap.plot_array(head[2], **modelmap_plot_values)
     ax.xaxis.set_ticklabels([])
     ax.yaxis.set_ticklabels([])
     cbar_ax1 = fig.add_axes([0.67, 0.525, 0.01, 0.42])
@@ -407,9 +428,8 @@ def viewHeadsByZone(self, nper='all'):
 
     ax = fig.add_subplot(2, 4, 5, aspect='equal')
     ax.set_title('Calivil')
-    modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
-    array = modelmap.plot_array(
-        head[4], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
+    modelmap = flopy.plot.ModelMap(model=self.mf)
+    array = modelmap.plot_array(head[4], **modelmap_plot_values)
     start, end = ax.get_xlim()
     start = start // 1000 * 1000 + 1000
     end = end // 1000 * 1000 - 1000
@@ -421,8 +441,7 @@ def viewHeadsByZone(self, nper='all'):
     ax = fig.add_subplot(2, 4, 6, aspect='equal')
     ax.set_title('Renmark')
     modelmap = flopy.plot.ModelMap(model=self.mf)
-    array = modelmap.plot_array(
-        head[5], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
+    array = modelmap.plot_array(head[5], **modelmap_plot_values)
     ax.yaxis.set_ticklabels([])
     ax.xaxis.set_ticks(np.arange(start, end, 20000.))
     ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
@@ -432,8 +451,7 @@ def viewHeadsByZone(self, nper='all'):
     ax = fig.add_subplot(2, 4, 7, aspect='equal')
     ax.set_title('Basement')
     modelmap = flopy.plot.ModelMap(model=self.mf)
-    array = modelmap.plot_array(
-        head[6], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
+    array = modelmap.plot_array(head[6], **modelmap_plot_values)
     ax.yaxis.set_ticklabels([])
     ax.xaxis.set_ticks(np.arange(start, end, 20000.))
     ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
@@ -448,6 +466,11 @@ def viewHeadsByZone(self, nper='all'):
 
 
 def viewHeadsByZone2(self, iter_num, nper='all'):
+    """
+    :param iter_num: param nper:  (Default value = 'all')
+
+    :param nper:  (Default value = 'all')
+    """
 
     # Create the headfile object
     headobj = self.importHeads()
@@ -470,13 +493,13 @@ def viewHeadsByZone2(self, iter_num, nper='all'):
         scattery = []
         obs_sim_zone_all = []
         for i in range(len(times)):
-            self.CompareObserved('head', head_orig, nper=i)
+            self.compare_observed('head', head_orig, nper=i)
             scatterx += [h[0] for h in self.obs_sim_zone]
             scattery += [h[1] for h in self.obs_sim_zone]
             obs_sim_zone_all += self.obs_sim_zone
         self.obs_sim_zone = obs_sim_zone_all
     else:
-        self.CompareObserved('head', head_orig, nper=nper)
+        self.compare_observed('head', head_orig, nper=nper)
         scatterx = [h[0] for h in self.obs_sim_zone]
         scattery = [h[1] for h in self.obs_sim_zone]
     # End if
@@ -502,7 +525,7 @@ def viewHeadsByZone2(self, iter_num, nper='all'):
     modelmap.plot_bc('GHB', plotAll=True)
     try:
         modelmap.plot_bc('SFR', plotAll=True)
-    except:
+    except Exception:
         print("No SFR package present")
     # End try
 
@@ -643,6 +666,7 @@ def viewHeadsByZone2(self, iter_num, nper='all'):
 
 
 def viewHeads(self):
+    """TODO: Docs"""
 
     # Create the headfile object
     headobj = self.importHeads()
@@ -756,7 +780,11 @@ def viewHeads(self):
 
 
 def viewHeadLayer(self, layer=0, figsize=(20, 10)):
+    """
+    :param layer: (Default value = 0)
 
+    :param figsize: (Default value = (20, 10))
+    """
     # Create the headfile object
     headobj = self.importHeads()
     #cbbobj = self.importCbb()
@@ -805,6 +833,8 @@ def viewHeadLayer(self, layer=0, figsize=(20, 10)):
 
 
 def viewHeads2(self):
+    """TODO: Docs"""
+
     # Create the headfile object
     headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
     cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
@@ -857,7 +887,7 @@ def viewHeads2(self):
     modelmap.plot_bc('SFR', plotAll=True)
     try:
         modelmap.plot_bc('GHB', plotAll=True)
-    except:
+    except Exception:
         pass
     self.plotRiverFromRiverSegData(ax)
     ax.axes.xaxis.set_ticklabels([])
@@ -977,6 +1007,8 @@ def viewHeads2(self):
 
 
 def viewGHB(self):
+    """TODO: Docs"""
+
     # Create the headfile object
     headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
     cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))

@@ -10,7 +10,11 @@ from osgeo import ogr
 
 
 def create_buffer4poly(shpfile, buffile=None, buffer_distance=1000.0):
-
+    """
+    :param shpfile:
+    :param buffile:  (Default value = None)
+    :param buffer_distance: (Default value = 1000.0)
+    """
     shp = ogr.Open(shpfile)
     if shp == None:
         print 'Could not open: ' + shpfile
@@ -47,6 +51,8 @@ def create_buffer4poly(shpfile, buffile=None, buffer_distance=1000.0):
     # buf.Destroy()
 
     return buf
+# End create_buffer4poly()
+
 
 if __name__ == '__main__':
     shpfile = r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\GW_model_area_model.shp"

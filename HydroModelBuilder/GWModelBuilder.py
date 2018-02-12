@@ -16,8 +16,7 @@ from Utilities.PilotPoints import pilotpoints
 
 
 class GWModelBuilder(object):
-    """
-    The ModelBuilder class contains a number of useful tools for building
+    """The ModelBuilder class contains a number of useful tools for building
     numerical groundwater models in packages such as MODFLOW, by dealing with
     spatial data using GIS type objects for reading and manipulating spatial
     data before mapping it to a model grid and converting it into an easily readable
@@ -178,11 +177,17 @@ class GWModelBuilder(object):
 
     @property
     def model_mesh_centroids(self):
+        """TODO: Docs"""
+
         return self.MeshGen.model_mesh_centroids
     # End model_mesh_centroids()
 
     @model_mesh_centroids.setter
     def model_mesh_centroids(self, val):
+        """
+        :param val:
+        """
+
         self._model_mesh_centroids = val
         if hasattr(self, 'MeshGen'):
             self.MeshGen.model_mesh_centroids = val
@@ -191,11 +196,17 @@ class GWModelBuilder(object):
 
     @property
     def mesh_type(self):
+        """TODO: Docs"""
+
         return self.MeshGen.mesh_type
     # End mesh_type()
 
     @mesh_type.setter
     def mesh_type(self, val):
+        """
+        :param val:
+        """
+
         self._mesh_type = val
         if hasattr(self, 'MeshGen'):
             self.MeshGen._mesh_type = val
@@ -204,11 +215,15 @@ class GWModelBuilder(object):
 
     @property
     def model_mesh(self):
+        """TODO: Docs"""
         return self.MeshGen.model_mesh
     # End model_mesh()
 
     @model_mesh.setter
     def model_mesh(self, val):
+        """
+        :param val:
+        """
         self._model_mesh = val
         if hasattr(self, 'MeshGen'):
             self.MeshGen.model_mesh = val
@@ -217,11 +232,15 @@ class GWModelBuilder(object):
 
     @property
     def model_mesh3D(self):
+        """TODO: Docs"""
         return self.MeshGen.model_mesh3D
     # End model_mesh3D()
 
     @model_mesh3D.setter
     def model_mesh3D(self, val):
+        """
+        :param val:
+        """
         self._model_mesh3D = val
         if hasattr(self, 'MeshGen'):
             self.MeshGen.model_mesh = val
@@ -230,11 +249,15 @@ class GWModelBuilder(object):
 
     @property
     def mesh2centroid2Dindex(self):
+        """TODO: Docs"""
         return self.MeshGen.mesh2centroid2Dindex
     # End mesh2centroid2Dindex()
 
     @mesh2centroid2Dindex.setter
     def mesh2centroid2Dindex(self, val):
+        """
+        :param val:
+        """
         self._mesh2centroid2Dindex = val
         if hasattr(self, 'MeshGen'):
             self.MeshGen.centroid2mesh3Dindex = val
@@ -243,11 +266,15 @@ class GWModelBuilder(object):
 
     @property
     def centroid2mesh2Dindex(self):
+        """TODO: Docs"""
         return self.MeshGen.centroid2mesh2Dindex
     # End centroid2mesh2Dindex()
 
     @centroid2mesh2Dindex.setter
     def centroid2mesh2Dindex(self, val):
+        """
+        :param val:
+        """
         self._centroid2mesh2Dindex = val
         if hasattr(self, 'MeshGen'):
             self.MeshGen.centroid2mesh2Dindex = val
@@ -256,11 +283,15 @@ class GWModelBuilder(object):
 
     @property
     def centroid2mesh3Dindex(self):
+        """TODO: Docs"""
         return self.MeshGen.centroid2mesh3Dindex
     # End centroid2mesh2Dindex()
 
     @centroid2mesh3Dindex.setter
     def centroid2mesh3Dindex(self, val):
+        """
+        :param val:
+        """
         self._centroid2mesh3Dindex = val
         if hasattr(self, 'MeshGen'):
             self.MeshGen.centroid2mesh3Dindex = val
@@ -269,11 +300,16 @@ class GWModelBuilder(object):
 
     @property
     def model_boundary(self):
+        """TODO: Docs"""
+
         return self.MeshGen.model_boundary
     # End model_boundary()
 
     @model_boundary.setter
     def model_boundary(self, val):
+        """
+        :param val:
+        """
         self._model_boundary = val
         if hasattr(self, 'MeshGen'):
             self.MeshGen.model_boundary = val
@@ -281,9 +317,8 @@ class GWModelBuilder(object):
     # End model_boundary()
 
     def update_meshgen(self):
-        """
-        Update MeshGen properties forcibly.
-        """
+        """Update MeshGen properties forcibly."""
+
         self.MeshGen.model_boundary = self._model_boundary
         self.MeshGen.model_mesh_centroids = self._model_mesh_centroids
         self.MeshGen.mesh2centroid2Dindex = self._mesh2centroid2Dindex
@@ -295,10 +330,8 @@ class GWModelBuilder(object):
     # End update_meshgen()
 
     def update_meshprops(self):
-        """
-        Forcibly update self with MeshGen properties.
-        Can be removed once ModelBuilder and MeshGen are cleanly separated
-        """
+        """Forcibly update self with MeshGen properties.
+        Can be removed once ModelBuilder and MeshGen are cleanly separated"""
         self._model_boundary = self.MeshGen.model_boundary
         self._model_mesh_centroids = self.MeshGen.model_mesh_centroids
         self._mesh2centroid2Dindex = self.MeshGen.mesh2centroid2Dindex
@@ -310,6 +343,8 @@ class GWModelBuilder(object):
     # End update_meshprops()
 
     def updateGISinterface(self):
+        """TODO: Docs"""
+
         for key, value in self.__dict__.items():
             if type(value) is not object:
                 setattr(self.GISInterface, key, value)
@@ -318,20 +353,18 @@ class GWModelBuilder(object):
     # End updateGISinterface()
 
     def set_units(self, length='m', time='s', mass='kg'):
-        """
-        Sets the units for use inside the model.
+        """Sets the units for use inside the model.
 
-        :param length: str, length unit
-        :param time: str, time unit
-        :param mass: str, mass unit
+        :param length: str, length unit (Default value = 'm')
+        :param time: str, time unit (Default value = 's')
+        :param mass: str, mass unit (Default value = 'kg')
         """
         self.ModelInterface.set_units(length, time, mass)
         self._units = {"length": length, "time": time, "mass": mass}
     # End set_units()
 
     def check_for_existing(self, fn):
-        """
-        Function to determine if input files have previously been processed
+        """Function to determine if input files have previously been processed
         and if so to do nothing unless flagged otherwise. This is done by
         checking the output data path.
 
@@ -341,44 +374,78 @@ class GWModelBuilder(object):
     # End check_for_existing()
 
     def save_obj(self, filename, obj):
+        """
+        :param filename:
+        :param obj:
+        """
         self.ModelInterface.save_obj(filename, obj)
     # End save_dataframe()
 
     def load_obj(self, filename):
+        """
+        :param filename:
+        """
+
         return self.ModelInterface.load_obj(filename)
     # End load_dataframe()
 
     def save_array(self, filename, array):
+        """
+        :param filename:
+        :param array:
+        """
         return self.ModelInterface.save_array(filename, array)
     # End save_array()
 
     def load_array(self, array_file):
+        """
+        :param array_file:
+        """
         return self.ModelInterface.load_array(array_file)
     # End load_array()
 
     def save_dataframe(self, filename, df):
+        """
+        :param filename:
+        :param df:
+        """
         self.ModelInterface.save_dataframe(filename, df)
     # End save_dataframe()
 
     def load_dataframe(self, filename):
+        """
+        :param filename:
+        """
+
         return self.ModelInterface.load_dataframe(filename)
     # End load_dataframe()
 
     def flush(self, mode=None):
+        """
+        :param mode: (Default value = None)
+        """
+
         self.ModelInterface.flush(mode)
     # End flush()
 
     def set_model_boundary_from_corners(self, xmin, xmax, ymin, ymax):
         """
-        Function to set model boundary based on x and y bounds: xmin, xmax, ymin, ymax
+        WARNING: Duplicate function of one found in GDALInterface.
+        Function to set model boundary based on x and y bounds::
 
                     ._________.(xmax, ymax)
                     |         |
                     |         |
                     |         |
                     ._________.
-         (xmin,ymin)
+            (xmin,ymin)
+
+        :param xmin: float, bottom left x-position
+        :param xmax: float, upper right x-position
+        :param ymin: float, bottom left y-position
+        :param ymax: float, upper right y-position
         """
+
         self.model_boundary[0] = xmin
         self.model_boundary[1] = xmax
         self.model_boundary[2] = ymin
@@ -386,6 +453,10 @@ class GWModelBuilder(object):
     # End set_model_boundary_from_corners()
 
     def set_model_boundary_from_polygon_shapefile(self, shapefile_name, shapefile_path=None):
+        """
+        :param shapefile_name:
+        :param shapefile_path: (Default value = None)
+        """
         if shapefile_path is None:
             shapefile_path = self.data_folder
         # End if
@@ -396,6 +467,11 @@ class GWModelBuilder(object):
     # End set_model_boundary_from_polygon_shapefile()
 
     def set_data_boundary_from_polygon_shapefile(self, shapefile_name=None, shapefile_path=None, buffer_dist=None):
+        """
+        :param shapefile_name: (Default value = None)
+        :param shapefile_path: (Default value = None)
+        :param buffer_dist: (Default value = None)
+        """
         if shapefile_name is None:
             shapefile_name = self.boundary_poly_file
         if shapefile_path is None:
@@ -408,8 +484,7 @@ class GWModelBuilder(object):
     # End set_data_boundary_from_polygon_shapefile()
 
     def build_centroids_array(self, gridHeight):
-        """
-        1. Builds an array of cell centroids to be used in interpolating from
+        """1. Builds an array of cell centroids to be used in interpolating from
         other points arrays onto the cell centroids
 
         2. Creates a dictionary with centroids as key and row col as entries
@@ -421,24 +496,21 @@ class GWModelBuilder(object):
     # End build_centroids_array()
 
     def build_centroids_array3D(self):
-        """
-        1. Builds an array of cell centroids to be used in interpolating from
+        """1. Builds an array of cell centroids to be used in interpolating from
         other points arrays onto the cell centroids for the 3D mesh
 
         2. Creates a dictionary with centroids as key and lay row col as entries
         If key isn't found then it returns nearest centroid
         """
+
         return self.MeshGen.build_centroids_array3D(self.array_ordering)
     # build_centroids_array3D()
 
     def define_structured_mesh(self, gridHeight, gridWidth):
-        """
-        Define the structured mesh grid.
+        """Define the structured mesh grid.
 
         :param gridHeight: float, height of grid cell
         :param gridWidth: float, width of grid cell
-
-        :returns: tuple, grid information
         """
         self.gridHeight = gridHeight
         self.gridWidth = gridWidth
@@ -452,28 +524,47 @@ class GWModelBuilder(object):
     # End define_structured_mesh
 
     def read_rasters(self, files, path=None):
+        """
+        :param files: (Default value = None)
+        :param path:  (Default value = None)
+        """
         return self.GISInterface.read_rasters(files, path=path)
     # End read_rasters()
 
     def map_rasters_to_grid(self, raster_files, raster_path):
+        """
+        :param raster_files:
+        :param raster_path:
+        """
+
         return self.GISInterface.map_rasters_to_grid(raster_files, raster_path)
     # End map_rasters_to_grid()
 
     def map_raster_to_regular_grid_return_array(self, raster_fname):
+        """
+        :param raster_fname:
+        """
         return self.GISInterface.map_raster_to_regular_grid_return_array(raster_fname)
     # End map_raster_to_regular_grid_return_array()
 
     def map_heads_to_mesh_by_layer(self):
+        """TODO: Docs"""
         return self.GISInterface.map_heads_to_mesh_by_layer()
     # End map_heads_to_mesh_by_layer()
 
-    def create_basement_bottom(self, hu_raster_path, surface_raster_file, basement_top_raster_file, basement_bot_raster_file, output_path, raster_driver='GTiff'):
-        """
-        Utility to build a bottom basement array where it doesn't exist based on top of bedrock, surface elevation and a thickness function
-
+    def create_basement_bottom(self, hu_raster_path, surface_raster_file, basement_top_raster_file,
+                               basement_bot_raster_file, output_path, raster_driver='GTiff'):
+        """Utility to build a bottom basement array where it doesn't exist based on top of bedrock, surface elevation and a thickness function
         writes a raster file for the bottom basement array
 
         ** This perhaps would better sit in a separate utilities folder ...
+
+        :param hu_raster_path:
+        :param surface_raster_file:
+        :param basement_top_raster_file:
+        :param basement_bot_raster_file:
+        :param output_path:
+        :param raster_driver:  (Default value = 'GTiff')
         """
         return self.GISInterface.create_basement_bottom(hu_raster_path, surface_raster_file,
                                                         basement_top_raster_file,
@@ -486,33 +577,35 @@ class GWModelBuilder(object):
         """
         :param raster_files: list, raster files to build mesh from
         :param raster_path: str, path to raster files
-        :param minimum_thickness: float, minimum thickness
-        :param maximum_thickness: float, maximum thickness
-        :param force: bool, if True, forces a rebuild of the mesh
+        :param minimum_thickness:
+        :param maximum_thickness:
+        :param force: bool, force rebuild of mesh if True. (Default value = False)
         """
         self.MeshGen.build_3D_mesh_from_rasters(self.out_data_folder_grid, self.array_ordering, raster_files,
                                                 raster_path, minimum_thickness, maximum_thickness, force)
     # End build_3D_mesh_from_rasters()
 
     def reclassIsolatedCells(self, passes=1, assimilate=False):
-        """
-        Function to remove cells that are surrounded by non-active cells in the horizontal plane
+        """Function to remove cells that are surrounded by non-active cells in the horizontal plane
+        e.g. if cells with positive integer is surrounded in
 
-        e.g. if cells with positive integer is surrounded in above, below and to each side, then reassign to -1.
-
-        :param passes: int, number of passes to do
-        :param assimilate: bool, whether to assimilate or not if surrounded by four of the same.
+        :param passes:  (Default value = 1)
+        :param assimilate:  (Default value = False)
         """
         self.MeshGen.reclassIsolatedCells(passes, assimilate)
     # End reclassIsolatedCells()
 
     def read_poly(self, filename, path=None, poly_type='polyline'):
+        """
+        :param filename:
+        :param path:  (Default value = None)
+        :param poly_type: Default value = 'polyline')
+        """
         return self.GISInterface.read_poly(filename, path, poly_type=poly_type)
     # End read_poly()
 
     def _get_poly_name_and_obj(self, poly):
-        """
-        Load poly name and object.
+        """Load poly name and object.
 
         :param poly: str or poly object
         """
@@ -529,14 +622,15 @@ class GWModelBuilder(object):
     # End _get_poly_name_and_obj()
 
     def _pointsdist(self, p1, p2, cache={}):
-        """
-        Calculate distance between points.
+        """Calculate distance between points.
 
         :param p1: array-like, x and y values for point 1
         :param p2: array-like, x and y values for point 2
+        :param cache: (Default value = {})
 
-        :returns: float, distance between points
+        :returns:
         """
+
         tmp = cache.get((p1, p2), None)
         if tmp is not None:
             return tmp
@@ -549,11 +643,14 @@ class GWModelBuilder(object):
     # End _pointsdist()
 
     def _hacky_centroid_to_mesh(self, centroid, dist_min):
-        """
-        Nasty (and slow!) workaround due to minor mismatch in centroids from mesh and separate
+        """Nasty (and slow!) workaround due to minor mismatch in centroids from mesh and separate
         generation in this class. Perhaps better to actually define this array in fishnet when
-        define_structured_mesh is called
+        define_structured_mesh is called.
+
+        :param centroid:
+        :param dist_min:
         """
+
         return self.MeshGen._hacky_centroid_to_mesh(self.gridHeight, centroid, dist_min, self._pointsdist)
     # End _hacky_centroid_to_mesh()
 
@@ -564,10 +661,19 @@ class GWModelBuilder(object):
     ###########################################################################
 
     def _dist(self, p1, p2):
+        """
+
+        :param p1:
+        :param p2:
+        """
         return np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
     # End dist()
 
     def _points_dist_collection(self, points, dist):
+        """
+        :param points:
+        :param dist:
+        """
         dist_total = 0
         for index in xrange(len(points)):
             if index == 0:
@@ -576,9 +682,18 @@ class GWModelBuilder(object):
                 dist_total += dist(points[index], points[index - 1])
         return dist_total
     # End points_dist_collection()
-    
+
     def create_river_dataframe(self, name, poly_file, surface_raster_file,
                                plotting=False, avoid_collocation=False, verbose=False):
+        """
+
+        :param name:
+        :param poly_file:
+        :param surface_raster_file:
+        :param plotting:  (Default value = False)
+        :param avoid_collocation: (Default value = False)
+        :param verbose: (Default value = False)
+        """
 
         poly_file = self.GISInterface.read_poly(poly_file)
         points_list, points_dict = self.GISInterface.polyline_explore(poly_file)
@@ -605,12 +720,12 @@ class GWModelBuilder(object):
                 continue
             # End if
             lengths += [self._points_dist_collection([amalg_riv_points_collection[i - 1][-1]] +
-                                               amalg_riv_points_collection[i], dist)]
+                                                     amalg_riv_points_collection[i], dist)]
         # End for
 
         if verbose:
             print("Process the surface raster for elevations")
-            
+
         surf_raster_fname = os.path.join(self.out_data_folder_grid, 'surf_raster_processed_{}.pkl'.format(name))
         if os.path.exists(surf_raster_fname):
             print(" --- Using previously processed surface raster data --- ")
@@ -626,7 +741,7 @@ class GWModelBuilder(object):
                                                                                      srm['uly'] - srm['rows'] *
                                                                                      srm['pixel_y'],
                                                                                      srm['uly']))
-            
+
             surf_raster_points = np.array(surf_centroids.keys())
             if verbose:
                 print("Using kd_tree to find surface raster cells closest to river points")
@@ -730,27 +845,24 @@ class GWModelBuilder(object):
         river_seg.loc[:, 'i'] = [x[1] for x in amalg_riv_points_naive_layer]
         river_seg.loc[:, 'j'] = [x[2] for x in amalg_riv_points_naive_layer]
         river_seg.loc[:, 'amalg_riv_points_collection'] = [amalg_riv_points_collection[x]
-                                                    for x in xrange(len(amalg_riv_points_collection.keys()))]
+                                                           for x in xrange(len(amalg_riv_points_collection.keys()))]
 
         self.river_mapping[name] = river_seg
 
     def get_closest_riv_segments(self, name, points):
-        '''
-        Fuction to find the closest river segment defined in self.river_mapping
-        for the points passed to the function.
-
-        This function requires that self.river_mapping exists, which occurs
-        after running "self.create_river_dataframe"
+        """Find the closest river segment defined in `self.river_mapping` for the given points.
+        Requires `self.create_river_dataframe()` to be run first to assign values to `self.river_mapping`
 
         :param name: str, Name given to stream or river when create_river_dataframe was run
         :param points: list, points for which to find the closest to named river
 
         :returns: list, closest river segment
-        '''
+        """
+
         try:
             self.river_mapping[name]
         except NameError:
-            print("This function can only be run after running 'create_river_dataframe'")
+            print("This function can only be run after running `create_river_dataframe`")
         # End except
 
         river_points = []
@@ -774,15 +886,14 @@ class GWModelBuilder(object):
     # End get_closest_riv_segments()
 
     def _adjust_elevations(self, us, active, ds, adjust=0.1, verbose=False):
-        '''
-        Function to force the river to be decreasing in elevation as you move downstream
+        """Function to force the river to be decreasing in elevation as you move downstream
 
         :param us: float, upstream elevation
         :param active: float, elevation being analysed
         :param ds: float, downstream elevation
-        :param adjust: float, amount to adjust by
-        :param verbose: bool, print out debug information
-        '''
+        :param adjust:  (Default value = 0.1)
+        :param verbose: (Default value = False)
+        """
         if us is None:
             if verbose:
                 print("No upstream to worry about, move on")
@@ -816,8 +927,7 @@ class GWModelBuilder(object):
     # End _adjust_elevations()
 
     def _create_centroids(self, x_pixel, y_pixel, bounds):
-        '''
-        Function to create centroids of raster cells given the bounds of the
+        """Function to create centroids of raster cells given the bounds of the
         raster and the width and height of the cells
 
         :param x_pixel: float,
@@ -825,14 +935,14 @@ class GWModelBuilder(object):
         :param bounds: tuple,
 
         :returns: tuple, (dict) centroid2mesh, (dict) mesh2centroid
-        '''
+        """
         xmin, xmax, ymin, ymax = bounds
         print bounds, x_pixel, y_pixel
         cols = int((xmax - xmin) / x_pixel)
         rows = int((ymax - ymin) / y_pixel)
         x = np.linspace(xmin + x_pixel / 2.0, xmax - x_pixel / 2.0, cols)
         y = np.linspace(ymax - y_pixel / 2.0, ymin + y_pixel / 2.0, rows)
-        
+
         centroid2mesh2Dindex = {}
         for row in xrange(rows):
             for col in xrange(cols):
@@ -844,11 +954,10 @@ class GWModelBuilder(object):
     # End _create_centroids()
 
     def get_raster_info(self, raster_file):
-        '''
-        Function to get raster data and array into python objects
+        """Function to get raster data and array into python objects
 
         :param raster_file: str,
-        '''
+        """
         return self.GISInterface.get_raster_info(raster_file)
     # End get_raster_info()
 
@@ -880,15 +989,14 @@ class GWModelBuilder(object):
     # End _get_lengths_for_polyline_in_cells()
 
     def _naive_cell_ordering_test(self, cell_list):
-        '''
-        Function to test the ordering of cells and see that they are sequentially
+        """Function to test the ordering of cells and see that they are sequentially
         neighbours and not jumping multiple cells.
 
         This is a test for river cell ordering which is specific for MODFLOW
         SFR and STR packages.
 
         :param cell_list: list, of cells to order
-        '''
+        """
         cl = cell_list
         for index in xrange(len(cell_list)):
             if index == 0:
@@ -902,8 +1010,7 @@ class GWModelBuilder(object):
     # _naive_cell_ordering_test()
 
     def _amalgamate_points(self, point2mesh_map2, point_merge):
-        """
-        Amalgamate points.
+        """Amalgamate points.
 
         :param point2mesh_map2:
         :param point_merge:
@@ -961,19 +1068,19 @@ class GWModelBuilder(object):
         """
         :param points_dict:
         """
+
         for key in points_dict:
             points_dict[key] += [{'start': points_dict[key][0], 'end':points_dict[key][-1]}]
         return points_dict
     # End _get_start_and_end_points_from_line_features()
 
     def _points_merge(self, points_dict):
-        '''
-        Merge points from multiple feature into one continuous line
+        """Merge points from multiple feature into one continuous line
 
         :param points_dict: dict, of feature points
 
         :return: list, of unique points.
-        '''
+        """
         # TO CHECK
         point_merge = points_dict[0][0:-1]
         points_after_first = points_dict.keys()[1:]
@@ -995,14 +1102,19 @@ class GWModelBuilder(object):
     # End _points_merge()
 
     def save_MODFLOW_SFR_dataframes(self, name, reach_df, seg_df):
+        """
+        :param name:
+        :param reach_df:
+        :param seg_df:
+        """
+
         self.mf_sfr_df[name] = {'reach_df': reach_df, 'seg_df': seg_df}
     # End save_MODFLOW_SFR_dataframes()
 
-    ###########################################################################
-    ###########################################################################
-    ###########################################################################
-
     def map_polyline_to_grid(self, polyline_obj):
+        """
+        :param polyline_obj:
+        """
         poly_name, polyline_obj = self._get_poly_name_and_obj(polyline_obj)
         if os.path.exists(os.path.join(self.out_data_folder_grid, poly_name + '_mapped.pkl')):
             print "Using previously mapped polyline to grid object"
@@ -1028,6 +1140,10 @@ class GWModelBuilder(object):
     # End map_polyline_to_grid()
 
     def map_polygon_to_grid(self, polygon_obj, feature_name=None):
+        """
+        :param polygon_obj:
+        :param feature_name:  (Default value = None)
+        """
 
         poly_name, polygon_obj = self._get_poly_name_and_obj(polygon_obj)
         if os.path.exists(os.path.join(self.out_data_folder_grid, poly_name + '_mapped.pkl')):
@@ -1053,10 +1169,21 @@ class GWModelBuilder(object):
     # End map_polygon_to_grid()
 
     def read_points_data(self, filename, path=None):
+        """
+        :param filename:
+        :param path:  (Default value = None)
+        """
+
         return self.GISInterface.read_points_data(filename, path)
     # End read_points_data()
 
     def map_points_to_grid(self, points_obj, feature_id=None, use_kdtree=False):
+        """
+        :param points_obj:
+        :param feature_id:  (Default value = None)
+        :param use_kdtree: Default value = False)
+        """
+
         point_name, points_obj = self._get_poly_name_and_obj(points_obj)
         if os.path.exists(os.path.join(self.out_data_folder_grid, point_name + '_mapped.pkl')):
             print "Using previously mapped points to grid object"
@@ -1068,8 +1195,8 @@ class GWModelBuilder(object):
                 # Need to get points from points_obj
                 points = []
                 points_label = []
-                
-                # Get feature id's as well from 
+
+                # Get feature id's as well from
                 identifier = ""
                 temp = self.map_points_to_2Dmesh(points, identifier)
             else:
@@ -1093,19 +1220,26 @@ class GWModelBuilder(object):
     # End map_points_to_grid()
 
     def do_kdtree(self, model_mesh_points, points):
+        """
+        :param model_mesh_points:
+        :param points:
+        """
         mytree = spatial.cKDTree(model_mesh_points)
         dist, indexes = mytree.query(points)
         return indexes
     # End do_kdtree()
 
     def map_points_to_2Dmesh(self, points, identifier=None):
-        '''
-        Function to map points to the 2D horizontal mesh (i.e. on the xy plane)
+        """Map points to the 2D horizontal mesh (i.e. on the xy plane).
 
-        Returns: A dict with keys of all points (or identifiers) with each
-        corresponding entry containing the i and j reference of the nearest
-        cell center to the given point
-        '''
+        :param points:
+        :param identifier:  (Default value = None)
+
+        :returns: dict, with keys of all points (or identifiers) with each
+                  corresponding entry containing the i and j reference of the nearest
+                  cell center to the given point
+        """
+
         model_mesh_points = np.array(self.centroid2mesh2Dindex.keys())
         if type(points) == list:
             points = np.array(points)
@@ -1127,6 +1261,10 @@ class GWModelBuilder(object):
     # End map_points_to_2Dmesh()
 
     def find_closest_points_between_two_lists(self, list1, list2):
+        """
+        :param list1:
+        :param list2:
+        """
         np_arr1 = np.array(list1)
         np_arr2 = np.array(list2)
         closest = self.do_kdtree(np_arr1, np_arr2)
@@ -1135,35 +1273,45 @@ class GWModelBuilder(object):
     # End find_closest_points_between_two_lists()
 
     def map_points_to_3Dmesh(self, points, identifier=None):
-        '''
-        Function to map points to the 3D mesh
+        """Function to map points to the 3D mesh
 
-        Returns: A dict with keys of all points (or identifiers) with each
-        corresponding entry containing the i, j and k reference of the nearest
-        cell center to the given point
-        '''
+        :param points:
+        :param identifier:  (Default value = None)
+
+        :returns: dict, with keys of all points (or identifiers) with each
+                  corresponding entry containing the i, j and k reference of the nearest
+                  cell center to the given point
+        """
+
         return self.MeshGen.map_points_to_3Dmesh(self.do_kdtree, points, identifier)
     # End map_points_to_3Dmesh()
 
     def map_obs_loc2mesh3D(self, method='nearest', ignore=[-1]):
-        """
-        This is a function to map the obs locations to the nearest node in the
-        mesh
+        """This is a function to map the obs locations to the nearest node in the mesh.
+
+        :param method: (Default value = 'nearest')
+        :param ignore: (Default value = [-1])
         """
         self.MeshGen.map_obs_loc2mesh3D(self.observations, self.do_kdtree, method, ignore)
     # End map_obs_loc2mesh3D()
 
     def getXYpairs(self, points_obj, feature_id=None):
+        """TODO: docs
+
+        :param points_obj:
+        :param feature_id:  (Default value = None)
         """
-        TODO: docs
-        """
+
         return self.GISInterface.getXYpairs(points_obj, feature_id=feature_id)
     # End getXYpairs()
 
     def points_shapefile_obj2dataframe(self, points_obj, feature_id=None):
+        """Converts GIS object to dataframe, which is designed for point style objects only
+
+        :param points_obj:
+        :param feature_id:  (Default value = None)
         """
-        Converts GIS object to dataframe, which is designed for point style objects only
-        """
+
         points_dict = self.GISInterface.getXYpairs(points_obj, feature_id=feature_id)
         df_points = pd.DataFrame.from_dict(points_dict, orient='index')
         df_points.columns = ['Easting', 'Northing']
@@ -1173,16 +1321,21 @@ class GWModelBuilder(object):
     # End points_shapefile_obj2dataframe()
 
     def point_values_from_raster(self, points, raster_obj):
-        """
-        Get values from raster at given points defined by list or by points object
+        """Get values from raster at given points defined by list or by points object
         points must be a list made up of point lists or points shapefile object
+
+        :param points:
+        :param raster_obj:
         """
         return self.GISInterface.point_values_from_raster(points, raster_obj)
     # End point_values_from_raster()
 
     def map_points_to_raster_layers(self, points, depths, rasters):
-        """
-        TODO: docs
+        """TODO: docs
+
+        :param points:
+        :param depths:
+        :param rasters:
         """
         # create boolean array
         len_list = len(points)
@@ -1195,17 +1348,17 @@ class GWModelBuilder(object):
     def interpolate_points2mesh(self, points_obj, values_dataframe, feature_id=None,
                                 method='nearest', use='griddata',
                                 function='multiquadric', epsilon=2):
-        """
-        Interpolate points to mesh.
+        """Interpolate points to mesh.
 
         :param points_obj: array-like, points to interpolate
         :param values_dataframe: DataFrame, of values
         :param feature_id: int, feature id defaulting to `None`
-        :param method: str, interpolation method. Defaults to `nearest`
-        :param use: str, Defaults to `griddata`
-        :param function: str, Defaults to `multiquadric`
-        :param epsilon: int, Defaults to `2`
+        :param method: (Default value = 'nearest')
+        :param use: Default value = 'griddata')
+        :param function: str, (Default value = multiquadric)
+        :param epsilon: int, (Default value = 2)
         """
+
         if isinstance(points_obj, list) or isinstance(points_obj, np.ndarray):
             points = points_obj
             values = values_dataframe
@@ -1227,10 +1380,8 @@ class GWModelBuilder(object):
 
     @staticmethod
     def _findInterval(row, times):
-        """
-        Function to find which interval of the model time periods, a particular 
-        time falls within.
-        
+        """Find interval of the model time periods.
+
         :param row: row from a pandas dataframe that has the column 'datetime'
         :param times: times is a list of datetime objects
         """
@@ -1249,10 +1400,10 @@ class GWModelBuilder(object):
     # End _findInterval()
 
     def map_obs2model_times(self):
-        """
-        This is a function to map the obs at different times within the bounding interval in the
+        """This is a function to map the obs at different times within the bounding interval in the
         model times intervals
         """
+
         obs_group = self.observations.obs_group
         if self.model_time.t['steady_state']:
             for key in obs_group:
@@ -1275,11 +1426,10 @@ class GWModelBuilder(object):
     # End map_obs2model_times()
 
     def updateModelParameters(self, fname, verbose=True):
-        """
-        Update model parameters based on values given in a file.
+        """Update model parameters based on values given in a file.
 
         :param fname: str, filename to open
-        :param verbose: bool, whether or not to print out debug info
+        :param verbose: bool, whether or not to print out debug info. (Default value = True)
         """
         with open(fname, 'r') as f:
             text = f.readlines()
@@ -1311,8 +1461,7 @@ class GWModelBuilder(object):
     # End updateModelParameters()
 
     def generate_update_report(self):
-        """"
-        Generate report on boundaries and properties that have been updated
+        """Generate report on boundaries and properties that have been updated
 
         For use in model running to report on which boundaries and properties
         have been changed in the run scripts. Requires use of update commands
@@ -1320,6 +1469,7 @@ class GWModelBuilder(object):
             boundaries.update_boundary_array
             update_model_properties
         """
+
         self.boundaries.generate_update_report()
         self.properties.generate_update_report()
     # End generate_update_report()
@@ -1327,7 +1477,7 @@ class GWModelBuilder(object):
     def create_pilot_points(self, name, linear=False):
         """
         :param name: str, identifier of target pilot point
-        :param linear: bool, linear or non-linear pilot points.
+        :param linear: bool, linear or non-linear pilot points. (Default value = False)
         """
         if not linear:
             self.pilot_points[name] = pilotpoints.PilotPoints(
@@ -1338,15 +1488,13 @@ class GWModelBuilder(object):
     # End create_pilot_points()
 
     def save_pilot_points(self):
-        """
-        Save pilot point data in pickle file.
-        """
+        """Save pilot point data in pickle file."""
+
         self.ModelInterface.save_obj(self.pilot_points, os.path.join(self.out_data_folder_grid, 'pilot_points'))
     # End save_pilot_points()
 
     def load_pilot_points(self, fname):
-        """
-        Load pilot point data from pickle file.
+        """Load pilot point data from pickle file.
 
         :param fname: str, filename to load data from.
         """
@@ -1357,8 +1505,7 @@ class GWModelBuilder(object):
     # End load_pilot_points()
 
     def add2register(self, addition):
-        """
-        Add given value to model register.
+        """Add given value to model register.
 
         :param addition: numeric, value to add.
         """
@@ -1367,9 +1514,7 @@ class GWModelBuilder(object):
     # End add2register()
 
     def writeRegister2file(self):
-        """
-        Write model register to file.
-        """
+        """Write model register to file."""
         with open(os.path.join(self.out_data_folder, 'model_register.dat')) as f:
             for item in self.model_register:
                 f.write(item)
@@ -1378,8 +1523,7 @@ class GWModelBuilder(object):
     # End writeRegister2file()
 
     def points2shapefile(self, points_array, shapefile_name):
-        """
-        Write given points array to shapefile.
+        """Write given points array to shapefile.
 
         :param points_array:
         :param shapefile_name:
@@ -1389,14 +1533,14 @@ class GWModelBuilder(object):
     # End points2shapefile()
 
     def mesh3DToVtk(self, val_array, val_name, out_path, vtk_out):
-        '''
-        Function to write the mesh array.
+        """Function to write the mesh array.
 
         :param val_array:
         :param val_name:
         :param out_path:
         :param vtk_out:
-        '''
+        """
+
         from HydroModelBuilder.GISInterface.GDALInterface import array2Vtk
         warnings.warn("Call to (possibly) deprecated method `mesh3DToVtk`", DeprecationWarning)
         nrow, ncol = self.model_mesh3D[1][0].shape
@@ -1412,24 +1556,24 @@ class GWModelBuilder(object):
     # End mesh3DToVtk()
 
     def package_data(self):
-        """
-        Option to save all important attributes of GWModelBuilder class to
+        """Option to save all important attributes of GWModelBuilder class to
         allow quick loading of data that may have required transforms and
         processing in its orignial state.
 
         This will include GIS type objects
         """
+
         pass
     # End package_data()
 
     def package_model(self):
-        """
-        Option to save all important attributes of model class to allow quick
+        """Option to save all important attributes of model class to allow quick
         loading and manipulation of model without separate data and grid generation
         building scripts
 
         This will not include any GIS type objects
         """
+
         self.update_meshprops()
         self.ModelInterface.package_model(self.out_data_folder_grid, self.name + '_packaged',
                                           self.__dict__, self.target_attr)
