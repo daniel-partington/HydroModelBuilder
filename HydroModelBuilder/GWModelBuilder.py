@@ -429,19 +429,21 @@ class GWModelBuilder(object):
     # End flush()
 
     def set_model_boundary_from_corners(self, xmin, xmax, ymin, ymax):
-        """Function to set model boundary based on x and y bounds: xmin, xmax, ymin, ymax::
+        """
+        WARNING: Duplicate function of one found in GDALInterface.
+        Function to set model boundary based on x and y bounds::
 
                     ._________.(xmax, ymax)
                     |         |
                     |         |
                     |         |
                     ._________.
-                (xmin,ymin)
+            (xmin,ymin)
 
-        :param xmin:
-        :param xmax:
-        :param ymin:
-        :param ymax:
+        :param xmin: float, bottom left x-position
+        :param xmax: float, upper right x-position
+        :param ymin: float, bottom left y-position
+        :param ymax: float, upper right y-position
         """
 
         self.model_boundary[0] = xmin

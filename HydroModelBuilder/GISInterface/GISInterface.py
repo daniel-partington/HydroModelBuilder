@@ -26,6 +26,10 @@ class GISInterface(object):
 
         :param shapefile_path:  (Default value = None)
         """
+        Function to set the model boundary using a shapefile, assuming polygon type:
+        1. For structured mesh this will create a rectangle that creates an envelope on the polygon
+
+        """
         pass
     # End set_model_boundary_from_polygon_shapefile()
 
@@ -74,7 +78,6 @@ class GISInterface(object):
 
     def read_rasters(self, files, path=None):
         """Reads in raster files, e.g. for hydrostratigraphy.
-
         :param files: List of file names for the rasters that are to be read in.
         :param path: Path of the files (Default value = None)
         """
@@ -82,11 +85,14 @@ class GISInterface(object):
     # End read_rasters()
 
     def map_rasters_to_grid(self, raster_files, raster_path):
-        """Maps rasters to the defined grid
+
+        """
+        Maps rasters to the defined grid
 
         :param raster_files: list of raster files to be mapped
+        :param raster_path: path of the raster files that are to be mappeed
 
-        :param raster_path: path of the raster files that are to be mapped
+        writes files to output folder
         """
         pass
     # End map_rasters_to_grid()
@@ -114,8 +120,7 @@ class GISInterface(object):
 
         :param output_path: param raster_driver:  (Default value = None)
 
-        :param raster_driver:  (Default value = None)
-        """
+        :param raster_driver:  (Default value = None)"""
         pass
     # End create_basement_bottom()
 
@@ -163,8 +168,7 @@ class GISInterface(object):
         """Read in point shapefile and find which points are in which grid cells
 
         :param points_obj: point object containing all the shapefile data
-
-        :param feature_id:  (Default value = None)
+        :param feature_id: feature id of interest to be used in returned list, i.e. a list of containing feature id's within each grid cell (Default value = None)
         """
         pass
     # End map_points_to_grid()
@@ -173,9 +177,7 @@ class GISInterface(object):
         """Read in point shapefile and find which points are which mesh cells
 
         :param points_obj: point object containing all the shapefile data
-
         :param model_mesh:  (Default value = None)
-
         :param feature_id:  (Default value = None)
         """
         pass
