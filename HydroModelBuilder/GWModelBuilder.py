@@ -813,7 +813,7 @@ class GWModelBuilder(object):
             if index == len(river_reach_elev) - 1:
                 river_reach_elev_adjusted += [self._adjust_elevations(
                     river_reach_elev_adjusted[-1], elev_reach, None)]
-                    #river_reach_elev_adjusted[index - 1], elev_reach, None)]
+                # river_reach_elev_adjusted[index - 1], elev_reach, None)]
                 continue
             # End if
 
@@ -822,7 +822,7 @@ class GWModelBuilder(object):
         # End for
         river_seg.loc[:, 'strtop_raw'] = river_seg['strtop']
         river_seg.loc[:, 'strtop'] = river_reach_elev_adjusted
-        
+
         if plotting:
             ax = river_seg.plot(x='Cumulative Length', y='strtop_raw', alpha=0.3)
             river_seg.plot(x='Cumulative Length', y='strtop', ax=ax)
@@ -837,7 +837,7 @@ class GWModelBuilder(object):
             # End if
             slopes += [(riv_elev - river_reach_elev_adjusted[index + 1]) / lengths[index]]
         # End for
-        
+
         river_seg.loc[:, 'slope'] = slopes
 
         amalg_riv_points_naive_layer = [[0] + x for x in river_seg['amalg_riv_points'].tolist()]
@@ -1382,8 +1382,10 @@ class GWModelBuilder(object):
     def _findInterval(row, times):
         """Find interval of the model time periods.
 
-        :param row: row from a pandas dataframe that has the column 'datetime'
-        :param times: times is a list of datetime objects
+        :param row: Pandas Series, row from a pandas dataframe that has the column 'datetime'
+        :param times: list[datetime], datetime objects to search against
+
+        :returns: int if period found or np.nan if period not found
         """
         key_time = row['datetime']
         lower_time = times[0]
