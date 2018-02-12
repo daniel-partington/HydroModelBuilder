@@ -1,4 +1,5 @@
 class Radon_EC_simple(object):
+    """TODO: Docs"""
 
     def __init__(self, df, Ini_cond, Rn_decay=0.181, units='m,d'):
         self.Ini_Cond = Ini_cond  # 3 item list containing Initial flow, radon and ec concentrations
@@ -31,6 +32,7 @@ class Radon_EC_simple(object):
     # End __init__()
 
     def Fl_Rn_EC_simul(self):
+        """TODO: Docs"""
 
         # Specify radon decay constant
         Rn_decay = self.Rn_decay

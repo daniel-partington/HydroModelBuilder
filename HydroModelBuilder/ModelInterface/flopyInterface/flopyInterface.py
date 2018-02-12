@@ -11,9 +11,6 @@ import pandas as pd
 from flopy.utils.sfroutputfile import SfrFile
 
 import viz.flopy_viz as fviz  # Visualization extension methods
-# For legacy purposes, allow use of other flopy related classes
-from MT3DModel import MT3DModel
-from MT3DPostProcess import MT3DPostProcess
 from Radon_EC_simple import Radon_EC_simple
 
 
@@ -21,12 +18,13 @@ class ModflowModel(object):
 
     def __init__(self, model_data, data_folder=None, **kwargs):
         """
+
         :param model_data: ModelManager instance, containing all the data for the model
         :param data_folder: str, path to data folder (MODFLOW model run files)
         """
         self.model_data = model_data
         self.name = model_data.name
-        if data_folder is None:
+        if not data_folder:
             # the addition of os.path.sep is for legacy purposes
             self.data_folder = os.path.join(os.getcwd(), 'model_' + self.name) + os.path.sep
         else:
@@ -91,6 +89,8 @@ class ModflowModel(object):
     # End __init__()
 
     def createDiscretisation(self):
+        """TODO: Docs"""
+
         # Create discretisation object
         self.dis = flopy.modflow.ModflowDis(self.mf,
                                             nlay=self.nlay,
@@ -112,13 +112,13 @@ class ModflowModel(object):
     # End createDiscretisation()
 
     def setupBASPackage(self, nlay, nrow, ncol):
-        """
-        Create and setup MODFLOW BAS package.
+        """Create and setup MODFLOW BAS package.
 
         :param nlay: int, number of layers
         :param nrow: int, number of rows
         :param ncol: int, number of columns
         """
+
         # Variables for the BAS package
         ibound = self.model_data.model_mesh3D[1]
         ibound[ibound == -1] = 0
@@ -130,6 +130,11 @@ class ModflowModel(object):
     # End setupBASPackage()
 
     def setupNWTpackage(self, headtol, fluxtol):
+        """TODO: Docs
+
+        :param headtol:
+        :param fluxtol:
+        """
         # Specify NWT settings
         self.nwt = flopy.modflow.ModflowNwt(self.mf,
                                             headtol=headtol,
@@ -143,14 +148,14 @@ class ModflowModel(object):
     # End setupNWTpackage()
 
     def setupPCGpackage(self):
+        """TODO: Docs"""
+
         self.pcg = flopy.modflow.ModflowPcg(self.mf)  # if using mf 2005
     # End setupPCGpachage()
 
     def setupUPWpackage(self):
-        """
-        This function is used to set up the upstream weighting package for the
-        NWT solver in MODFLOW
-        """
+        """Set up the upstream weighting package for the MODFLOW NWT solver."""
+
         # Add UPW package to the MODFLOW model to represent aquifers
         self.upw = flopy.modflow.ModflowUpw(self.mf,
                                             hk=self.hk,
@@ -165,6 +170,15 @@ class ModflowModel(object):
     # End setupUPWpackage()
 
     def createRIVpackage(self, lrcd=None):
+        """Create the MODFLOW river (RIV) package.
+        See [Flopy MF Riv]_ documentation
+
+        .. [Flopy MF Riv] MODFLOW River package
+           (https://modflowpy.github.io/flopydoc/mfriv.html)
+
+        :param lrcd: dict or None, stress period data. (Default value = None)
+        """
+
         self.riv = flopy.modflow.ModflowRiv(self.mf, ipakcb=53, stress_period_data=lrcd)
         if self.verbose and self.check:
             self.riv.check()
@@ -172,12 +186,32 @@ class ModflowModel(object):
     # End createRIVpackage()
 
     def createSTRpackage(self, STRvariables=None):
+        """Create the MODFLOW stream (STR) package.
+        See [Flopy MF STR]_ documentation
+
+        .. [Flopy MF STR] MODFLOW stream package
+           (https://modflowpy.github.io/flopydoc/mfstr.html)
+
+        :param STRvariables: dict or None, stress period data. (Default value = None)
+        """
+
         self.str = flopy.modflow.ModflowStr(self.mf, ipakcb=53, stress_period_data=STRvariables)
         if self.verbose and self.check:
             self.str.check()
     # End createSTRpackage()
 
     def createSFRpackage(self, reach_data, segment_data):
+        """Create the MODFLOW (SFR2) package.
+        See [Flopy MF SFR2]_ documentation
+
+        .. [Flopy MF SFR2] MODFLOW stream-flow routing package
+           (https://modflowpy.github.io/flopydoc/mfsfr2.html)
+
+
+        :param reach_data: ndarray, array holding reach data.
+        :param segment_data: ndarray, array holding stream segment data.
+        """
+
         if self.model_data.model_time.t['steady_state']:
             transroute = False
         else:
@@ -228,6 +262,12 @@ class ModflowModel(object):
     # End createSFRpackage()
 
     def createGagepackage(self, gages, files=None):
+        """TODO: Docs:
+
+        :param gages:
+        :param files:  (Default value = None)
+        """
+
         # gages should contain seg, rch, unit, outtype [set = 9]
         if files is None:
             files = ['Gage.gage']
@@ -241,44 +281,57 @@ class ModflowModel(object):
     # End createGagepackage()
 
     def createDRNpackage(self, lrcsc=None):
+        """TODO: Docs:
+
+        :param lrcsc:  (Default value = None)
+        """
+
         self.drn = flopy.modflow.ModflowDrn(self.mf, ipakcb=53, stress_period_data=lrcsc)
         if self.verbose and self.check:
             self.drn.check()
     # End createDRNpackage()
 
     def createGHBpackage(self, lrcsc=None):
+        """TODO: Docs:
+
+        :param lrcsc:  (Default value = None)
+        """
+
         self.ghb = flopy.modflow.ModflowGhb(self.mf, ipakcb=53, stress_period_data=lrcsc)
         if self.verbose and self.check:
             self.ghb.check()
-    # end createGHBpackage
+    # end createGHBpackage()
 
     def createRCHpackage(self, rchrate=None):
+        """Add RCH package to the MODFLOW model to represent recharge
+
+        :param rchrate:  (Default value = None)
         """
-        Add RCH package to the MODFLOW model to represent recharge
-        """
+
         self.rch = flopy.modflow.ModflowRch(self.mf, ipakcb=53, rech=rchrate, nrchop=3)
         if self.verbose and self.check:
             self.rch.check()
-    # end createRCHpackage
+    # End createRCHpackage()
 
     def createWELpackage(self, lrcq=None):
-        """
-        Add WEL package to the MODFLOW model to represent pumping wells
+        """Add WEL package to the MODFLOW model to represent pumping wells
         Expects a dictionary with an array of well location lay row col and flux
         at each stress period, e.g.
 
         >>> lrcq = {}
         >>> lrcq[0] = [[0, 7, 7, -100.]] # layer, row, column, flux
+
+        :param lrcq: dict, stress period data. (Default value = None)
         """
+
         self.wel = flopy.modflow.ModflowWel(self.mf, ipakcb=53, stress_period_data=lrcq)
         if self.verbose and self.check:
             self.wel.check()
-    # end createWElpackage
+    # End createWElpackage()
 
     def createOCpackage(self):
-        """
-        Add OC package to the MODFLOW model
-        """
+        """Add OC package to the MODFLOW model"""
+
         spd_opts = ['save head', 'print budget', 'save budget']
         if self.steady:
             spd = {(0, 0): spd_opts[:],
@@ -295,9 +348,8 @@ class ModflowModel(object):
     # End createOCpackage()
 
     def createLMTpackage(self):
-        """
-        Add LMT package to the MODFLOW model to allow linking with MT3DMS
-        """
+        """Add LMT package to the MODFLOW model to allow linking with MT3DMS"""
+
         self.lmt = flopy.modflow.ModflowLmt(self.mf,
                                             output_file_header='extended',
                                             output_file_format='formatted',
@@ -305,16 +357,26 @@ class ModflowModel(object):
     # End createLMTpackage()
 
     def finaliseModel(self):
+        """TODO: Docs:"""
+
         # Write the MODFLOW model input files
         warnings.warn("Deprecated method called. Use `finalize_model()` instead", DeprecationWarning)
         self.finalize_model()
     # end finaliseModel
 
     def finalize_model(self):
+        """TODO: Docs:"""
+
         self.mf.write_input()
     # End finalize_model()
 
     def add_bc_to_target(self, bc_array, target):
+        """TODO: Docs:
+
+        :param bc_array:
+        :param target:
+        """
+
         for key in bc_array:
             try:
                 target[key] += bc_array[key]
@@ -327,8 +389,12 @@ class ModflowModel(object):
     # End add_bc_to_river()
 
     def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False):
-        """
-        Build MODFLOW model.
+        """Build MODFLOW model.
+
+        :param transport:  (Default value = False)
+        :param write:  (Default value = True)
+        :param verbose:  (Default value = True)
+        :param check:  (Default value = False)
         """
         self.mf = flopy.modflow.Modflow(self.name, exe_name=self.executable,
                                         model_ws=self.data_folder, version='mfnwt')
@@ -381,7 +447,6 @@ class ModflowModel(object):
         if wells_exist:
             self.createWELpackage(wel)
 
-        # IF transport then
         if transport:
             self.createLMTpackage()
 
@@ -395,22 +460,34 @@ class ModflowModel(object):
     # End buildMODFLOW()
 
     def checkMODFLOW(self):
+        """TODO: Docs:"""
+
         self.mf.check()
     # End checkMODFLOW
 
     def runMODFLOW(self, silent=True):
-        '''
-        Function to run the modflow model with the optional argument for 
-        suppressing any output to screen.
-        
-        Call to checkConvergence is to capture model run failures that are not
-        picked up in the flopy run_model function.
-        '''
+        """Run the MODFLOW model.
+        Calls the `checkConvergence` method to capture model run failures that are
+        not picked up by flopy.
+
+        :param silent: bool, optional argument for suppressing any output to screen. (Default value = True)
+
+        :returns: bool, successful run with convergence.
+        """
+
         success, buff = self.mf.run_model(silent=silent)
         return self.checkConvergence(fail=not success)
     # End runMODFLOW()
 
     def checkConvergence(self, path=None, name=None, fail=False):
+        """TODO: Docs
+
+        :param path:  (Default value = None)
+
+        :param name:  (Default value = None)
+
+        :param fail:  (Default value = False)
+        """
         converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP",  # Clear statement of model fail in list file
                                  " PERCENT DISCREPANCY =         200.00",  # Convergence but extreme discrepancy in results
                                  " NaN "  # Something big went wrong but somehow convergence was reached?
@@ -427,7 +504,7 @@ class ModflowModel(object):
                 now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
                 with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as f:
                     f.write("Model did not converge, @ %s" %
-                               datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                            datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
                     f.write("Error: \n {}".format(converge_fail))
                 return False
             # End if
@@ -437,7 +514,7 @@ class ModflowModel(object):
                 now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
                 with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as f:
                     f.write("Model did not run, @ %s" %
-                               datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                            datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
                     f.write("Error: \n {}".format('MODFLOW did not terminate normally'))
                 return False
             # End if
@@ -447,8 +524,7 @@ class ModflowModel(object):
     # End checkConvergence()
 
     def Calculate_Rn_from_SFR_with_simple_model(self, df, Ini_cond, Rn_decay=0.181):
-        '''
-        Use a simple model to calculate Radon concentrations in the stream
+        """Use a simple model to calculate Radon concentrations in the stream
         based on outputs from the SFR package and using some other data that
         is required as arguments to this function.
 
@@ -456,8 +532,8 @@ class ModflowModel(object):
         from the sfr package which can be imported via the sfroutputfile util
         from flopy. The other parameters required are:
 
-        * Ini_Cond = Ini_cond # 3 item list containing Initial flow, radon and ec concentrations
-        * Rn_decay = Rn_decay # constant for Radon decay
+        * Ini_Cond = Ini_cond  # 3 item list containing Initial flow, radon and ec concentrations
+        * Rn_decay = Rn_decay  # constant for Radon decay
 
         # Dataframe variables
         * df['HZ_poro'] # Hyporheic zone porosity
@@ -470,44 +546,102 @@ class ModflowModel(object):
         * df['Trib_EC'] # EC of the inflowing tributary water if present
         * df['Trib_Rn'] # Radon concentration of inflowing tributary water if present
         * df['dx'] # Reach length
-        '''
+
+        :param df: Pandas DataFrame, output from the SFR package
+
+        :param Ini_cond: list, [intial flow, radon, and EC concentration]
+
+        :param Rn_decay: float, constant for radon decay. (Default value = 0.181)
+
+        :returns: tuple, (flow, radon, EC)
+        """
+
         try:
             self.sfr
-        except:
+        except Exception:
             print("SFR package not activated in current model")
             return
         # End try
 
         FlRnEC = Radon_EC_simple(df, Ini_cond, Rn_decay=Rn_decay)
         Flow, Rn, EC = FlRnEC.Fl_Rn_EC_simul()
-        return Flow, Rn, EC
 
-    def getHeads(self):
-        headobj = self.importHeads()
+        return Flow, Rn, EC
+    # End Calculate_Rn_from_SFR_with_simple_model()
+
+    def get_heads(self, headobj=None):
+        """Get latest head level.
+
+        :param headobj: flopy head object, (Default value = None)
+
+        :returns: ndarray, head levels
+        """
+
+        if not headobj:
+            headobj = self.import_heads()
         times = headobj.get_times()
-        head = headobj.get_data(totim=times[-1])
-        return head
+        return headobj.get_data(totim=times[-1])
+    # End get_heads()
+
+    def get_final_heads(self, filename):
+        """Get final head (groundwater levels) at end of simulation from given file.
+
+        :param filename: str, name of head file.
+
+        :returns: ndarray, head levels
+        """
+
+        headobj = bf.HeadFile(filename)
+        return self.get_heads(headobj)
+    # End get_final_heads()
+
+    def getHeads(self, headobj=None):
+        """
+
+        :param headobj: Default value = None)
+
+        :returns: ndarray, head level
+        """
+
+        warnings.warn("Use of deprecated method `getHeads`, use `get_heads` instead",
+                      DeprecationWarning)
+        return self.get_heads(headobj)
+    # End getHeads()
 
     def getFinalHeads(self, filename):
-        headobj = bf.HeadFile(filename)
-        times = headobj.get_times()
-        head = headobj.get_data(totim=times[-1])
-        return head
+        """
+        :param filename: returns: ndarray, head level
+        """
+
+        warnings.warn("Use of deprecated method `getFinalHeads`, use `get_final_heads` instead",
+                      DeprecationWarning)
+        return self.get_final_heads(filename)
+    # End getFinalHeads()
 
     def getRivFlux(self, name):
+        """Get river flux data.
+
+        :param name: str, name of river boundary
+
+        :returns: dict, river exchange values
+        """
+
         cbbobj = self.importCbb()
         riv_flux = cbbobj.get_data(text='RIVER LEAKAGE', full3D=True)
+
         times = cbbobj.get_times()
         if type(times) == str:
             str_pers = 1
         else:
             str_pers = len(times)
+        # End if
 
         if self.model_data.boundaries.bc[name]['bc_type'] == 'river':
             time_key = self.model_data.boundaries.bc[name]['bc_array'].keys()[0]
             river = self.model_data.boundaries.bc[name]['bc_array'][time_key]
         else:
             print('Not a river boundary')
+        # End if
 
         riv_exchange = {}
         for per in range(str_pers):
@@ -526,6 +660,13 @@ class ModflowModel(object):
     # End getRivFlux()
 
     def getRivFluxNodes(self, nodes):
+        """Get river flux nodes.
+
+        :param nodes:
+
+        :returns: dict, river exchange nodes
+        """
+
         try:
             cbbobj = self.importCbb()
         except IndexError as e:
@@ -542,7 +683,7 @@ class ModflowModel(object):
 
         river = nodes
         riv_exchange = {}
-        for per in xrange(str_pers):
+        for per in range(str_pers):
             riv_exchange[per] = []
             for cell in river:
                 (l, r, c) = (cell[0], cell[1], cell[2])
@@ -559,20 +700,38 @@ class ModflowModel(object):
         return riv_exchange
     # End getRivFluxNodes()
 
-    def getAverageDepthToGW(self, mask=None):
+    def get_average_depth_to_GW(self, mask=None):
+        """TODO Docs
 
-        headobj = self.importHeads()
-        times = headobj.get_times()
-        head = headobj.get_data(totim=times[-1])
+        :param mask:  (Default value = None)
 
-        if mask is not None:
+        :returns: float, average head value
+        """
+
+        head = self.get_heads()
+        if mask:
             return np.mean(self.top[mask] - head[0][mask])
         else:
             return np.mean(self.top - head[0])
         # End if
+    # End get_average_depth_to_GW()
+
+    def getAverageDepthToGW(self, mask=None):
+        """
+        :param mask: (Default value = None)
+        """
+
+        warnings.warn("Use of deprecated method `getAverageDepthToGW`, use `get_average_depth_to_GW` instead",
+                      DeprecationWarning)
+        return self.get_average_depth_to_GW(mask)
     # End getAverageDepthToGW()
 
     def loop_over_zone(self, array):
+        """TODO Docs
+
+        :param array:
+        """
+
         mesh_1 = self.model_data.model_mesh3D[1]
         arr_zoned = [np.full(mesh_1.shape[1:3], np.nan)] * int(np.max(mesh_1))
 
@@ -592,51 +751,80 @@ class ModflowModel(object):
         return arr_zoned
     # End loop_over_zone()
 
-    def ConcsByZone(self, concs):
+    def concs_by_zone(self, concs):
+        """TODO: Docs
+
+        :param concs:
+        """
+
         return self.loop_over_zone(concs)
+
+    def ConcsByZone(self, concs):
+        """
+        :param concs:
+
+        :returns: ndarray
+        """
+
+        warnings.warn("Use of deprecated method `ConcsByZone`, use `concs_by_zone` instead",
+                      DeprecationWarning)
+        return self.concs_by_zone(concs)
     # End ConcsByZone()
 
-    def HeadsByZone(self, heads):
+    def heads_by_zone(self, heads):
+        """TODO: Docs
+
+        :param heads:
+
+        :returns: ndarray
+        """
         return self.loop_over_zone(heads)
+    # End heads_by_zone()
+
+    def HeadsByZone(self, heads):
+        """
+        :param heads:
+        """
+        warnings.warn("Use of deprecated method `HeadsByZone`, use `heads_by_zone` instead",
+                      DeprecationWarning)
+        return self.heads_by_zone(heads)
     # End HeadsByZone()
 
     def writeObservations(self):
-
+        """Write out observation data."""
         # Set model output arrays to None to initialise
         head = None
         sfr_df = None
         stream_options = ['stage', 'depth', 'discharge']
         # Write observation to file
-        for obs_set in self.model_data.observations.obs_group.keys():
-            obs_type = self.model_data.observations.obs_group[obs_set]['obs_type']
+        obs_group = self.model_data.observations.obs_group
+        for obs_set in obs_group:
+            obs_type = obs_group[obs_set]['obs_type']
             # Import the required model outputs for processing
             if obs_type == 'head':
                 # Check if model outputs have already been imported and if not import
                 if not head:
-                    headobj = self.importHeads()
+                    headobj = self.import_heads()
                     head = headobj.get_alldata()
             elif obs_type in stream_options:
                 try:
                     self.sfr_df
-                except:
+                except Exception:
                     sfr_df = self.importSfrOut()
                 # End except
             else:
                 continue
             # End if
 
-            obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
-            obs_df = obs_df[obs_df['active'] == True]
-            sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
+            group_set = obs_group[obs_set]
+            obs_df = self.get_active_obs_group(group_set)
+            sim_map_dict = group_set['mapped_observations']
 
+            unique_obs_df_zone = obs_df['zone'].unique()
             if obs_type in stream_options:
-                sfr_location = self.model_data.observations.obs_group[obs_set]['locations']['seg_loc']
-                for zone in obs_df['zone'].unique():
-                    if len(obs_df['zone'].unique()) == 1:
-                        zone_txt = obs_set
-                    else:
-                        zone_txt = obs_set + zone
-                    # End if
+                sfr_location = group_set['locations']['seg_loc']
+                for zone in unique_obs_df_zone:
+                    zone_txt = obs_set if len(unique_obs_df_zone) == 1 else obs_set + zone
                     with open(os.path.join(self.data_folder, 'observations_' + zone_txt + '.txt'), 'w') as f:
                         obs_df_zone = obs_df[obs_df['zone'] == zone]
                         for observation in obs_df_zone.index:
@@ -645,67 +833,113 @@ class ModflowModel(object):
                             seg = sfr_location.loc[name]
                             sfr = sfr_df
                             col_of_interest = obs_type
+
                             if obs_type == 'discharge':
                                 col_of_interest = 'Qout'
-                            sim_obs = sfr[(sfr['segment'] == seg) &
-                                          (sfr['time'] == interval)][col_of_interest]
+
+                            sim_obs = sfr[(sfr['segment'] == seg) & (sfr['time'] == interval)][col_of_interest]
                             f.write('%f\n' % sim_obs)
                         # End for
                     # End with
                 # End for
-            # End if
-
-            if obs_type == 'head':
-                for zone in obs_df['zone'].unique():
-                    if len(obs_df['zone'].unique()) == 1:
-                        zone_txt = 'head'
-                    else:
-                        zone_txt = zone
-                    # End if
+            elif obs_type == 'head':
+                for zone in unique_obs_df_zone:
+                    zone_txt = 'head' if len(unique_obs_df_zone) == 1 else zone
                     with open(os.path.join(self.data_folder, 'observations_' + zone_txt + '.txt'), 'w') as f:
                         obs_df_zone = obs_df[obs_df['zone'] == zone]
                         for observation in obs_df_zone.index:
                             interval = int(obs_df_zone['interval'].loc[observation])
                             name = obs_df_zone['name'].loc[observation]
-                            (x_cell, y_cell) = self.model_data.mesh2centroid2Dindex[
-                                (sim_map_dict[name][1], sim_map_dict[name][2])]
-                            (lay, row, col) = [sim_map_dict[name][0],
-                                               sim_map_dict[name][1], sim_map_dict[name][2]]
+                            name_dict = sim_map_dict[name]
+                            (x_cell, y_cell) = self.model_data.mesh2centroid2Dindex[(name_dict[1], name_dict[2])]
+                            (lay, row, col) = [name_dict[0], name_dict[1], name_dict[2]]
 
                             sim_heads = [head[interval][lay][row][col]]
-
                             sim_head = np.mean(sim_heads)
                             f.write('%f\n' % sim_head)
                         # End for
                     # End with
                 # End for
+            else:
+                print("Unknown observation type!")
             # End if
         # End for
     # End writeObservations()
 
-    def getObservation(self, obs, interval, obs_set):
+    def get_observation(self, obs, interval, obs_set):
+        """TODO Docs
+
+        :param obs:
+        :param interval:
+        :param obs_set:
+        """
         # Set model output arrays to None to initialise
         head = None
 
-        obs_type = self.model_data.observations.obs_group[obs_set]['obs_type']
+        obs_group = self.model_data.observations.obs_group[obs_set]
+
+        obs_type = obs_group['obs_type']
         # Import the required model outputs for processing
         if obs_type == 'head':
             # Check if model outputs have already been imported and if not import
             if not head:
-                headobj = self.importHeads()
+                headobj = self.import_heads()
                 head = headobj.get_alldata()
         elif obs_type == 'stage':
             pass
         # End if
 
-        sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
-        sim_head = head[interval][sim_map_dict[obs][0]][sim_map_dict[obs][1]][sim_map_dict[obs][2]]
-        dtw = self.model_data.model_mesh3D[0][0][
-            sim_map_dict[obs][1]][sim_map_dict[obs][2]] - sim_head
+        sim_map_dict = obs_group['mapped_observations']
+        sim_obs = sim_map_dict[obs]
+        sim_head = head[interval][sim_obs[0]][sim_obs[1]][sim_obs[2]]
+        dtw = self.model_data.model_mesh3D[0][0][sim_obs[1]][sim_obs[2]] - sim_head
         return sim_head, dtw
+    # End get_observation()
+
+    def getObservation(self, obs, interval, obs_set):
+        """TODO Docs
+
+        :param obs:
+        :param interval:
+        :param obs_set:
+        """
+        warnings.warn("Use of deprecated method `getObservation`, use `get_observation` instead",
+                      DeprecationWarning)
+        return self.get_observation(obs, interval, obs_set)
     # End getObservation()
 
+    def get_active_obs_group(self, obs_group, nper=None):
+        """Get active observations within a group.
+
+        :param obs_group: Pandas DataFrame, holding observation time series
+        :param nper: int, optional period number (Default value = None)
+
+        :returns: DataFrame
+        """
+        assert ('time_series' in obs_group.columns) and \
+               ('active' in obs_group.columns) and \
+               ('interval' in obs_group.columns), \
+            "Given DataFrame is missing required columns"
+
+        obs_df = obs_group['time_series']
+        obs_df = obs_df[obs_df['active'] == True]
+
+        if nper:
+            obs_df = obs_df[obs_df['interval'] == nper]
+        # End if
+
+        return obs_df
+    # End get_active_obs_group()
+
     def compare_observed_head(self, obs_set, simulated, nper=0):
+        """Create and set data for groundwater head comparison.
+
+        :param obs_set: str, name of observation set
+        :param simulated: ndarray, simulated observation set
+        :param nper: int, period number. (Default value = 0)
+
+        :returns: list[list], data as assigned to `obs_loc_val_zone`
+        """
         mesh_1 = self.model_data.model_mesh3D[1]
         obs_group = self.model_data.observations.obs_group[obs_set]
         locations = obs_group['locations']
@@ -713,11 +947,9 @@ class ModflowModel(object):
         self.comparison = []
         self.comp_zone = []
         self.obs_loc_val_zone = []
-        obs_df = obs_group['time_series']
-        obs_df = obs_df[obs_df['active'] == True]
-        obs_df = obs_df[obs_df['interval'] == nper]
+
+        obs_df = self.get_active_obs_group(obs_group, nper)
         sim_map_dict = obs_group['mapped_observations']
-        # self.model_data.observations.obs_group[obs_set]['time_series']['name']:
         for observation in obs_df['name']:
             idx = obs_df[obs_df['name'] == observation].index.tolist()[0]
             obs = obs_df.get_value(idx, 'value')
@@ -732,54 +964,129 @@ class ModflowModel(object):
             zone = mesh_1[sim]
             self.obs_loc_val_zone += [[obs, x_y, zone, sim]]
         # End for
+
+        return self.obs_loc_val_zone
     # End compare_observed_head()
 
     def CompareObservedHead(self, obs_set, simulated, nper=0):
         """
-        :param obs_set: dict, observation set
-        :param simulated: dict, simulated result set
-        :param nper: int, number of periods
+        :param obs_set:
+        :param simulated:
+        :param nper:  (Default value = 0)
         """
         warnings.warn("Use of deprecated method `CompareObservedHead`, use `compare_observed_head` instead",
                       DeprecationWarning)
         return self.compare_observed_head(obs_set, simulated, nper)
     # End CompareObservedHead()
 
-    def CompareObserved(self, obs_set, simulated, nper=0):
+    def compare_observed(self, obs_set, simulated, nper=0):
+        """Create a combined observed and simulated dataset and assigns to the `obs_sim_zone` attribute.
+
+        :param obs_set: str, name of observation set
+        :param simulated: ndarray, simulated observation set
+        :param nper: int, period number. (Default value = 0)
+
+        :returns: list[list], as set in `obs_sim_zone`
+        """
         self.obs_sim_zone = []
-        obs_df = self.model_data.observations.obs_group[obs_set]['time_series']
-        obs_df = obs_df[obs_df['active'] == True]
-        obs_df = obs_df[obs_df['interval'] == nper]
-        sim_map_dict = self.model_data.observations.obs_group[obs_set]['mapped_observations']
-        # self.model_data.observations.obs_group[obs_set]['time_series']['name']:
+        obs_group = self.model_data.observations.obs_group[obs_set]
+        obs_df = self.get_active_obs_group(obs_group, nper)
+        sim_map_dict = obs_group['mapped_observations']
+
         for observation in obs_df['name']:
             idx = obs_df[obs_df['name'] == observation].index.tolist()[0]
             obs = obs_df.get_value(idx, 'value')
-            sim = simulated[sim_map_dict[observation][0]][
-                sim_map_dict[observation][1]][sim_map_dict[observation][2]]
-            zone = self.model_data.model_mesh3D[1][sim_map_dict[observation][0]][
-                sim_map_dict[observation][1]][sim_map_dict[observation][2]]
-            x = self.model_data.observations.obs_group[obs_set][
-                'locations']['Easting'].loc[observation]
-            y = self.model_data.observations.obs_group[obs_set][
-                'locations']['Northing'].loc[observation]
+
+            sim_obs = sim_map_dict[observation]
+            sim = simulated[sim_obs[0]][sim_obs[1]][sim_obs[2]]
+            zone = self.model_data.model_mesh3D[1][sim_obs[0]][sim_obs[1]][sim_obs[2]]
+            x = obs_group['locations']['Easting'].loc[observation]
+            y = obs_group['locations']['Northing'].loc[observation]
             if np.isnan(sim):
-                print sim, obs, zone
+                print("Sim is NaN:", sim, obs, zone, "|", observation)
                 continue
             self.obs_sim_zone += [[obs, sim, zone, x, y]]
+        # End for
+
+        return self.obs_sim_zone
+    # End compare_observed()
+
+    def CompareObserved(self, obs_set, simulated, nper=0):
+        """
+        :param obs_set:
+        :param simulated:
+        :param nper:  (Default value = 0)
+        """
+        warnings.warn("Use of deprecated method `CompareObserved`, use `compare_observed` instead",
+                      DeprecationWarning)
+        return self.compare_observed(obs_set, simulated, nper)
     # End ComparedObserved()
 
-    def importHeads(self, path=None, name=None):
+    def import_heads_from_file(self, path=None, name=None):
+        """Import head data from specified file.
+        Temporary method to handle deprecated behaviour.
+
+        :param path: str, path to file. (Default value = None)
+        :param name: str, filename to load data from. (Default value = None)
+
+        :returns: flopy headobj data
+        """
         if path:
-            headobj = bf.HeadFile(path + name + '.hds')  # , precision='double')
-            return headobj
+            headobj = bf.HeadFile(os.path.join(path, name + '.hds'))
         else:
-            self.headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
-            return self.headobj
+            headobj = self.import_heads()
         # End if
+
+        return headobj
+    # End import_heads_from_file()
+
+    def import_heads(self):
+        """Import head data associated with this model.
+
+        :returns: flopy headobj data
+        """
+        if not hasattr(self, 'headobj'):
+            self.headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
+        # End if
+
+        return self.headobj
+    # End import_heads()
+
+    def importHeads(self, path=None, name=None):
+        """
+        :param path: Default value = None)
+        :param name:  (Default value = None)
+        :param name:  (Default value = None)
+        """
+
+        if not path:
+            warnings.warn("Deprecated method called. Use `import_heads()` instead", DeprecationWarning)
+            return self.import_heads()
+        else:
+            warnings.warn("Deprecated method called. Use `import_heads_from_file()` instead", DeprecationWarning)
+            return self.import_heads_from_file(path, name)
     # End importHeads()
 
     def importSfrOut(self, path=None, name=None, ext='.sfr.out'):
+        """TODO: Docs
+
+        :param path:  (Default value = None)
+        :param name:  (Default value = None)
+        :param ext:  (Default value = '.sfr.out')
+        """
+        warnings.warn("Deprecated method called. Use `import_sfr_out()` instead", DeprecationWarning)
+        return self.import_sfr_out(path, name, ext)
+    # End importSfrOut()
+
+    def import_sfr_out(self, path=None, name=None, ext='.sfr.out'):
+        """TODO: Docs
+
+        :param path:  (Default value = None)
+        :param name:  (Default value = None)
+        :param ext:  (Default value = '.sfr.out')
+
+        :returns: DataFrame, SFR data
+        """
         if path:
             sfrout = SfrFile(os.path.join(path, name + ext))
             self.sfr_df = sfrout.get_dataframe()
@@ -787,17 +1094,33 @@ class ModflowModel(object):
             sfrout = SfrFile(os.path.join(self.data_folder, self.name + ext))
             self.sfr_df = sfrout.get_dataframe()
         # End if
-        return self.sfr_df
-    # End importSfrOut()
 
-    def importCbb(self):
+        return self.sfr_df
+    # End import_sfr_out()
+
+    def import_cbb(self):
         """Retrieve data in cell-by-cell budget file"""
+
         self.cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + ".cbc"))
         return self.cbbobj
+    # End import_cbb()
+
+    def importCbb(self):
+        """TODO: Docs"""
+
+        warnings.warn("Use of deprecated method `importCbb`, use `import_cbb` instead",
+                      DeprecationWarning)
+        return self.import_cbb()
     # End importCbb()
 
     def waterBalance(self, iter_num, plot=True, save=False, nper=0):
+        """TODO: Docs
 
+        :param iter_num:
+        :param plot:  (Default value = True)
+        :param save:  (Default value = False)
+        :param nper:  (Default value = 0)
+        """
         cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
 
         water_balance_components = cbbobj.textlist
@@ -833,16 +1156,20 @@ class ModflowModel(object):
 
         wat_bal_df = pd.DataFrame(water_bal_summed_values, water_bal_summed_titles)
         wat_bal_df.columns = ['Flux m^3/d']
-        wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.]
+        wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.0]
 
         if plot:
             self.water_balance_plot(iter_num, wat_bal_df, save)
         else:
             return wat_bal_df
-        # end if
+        # End if
     # End waterBalance()
 
     def waterBalanceTS(self, plot=True):
+        """TODO Docs
+
+        :param plot:  (Default value = True)
+        """
 
         cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
 

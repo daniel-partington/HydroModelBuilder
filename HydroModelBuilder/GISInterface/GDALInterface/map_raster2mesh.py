@@ -25,11 +25,14 @@ import array2Vtk
 # Step 1. Load raster layers top and bottom
 
 def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
-    """
-    Function to remove cells that are surrounded by non-active cells in the horizontal plane
+    """Function to remove cells that are surrounded by non-active cells in the horizontal plane
 
     e.g. if cells with positive integer is surrounded in above, below and to each side, then reassign to -1.
 
+    :param mesh3D_1:
+        :param passes:  (Default value = 1)
+    :param assimilate: Default value = False)
+    :param passes:  (Default value = 1)
     """
 
     # Clean up idle cells:
@@ -72,6 +75,16 @@ def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
                             from itertools import groupby as g
 
                             def most_common_oneliner(L):
+                                """
+
+
+
+                                :param L:
+
+
+
+                                """
+
                                 return max(g(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
 
                             most_common = most_common_oneliner(neighbours)
@@ -109,14 +122,23 @@ def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
         # End for
     # End for
     return mesh3D_1
+# End reclassIsolatedCells()
 
 
 def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
                              min_height, max_height):
+    """
+
+    :param hu_raster_path:
+    :param hu_raster_files:
+    :param out_path:
+    :param vtk_out:
+    :param min_height:
+    :param max_height:
+    """
     raster_set = {}
 
-    print "HU Raster Path:", hu_raster_path
-
+    print("HU Raster Path:", hu_raster_path)
     for raster in hu_raster_files:
         fname = os.path.join(hu_raster_path, raster)  # + hu_ext
         print 'Processing: ', fname
@@ -138,8 +160,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
     # This solution taken from:
     # http://stackoverflow.com/questions/3662361/fill-in-missing-values-with-nearest-neighbour-in-python-numpy-masked-arrays
     def fill(data, invalid=None):
-        """
-        Replace the value of invalid 'data' cells (indicated by 'invalid')
+        """Replace the value of invalid 'data' cells (indicated by 'invalid')
         by the value of the nearest valid data cell
 
         Input:
@@ -150,6 +171,11 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
         Output:
             Return a filled array.
+
+
+
+        :param data:
+        :param invalid:  (Default value = None)
         """
 
         if invalid is None:
@@ -160,9 +186,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
     for raster in hu_raster_files:
         data = raster_set[raster][0]
-        #invalid = np.ma.masked_array(data, data == raster_set[raster][1])
-        #data[data==np.min(data)] = np.NAN
-        invalid = np.ma.masked_equal(data, np.min(data))  # raster_set[raster][1])
+        invalid = np.ma.masked_equal(data, np.min(data))
         raster_set[raster] += [invalid]
         a = fill(data, invalid=invalid.mask)
         raster_set[raster] += [a]
@@ -171,57 +195,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
         data = None
         invalid = None
         a = None
-    # end for
-
-    # return raster_set
-
-    ###########################################################################
-    ###########################################################################
-    ###########################################################################
-#    layers = len(hu_raster_files) / 2
-#    rows, cols = raster_set[hu_raster_files[0]][0].shape
-#    mesh = np.empty((layers + 1, rows, cols))
-#    mesh[:] = np.NAN
-#    zone_matrix = np.empty((layers, rows, cols))
-#
-#    r_s_active_t = raster_set[hu_raster_files[0]][2]
-#    r_s_active_b = raster_set[hu_raster_files[1]][2]
-#    select_mask = ~r_s_active_t.mask
-#    mesh[0][select_mask] = r_s_active_t[select_mask]
-#    mesh[1][select_mask] = r_s_active_b[select_mask]
-#
-#    mesh_active = np.ma.masked_invalid(mesh)
-#    diff = mesh_active[0] - mesh_active[1]
-#    layer_active = 0
-#    print("Max value in layer {}: {}".format(layer_active, diff.max()))
-#    print("Min value in layer {}: {}".format(layer_active, diff.min()))
-#    if diff.min() <= 0.:
-#        import sys
-#        sys.exit("Meshing error, thickness negative")
-#
-#    # Check overlay of layers:
-#    r_s_active_t_new = raster_set[hu_raster_files[2]][2]
-#    r_s_active_b_new = raster_set[hu_raster_files[3]][2]
-#    #overlay = r_s_active_t_new.mask | r_s_active_b.mask
-#
-#    # Check if anywhere that current bottom elevations are lower than new bottom layer for overlap
-#    diff_keep = np.ma.masked_greater(r_s_active_b - r_s_active_b_new, 0.)
-#    diff_kill = np.ma.masked_less_equal(r_s_active_b - r_s_active_b_new, 0.)
-#
-#    plt.imshow(diff_keep)
-#    plt.colorbar()
-#    plt.figure()
-#    plt.imshow(diff_kill)
-#    plt.colorbar()
-#    #print new_diff3.max(), new_diff3.min()
-#
-#
-#
-#    return
-
-    ###########################################################################
-    ###########################################################################
-    ###########################################################################
+    # End for
 
     # Determine required number of layers based on
     # Note: this is integer division
@@ -398,7 +372,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
     zone_matrix = reclassIsolatedCells(zone_matrix)
 
     tester2 = True
-    if tester2 == True:
+    if tester2:
         raster_thickness = {}
 
         for index, raster in enumerate(hu_raster_files):
@@ -443,7 +417,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
         # End for
 
     tester = True
-    if tester == True:
+    if tester:
         # print thickness
         thickness2 = {}
         thick_zero = {}

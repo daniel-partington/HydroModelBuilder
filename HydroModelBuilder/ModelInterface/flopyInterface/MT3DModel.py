@@ -5,11 +5,13 @@ import numpy as np
 
 
 class MT3DModel(object):
+    """TODO: Docs"""
 
     def __init__(self, mf_model):
         self.mf_model = mf_model
 
     def createBTNpackage(self):
+        """TODO: Docs"""
         # Add the BTN package to the model
         ibound = self.model_data.model_mesh3D[1]
         ibound[ibound == -1] = 0
@@ -20,6 +22,7 @@ class MT3DModel(object):
                                       chkmas=1, nprmas=1, dt0=10000.0, ttsmax=100000.0)
 
     def createADVpackage(self):
+        """TODO: Docs"""
         # Add the ADV package to the model
         self.adv = flopy.mt3d.Mt3dAdv(self.mt, mixelm=0, percel=1,
                                       mxpart=250000, nadvfd=1, itrack=3,
@@ -28,30 +31,36 @@ class MT3DModel(object):
                                       npsink=8, dchmoc=0.01)
 
     def createDSPpackage(self):
+        """TODO: Docs"""
         # Add the DSP package to the model
         self.dfp = flopy.mt3d.Mt3dDsp(self.mt, multiDiff=True, al=10.,
                                       trpt=0.1, trpv=0.1, dmcoef=0.0)
 
     def createRCTpackage(self):
+        """TODO: Docs"""
         # Add the RCT package to the model
         self.rct = flopy.mt3d.Mt3dRct(self.mt, isothm=1, ireact=1,
                                       igetsc=0, rc1=np.log(2) / (5730 * 365))
 
     def createGCGpackage(self):
+        """TODO: Docs"""
         # Add the GCG package to the model
         self.gcg = flopy.mt3d.Mt3dGcg(self.mt, mxiter=1000, iter1=100, isolve=1,
                                       ncrs=0, accl=1, cclose=1.0E-4, iprgcg=0)
 
     def finaliseMT3Dmodel(self):
+        """TODO: Docs"""
         warnings.warn("Deprecated. Use `finalize_MT3D_model()` instead.", DeprecationWarning)
         self.finalize_MT3D_model()
     # end finaliseMT3Dmodel
 
     def finalize_MT3D_model(self):
+        """TODO: Docs"""
         self.mt.write_input()
     # End finalize_MT3D_model()
 
     def buildMT3D(self):
+        """TODO: Docs"""
 
         self.mt = flopy.mt3d.Mt3dms(modelname=self.name + '_transport', ftlfilename='mt3d_link.ftl',
                                     modflowmodel=self.mf, model_ws=self.data_folder, exe_name='MT3D-USGS_64.exe')
@@ -122,6 +131,10 @@ class MT3DModel(object):
     # End buildMT3D()
 
     def runMT3D(self, silent=False):
+        """
+        :param silent: (Default value = False)
+        """
+
         success, buff = self.mt.run_model(silent=silent)
         return success
     # End runMT3D()

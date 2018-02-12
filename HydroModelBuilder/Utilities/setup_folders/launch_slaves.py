@@ -3,6 +3,12 @@ import sys
 import os
 
 def launch_slaves(ip_address, folders):
+    """
+
+    :param ip_address: 
+    :param folders: 
+
+    """
 
     cwd = os.getcwd()
 

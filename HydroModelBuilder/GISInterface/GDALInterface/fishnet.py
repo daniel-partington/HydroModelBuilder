@@ -8,11 +8,16 @@ from osgeo import ogr
 
 
 def create_fishnet(structured_mesh, spatialRef, copy_dest=None):
-    '''
-    Function to create a fishnet for the model grid for structured meshes
+    """Function to create a fishnet for the model grid for structured meshes
     Based off of the recipe on:
     https://pcjericks.github.io/py-gdalogr-cookbook/vector_layers.html#create-fishnet-grid
-    '''
+
+    :param structured_mesh:
+
+    :param spatialRef:
+
+    :param copy_dest: (Default value = None)
+    """
     xmin = structured_mesh.xmin
     xmax = structured_mesh.xmax
     ymin = structured_mesh.ymin
@@ -107,46 +112,28 @@ def create_fishnet(structured_mesh, spatialRef, copy_dest=None):
 
     # Change back to previous working directory
     os.chdir(cwd)
-
-    #mesh_layer = outDataSource.GetLayer()
-    # for feature in mesh_layer:
-    #    grid_cell = feature.GetGeometryRef()
-    #    centroid_txt = grid_cell.Centroid().ExportToWkt()
-    #    centroid_nums = centroid_txt.split('(')[1].split(')')[0]
-    #    centroid = centroid_nums.split(' ')
-    #    print centroid
-    #mesh_layer = None
-
     outDataSource
     outDataSourceCopy = ogr.GetDriverByName("Memory").CopyDataSource(
-            outDataSource, "")
+        outDataSource, "")
 
-    outDataSource = None #.Destroy()
+    outDataSource = None  # .Destroy()
 
-    #return outDataSource  # outputGridfn #ds
+    # return outDataSource  # outputGridfn #ds
     return outDataSourceCopy
+
 
 if __name__ == "__main__":
     # Main to allow standalone testing of this module
+    from GDALInterface import StructuredMesh
+    from osgeo import osr
 
     copy_dest = r"C:\Workspace\part0075\MDB modelling\Campaspe_data\SW\Farm\\"
-
-    from osgeo import osr
 
     Proj_CS = osr.SpatialReference()
     Proj_CS.ImportFromEPSG(28355)  # This is just an example coordinate system
 
     print Proj_CS.ExportToWkt()
 
-    class StructuredMesh(object):
-
-        def __init__(self, xmin=None, xmax=None, ymin=None, ymax=None, gridHeight=None, gridWidth=None):
-            self.xmin = xmin
-            self.xmax = xmax
-            self.ymin = ymin
-            self.ymax = ymax
-            self.gridHeight = gridHeight
-            self.gridWidth = gridWidth
 
     structured_mesh = StructuredMesh(xmin='223167.454274',
                                      xmax='223177.454274',
