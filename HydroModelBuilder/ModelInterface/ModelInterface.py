@@ -68,10 +68,10 @@ class ModelInterface(object):
 
         if self.data_format in self.types.data_formats:
             # Extract and run associated function that saves data for this format
-            func = self.types.data_formats[self.data_format]
-            func(filename, array)
+            save_func = self.types.data_formats[self.data_format]
+            save_func(filename, array)
         else:
-            print("Data format not recognised, use one of {}".format(self.types.data_formats))
+            print("Data format not recognised, use one of {}".format(self.types.data_formats.keys()))
         # End if
     # End save_array()
 

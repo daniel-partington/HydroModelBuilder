@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 
@@ -438,7 +439,12 @@ class ModelBuilderType(object):
     def __init__(self):
         self.model_types = ['Modflow', 'HGS']
         self.mesh_types = ['structured', 'unstructured']
-        self.data_formats = ['ascii', 'binary']
+        # data formats and associated save function that accepts
+        # the parameters: filename, data_array
+        self.data_formats = {
+            'ascii': np.savetxt,
+            'binary': np.save
+        }
         self.length = ['mm', 'cm', 'm', 'km']
         self.volume = ['ml', 'l', 'kl', 'Ml', 'Gl', 'm3']
         self.time = ['s', 'h', 'd', 'w', 'y']
@@ -459,7 +465,7 @@ class ModelBuilderType(object):
             assert mesh_type in self.mesh_types, "'Mesh types must be of type: {}".format(
                 self.mesh_types)
             assert data_format in self.data_formats, "Data format must be of type: {}".format(
-                self.data_formats)
+                self.data_formats.keys())
         except AssertionError as e:
             import traceback
             import sys
