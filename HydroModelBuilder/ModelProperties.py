@@ -464,7 +464,7 @@ class ModelBuilderType(object):
             assert mesh_type in self.mesh_types, "'Mesh types must be of type: {}".format(
                 self.mesh_types)
             assert data_format in self.data_formats, "Data format must be of type: {}".format(
-                self.data_formats)
+                self.data_formats.keys())
         except AssertionError as e:
             import traceback
             import sys
