@@ -123,7 +123,7 @@ class ModflowModel(object):
         """
 
         # Variables for the BAS package
-        ibound = self.model_data.model_mesh3D[1]
+        ibound = np.copy(self.model_data.model_mesh3D[1])
         ibound[ibound == -1] = 0
 
         self.bas = flopy.modflow.ModflowBas(self.mf, ibound=ibound, strt=self.strt)
@@ -391,7 +391,29 @@ class ModflowModel(object):
         return target
     # End add_bc_to_river()
 
-    def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False):
+    def cell_bc_to_3D_array_for_plot(self, boundary, bc_array, nper, use_final=False):
+        '''Convert cell data to 3D array for 3D plotting
+        
+        :param boundary: str, name of boundary condition
+        :param bc_array: dict of list data for different boundaries including 
+                         cell location layer, row, column and other pertinent 
+                         data required by MODFLOW depending on the package
+        :param nper: int, time period to use from bc_array
+        :param use_final: bool, force retrieval of last stress period data for that boundary
+        '''
+        if use_final:
+            nper = max(bc_array.keys())
+        # End if
+        self.bc_3D_array[boundary] = np.zeros_like(self.model_data.model_mesh3D[1])
+        bc_cells = [[lrc[0], lrc[1], lrc[2]] for lrc in bc_array[nper]]
+        vals = [val[3] for val in bc_array[nper]]
+        for index, c in enumerate(bc_cells):
+            self.bc_3D_array[boundary][c[0]][c[1]][c[2]] = vals[index]
+            self.bc_3D_array['bcs'][c[0]][c[1]][c[2]] = self.bc_counter
+        # End for
+        self.bc_counter += 1
+
+    def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False, detailed_bc_array=False):
         """Build MODFLOW model.
 
         :param transport:  (Default value = False)
@@ -414,6 +436,13 @@ class ModflowModel(object):
         wells_exist = False
         river = {}
         wel = {}
+        
+        if detailed_bc_array:
+            self.bc_3D_array = {'zone': np.copy(self.model_data.model_mesh3D[1])}
+            self.bc_3D_array = {'bcs': np.zeros_like(self.model_data.model_mesh3D[1])}
+            self.bc_counter = 1 
+        # End if
+           
         bc = self.model_data.boundaries.bc
         for boundary in bc:
             bc_boundary = bc[boundary]
@@ -422,25 +451,58 @@ class ModflowModel(object):
 
             if bc_type == 'recharge':
                 self.createRCHpackage(rchrate=bc_array)
+                if detailed_bc_array:
+                    self.bc_3D_array[boundary] = np.zeros_like(self.model_data.model_mesh3D[1])
+                    if 'zonal_array' in bc_boundary:
+                        self.bc_3D_array[boundary + '_zonal'] = np.zeros_like(self.model_data.model_mesh3D[1])
+                        self.bc_3D_array[boundary + '_zonal'][0] = bc_boundary['zonal_array'] 
+                        self.bc_3D_array[boundary + '_zonal'][self.model_data.model_mesh3D[1]==-1] = 0.
+                    # End if
+                    self.bc_3D_array[boundary][0] = bc_array[0] 
+                # End if
+            # End if
 
             if bc_type == 'drain':
                 self.createDRNpackage(bc_array)
+                if detailed_bc_array:
+                    self.cell_bc_to_3D_array_for_plot(boundary, bc_array, 0)
+                # End if
+            # End if
 
             if bc_type == 'general head':
                 self.createGHBpackage(bc_array)
+                if detailed_bc_array:
+                    self.cell_bc_to_3D_array_for_plot(boundary, bc_array, 0)
+                # End if
+            # End if
 
             if (bc_type == 'river') or (bc_type == 'channel'):
                 river_exists = True
                 river = self.add_bc_to_target(bc_array, river)
+                if detailed_bc_array:
+                    self.cell_bc_to_3D_array_for_plot(boundary, bc_array, 0)
+                # End if
             # End if
 
             if (bc_type == 'river_flow'):
                 self.createSFRpackage(bc_array[0], bc_array[1])
+                if detailed_bc_array:
+                    self.bc_3D_array[boundary] = np.zeros_like(self.model_data.model_mesh3D[1])
+                    bc_cells = [[lrc[0], lrc[1], lrc[2]] for lrc in bc_array[0]]
+                    vals = [val[5] for val in bc_array[0]]
+                    for index, c in enumerate(bc_cells):
+                        self.bc_3D_array[boundary][c[0]][c[1]][c[2]] = vals[index]
+                        self.bc_3D_array['bcs'][c[0]][c[1]][c[2]] = self.bc_counter
+                    self.bc_counter += 1
+                # End if
             # End if
 
             if bc_type == 'wells':
                 wells_exist = True
                 wel = self.add_bc_to_target(bc_array, wel)
+                if detailed_bc_array:
+                    self.cell_bc_to_3D_array_for_plot(boundary, bc_array, 0, use_final=True)
+                # End if
             # End if
         # End for
 
@@ -911,14 +973,14 @@ class ModflowModel(object):
     def get_active_obs_group(self, obs_group, nper=None):
         """Get active observations within a group.
 
-        :param obs_group: Pandas DataFrame, holding observation time series
+        :param obs_group: dict, holding observation time series
         :param nper: int, optional period number (Default value = None)
 
         :returns: DataFrame
         """
-        assert ('time_series' in obs_group.columns) and \
-               ('active' in obs_group.columns) and \
-               ('interval' in obs_group.columns), \
+        assert ('time_series' in obs_group) and \
+               ('active' in obs_group['time_series']) and \
+               ('interval' in obs_group['time_series']), \
             "Given DataFrame is missing required columns"
 
         obs_df = obs_group['time_series']
