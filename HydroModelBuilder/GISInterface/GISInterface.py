@@ -26,10 +26,6 @@ class GISInterface(object):
 
         :param shapefile_path:  (Default value = None)
         """
-        Function to set the model boundary using a shapefile, assuming polygon type:
-        1. For structured mesh this will create a rectangle that creates an envelope on the polygon
-
-        """
         pass
     # End set_model_boundary_from_polygon_shapefile()
 
