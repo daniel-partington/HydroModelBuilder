@@ -1557,6 +1557,30 @@ class GWModelBuilder(object):
                                        out_path, vtk_out)
     # End mesh3DToVtk()
 
+    def mesh3D_dict_ToVtk(self, val_dict, out_path, vtk_out):
+        """Function to write the mesh array.
+    
+        :param val_array:
+        :param val_name:
+        :param out_path:
+        :param vtk_out:
+        """
+    
+        from HydroModelBuilder.GISInterface.GDALInterface import array2Vtk
+        warnings.warn("Call to (possibly) deprecated method `mesh3DToVtk`", DeprecationWarning)
+        nrow, ncol = self.model_mesh3D[1][0].shape
+        delc, delr = self.gridWidth, self.gridHeight
+        x0, y0 = self.model_boundary[0], self.model_boundary[3]
+        grid_info = [ncol, nrow, delc, delr, x0, y0]
+        mesh = self.model_mesh3D[0]
+    
+        array2Vtk.build_vtk_from_array(grid_info, np.fliplr(mesh), ["z_elev"],
+                                       [np.fliplr(mesh)], val_dict.keys(),
+                                       [np.fliplr(val_dict[key]) for key in val_dict],
+                                       out_path, vtk_out)
+    # End mesh3D_dict_ToVtk()
+
+    
     def package_data(self):
         """Option to save all important attributes of GWModelBuilder class to
         allow quick loading of data that may have required transforms and
