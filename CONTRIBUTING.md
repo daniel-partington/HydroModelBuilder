@@ -48,7 +48,7 @@ Test snippets/examples can also be included using triple arrowheads
 :param param2: list[str], give type of elements if they are uniform.
                If they are not, `object` is okay but describe what the expected input is.
 
-:returns: this is a description of what is returned
+:returns: list[str], this is a description of what is returned
 :raises KeyError: raises an exception when...
 """
 ```
