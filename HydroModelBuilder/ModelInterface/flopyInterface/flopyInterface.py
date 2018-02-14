@@ -435,8 +435,10 @@ class ModflowModel(object):
         wel = {}
 
         if detailed_bc_array:
-            self.bc_3D_array = {'zone': np.copy(self.model_data.model_mesh3D[1])}
-            self.bc_3D_array = {'bcs': np.zeros_like(self.model_data.model_mesh3D[1])}
+            mesh3D_1 = self.model_data.model_mesh3D[1]
+            mesh_template = np.zeros_like(mesh3D_1)
+            self.bc_3D_array = {'zone': np.copy(mesh3D_1)}
+            self.bc_3D_array = {'bcs': mesh_template.copy()}
             self.bc_counter = 1
         # End if
 
@@ -469,16 +471,15 @@ class ModflowModel(object):
                         nper = max(bc_array.keys())
                     self.cell_bc_to_3D_array_for_plot(boundary, bc_array, nper, val_pos)
                 elif bc_type == 'recharge':
-                    self.bc_3D_array[boundary] = np.zeros_like(self.model_data.model_mesh3D[1])
+                    self.bc_3D_array[boundary] = mesh_template.copy()
                     if 'zonal_array' in bc_boundary:
-                        self.bc_3D_array[boundary + '_zonal'] = np.zeros_like(self.model_data.model_mesh3D[1])
+                        self.bc_3D_array[boundary + '_zonal'] = mesh_template.copy()
                         self.bc_3D_array[boundary + '_zonal'][0] = bc_boundary['zonal_array']
-                        self.bc_3D_array[boundary + '_zonal'][self.model_data.model_mesh3D[1] == -1] = 0.0
+                        self.bc_3D_array[boundary + '_zonal'][mesh3D_1 == -1] = 0.0
                     # End if
                     self.bc_3D_array[boundary][0] = bc_array[0]
                 # End if
             # End if
-
         # End for
 
         if river:
@@ -514,7 +515,6 @@ class ModflowModel(object):
 
         :returns: bool, successful run with convergence.
         """
-
         success, buff = self.mf.run_model(silent=silent)
         return self.checkConvergence(fail=not success)
     # End runMODFLOW()
@@ -762,13 +762,14 @@ class ModflowModel(object):
         :param array:
         """
         mesh_1 = self.model_data.model_mesh3D[1]
+        rows = mesh_1.shape[0]
         arr_zoned = [np.full(mesh_1.shape[1:3], np.nan)] * int(np.max(mesh_1))
 
         for zone in range(int(np.max(mesh_1))):
-            temp = np.array([np.full(mesh_1.shape[1:3], np.nan)] * mesh_1.shape[0])
+            temp = np.array([np.full(mesh_1.shape[1:3], np.nan)] * rows)
 
             zone_1 = float(zone + 1)
-            for layer in range(mesh_1.shape[0]):
+            for layer in range(rows):
                 mesh_1_layer = mesh_1[layer]
                 temp[layer][mesh_1_layer == zone_1] = array[layer][mesh_1_layer == zone_1]
             # End for
