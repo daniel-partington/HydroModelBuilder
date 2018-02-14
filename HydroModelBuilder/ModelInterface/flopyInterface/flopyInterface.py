@@ -462,13 +462,12 @@ class ModflowModel(object):
                 val_pos = 5
                 self.createSFRpackage(bc_array[0], bc_array[1])
             elif bc_type == 'wells':
+                nper = max(bc_array.keys())
                 wel = self.add_bc_to_target(bc_array, wel)
             # End if
 
             if detailed_bc_array:
                 if bc_type in ['drain', 'general head', 'river', 'channel', 'river_flow', 'wells']:
-                    if bc_type == 'wells':
-                        nper = max(bc_array.keys())
                     self.cell_bc_to_3D_array_for_plot(boundary, bc_array, nper, val_pos)
                 elif bc_type == 'recharge':
                     self.bc_3D_array[boundary] = mesh_template.copy()
