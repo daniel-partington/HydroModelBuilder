@@ -9,8 +9,8 @@ with the following exceptions:
 
 Plugins for common IDEs/editors.
 
-* [https://github.com/spyder-ide/spyder-autopep8]
-* [https://atom.io/packages/python-autopep8]
+* https://github.com/spyder-ide/spyder-autopep8
+* https://atom.io/packages/python-autopep8
 
 Install autopep8 via pip or conda
 
@@ -41,7 +41,9 @@ Test snippets/examples can also be included using triple arrowheads
 ["the", "expected", "output", "from", "function", "call"]
 
 :param param1: str, this is the first param
-:param param2: list[str], give type of elements if they are uniform. If they are not, `object` is okay but describe what the expected input is.
+:param param2: list[str], give type of elements if they are uniform.
+               If they are not, `object` is okay but describe what the expected input is.
+
 :returns: this is a description of what is returned
 :raises KeyError: raises an exception when...
 """
