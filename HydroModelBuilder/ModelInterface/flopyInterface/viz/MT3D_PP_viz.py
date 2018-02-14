@@ -312,7 +312,4 @@ def compareAllObs2(self, specimen):
         
         plot_obs_vs_sim(obs_set, obs_sim_zone_all, unc=2)       
 
-        self._plot_obs_vs_sim(obs_set, obs_sim_zone_all, unc=2)
-
-
 # End compareAllObs()
