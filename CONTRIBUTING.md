@@ -2,13 +2,13 @@
 
 ## Code Style
 
-Follow PEP8 guidelines with the help of a linter, [preferably 'autopep8'](https://pypi.python.org/pypi/autopep8) or
-['pycodestyle'](http://pycodestyle.readthedocs.io/en/latest/),
+Follow PEP8 guidelines with the help of a linter, preferably ['pycodestyle'](http://pycodestyle.readthedocs.io/en/latest/),
 with the following exceptions:
 
 * Max line length set to 120 characters
+* Use spaces for indentation (4 spaces) instead of tabs as is preferred.
 
-Plugins for common IDEs/editors.
+Linter Plugins for commonly used IDEs/editors.
 
 * https://github.com/spyder-ide/spyder-autopep8
 * https://github.com/AtomLinter/linter-pycodestyle
@@ -21,7 +21,8 @@ Linters can be installed via pip or conda
 
 ## Docstrings
 
-Docstrings should follow the sphinxdoc style and are required where the function has one or more of the following:
+Docstrings should follow the sphinx style (which uses [reStructuredText](http://www.sphinx-doc.org/en/master/rest.html))
+and are required where the function has one or more of the following:
 
 * has input parameters
 * more than 3 lines long
@@ -50,4 +51,10 @@ Test snippets/examples can also be included using triple arrowheads
 :returns: this is a description of what is returned
 :raises KeyError: raises an exception when...
 """
+```
+
+Docstrings can be a single line if the function does not have any parameters, returns, and raises no exceptions:
+
+```
+"""A single line docstring"""
 ```
