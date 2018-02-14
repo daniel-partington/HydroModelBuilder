@@ -392,27 +392,7 @@ class ModflowModel(object):
         return target
     # End add_bc_to_river()
 
-    def cell_bc_to_3D_array_for_plot(self, boundary, bc_array, nper, val_pos):
-        '''Convert cell data to 3D array for 3D plotting
-
-        :param boundary: str, name of boundary condition
-        :param bc_array: dict of list data for different boundaries including
-                         cell location layer, row, column and other pertinent
-                         data required by MODFLOW depending on the package
-        :param nper: int, time period to use from bc_array
-        :param val_pos: int, target value position in bc_array
-        '''
-        self.bc_3D_array[boundary] = np.zeros_like(self.model_data.model_mesh3D[1])
-        bc_cells = [[lrc[0], lrc[1], lrc[2]] for lrc in bc_array[nper]]
-        vals = [val[val_pos] for val in bc_array[nper]]
-        for index, c in enumerate(bc_cells):
-            self.bc_3D_array[boundary][c[0]][c[1]][c[2]] = vals[index]
-            self.bc_3D_array['bcs'][c[0]][c[1]][c[2]] = self.bc_counter
-        # End for
-        self.bc_counter += 1
-    # End cell_bc_to_3D_array_for_plot()
-
-    def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False, detailed_bc_array=False):
+    def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False):
         """Build MODFLOW model.
 
         :param transport:  (Default value = False)
@@ -434,22 +414,12 @@ class ModflowModel(object):
         river = {}
         wel = {}
 
-        if detailed_bc_array:
-            mesh3D_1 = self.model_data.model_mesh3D[1]
-            mesh_template = np.zeros_like(mesh3D_1)
-            self.bc_3D_array = {'zone': np.copy(mesh3D_1)}
-            self.bc_3D_array.update({'bcs': mesh_template.copy()})
-            self.bc_counter = 1
-        # End if
-
         bc = self.model_data.boundaries.bc
         for boundary in bc:
             bc_boundary = bc[boundary]
             bc_type = bc_boundary['bc_type']
             bc_array = bc_boundary['bc_array']
 
-            nper = 0
-            val_pos = 3
             if bc_type == 'recharge':
                 self.createRCHpackage(rchrate=bc_array)
             elif bc_type == 'drain':
@@ -459,26 +429,11 @@ class ModflowModel(object):
             elif (bc_type == 'river') or (bc_type == 'channel'):
                 river = self.add_bc_to_target(bc_array, river)
             elif (bc_type == 'river_flow'):
-                val_pos = 5
                 self.createSFRpackage(bc_array[0], bc_array[1])
             elif bc_type == 'wells':
-                nper = max(bc_array.keys())  # use last period
                 wel = self.add_bc_to_target(bc_array, wel)
             # End if
 
-            if detailed_bc_array:
-                if bc_type in ['drain', 'general head', 'river', 'channel', 'river_flow', 'wells']:
-                    self.cell_bc_to_3D_array_for_plot(boundary, bc_array, nper, val_pos)
-                elif bc_type == 'recharge':
-                    self.bc_3D_array[boundary] = mesh_template.copy()
-                    if 'zonal_array' in bc_boundary:
-                        self.bc_3D_array[boundary + '_zonal'] = mesh_template.copy()
-                        self.bc_3D_array[boundary + '_zonal'][0] = bc_boundary['zonal_array']
-                        self.bc_3D_array[boundary + '_zonal'][mesh3D_1 == -1] = 0.0
-                    # End if
-                    self.bc_3D_array[boundary][0] = bc_array[0]
-                # End if
-            # End if
         # End for
 
         if river:
