@@ -2,7 +2,8 @@
 
 ## Code Style
 
-Follow PEP8 guidelines with the help of a linter, [preferably 'autopep8'](https://pypi.python.org/pypi/autopep8),
+Follow PEP8 guidelines with the help of a linter, [preferably 'autopep8'](https://pypi.python.org/pypi/autopep8) or
+['pycodestyle'](http://pycodestyle.readthedocs.io/en/latest/),
 with the following exceptions:
 
 * Max line length set to 120 characters
@@ -10,11 +11,13 @@ with the following exceptions:
 Plugins for common IDEs/editors.
 
 * https://github.com/spyder-ide/spyder-autopep8
-* https://atom.io/packages/python-autopep8
+* https://github.com/AtomLinter/linter-pycodestyle
 
-Install autopep8 via pip or conda
+Linters can be installed via pip or conda
 
 `pip install autopep8`
+
+`pip install pycodestyle`
 
 ## Docstrings
 
