@@ -377,9 +377,10 @@ class ModflowModel(object):
         """TODO: Docs:
 
         :param bc_array:
-        :param target:
-        """
+        :param target: dict, dictionary to update
 
+        :returns: dict, updated dictionary
+        """
         for key in bc_array:
             try:
                 target[key] += bc_array[key]
@@ -430,8 +431,6 @@ class ModflowModel(object):
         self.setupUPWpackage()
         self.createOCpackage()
 
-        river_exists = False
-        wells_exist = False
         river = {}
         wel = {}
 
@@ -456,13 +455,11 @@ class ModflowModel(object):
             elif bc_type == 'general head':
                 self.createGHBpackage(bc_array)
             elif (bc_type == 'river') or (bc_type == 'channel'):
-                river_exists = True
                 river = self.add_bc_to_target(bc_array, river)
             elif (bc_type == 'river_flow'):
                 val_pos = 5
                 self.createSFRpackage(bc_array[0], bc_array[1])
             elif bc_type == 'wells':
-                wells_exist = True
                 wel = self.add_bc_to_target(bc_array, wel)
             # End if
 
@@ -484,10 +481,10 @@ class ModflowModel(object):
 
         # End for
 
-        if river_exists:
+        if river:
             self.createRIVpackage(river)
 
-        if wells_exist:
+        if wel:
             self.createWELpackage(wel)
 
         if transport:
