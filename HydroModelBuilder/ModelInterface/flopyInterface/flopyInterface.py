@@ -438,7 +438,7 @@ class ModflowModel(object):
             mesh3D_1 = self.model_data.model_mesh3D[1]
             mesh_template = np.zeros_like(mesh3D_1)
             self.bc_3D_array = {'zone': np.copy(mesh3D_1)}
-            self.bc_3D_array = {'bcs': mesh_template.copy()}
+            self.bc_3D_array.update({'bcs': mesh_template.copy()})
             self.bc_counter = 1
         # End if
 
@@ -462,7 +462,7 @@ class ModflowModel(object):
                 val_pos = 5
                 self.createSFRpackage(bc_array[0], bc_array[1])
             elif bc_type == 'wells':
-                nper = max(bc_array.keys())
+                nper = max(bc_array.keys())  # use last period
                 wel = self.add_bc_to_target(bc_array, wel)
             # End if
 
