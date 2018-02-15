@@ -92,8 +92,13 @@ class ModflowModel(object):
     # End __init__()
 
     def createDiscretisation(self):
-        """TODO: Docs"""
+        """Create and setup MODFLOW DIS package.
 
+        See [Flopy MF DIS]_ documentation
+
+        .. [Flopy MF DIS] MODFLOW DIS package
+           (https://modflowpy.github.io/flopydoc/mfdis.html)
+        """
         # Create discretisation object
         self.dis = flopy.modflow.ModflowDis(self.mf,
                                             nlay=self.nlay,
@@ -117,13 +122,16 @@ class ModflowModel(object):
     def setupBASPackage(self, nlay, nrow, ncol):
         """Create and setup MODFLOW BAS package.
 
+        See [Flopy MF BAS]_ documentation
+
+        .. [Flopy MF BAS] MODFLOW BAS package
+           (https://modflowpy.github.io/flopydoc/mfbas.html)
+
         :param nlay: int, number of layers
         :param nrow: int, number of rows
         :param ncol: int, number of columns
         """
-
-        # Variables for the BAS package
-        ibound = np.copy(self.model_data.model_mesh3D[1])
+        ibound = np.copy(self.model_data.model_mesh3D[1])  # Variables for the BAS package
         ibound[ibound == -1] = 0
 
         self.bas = flopy.modflow.ModflowBas(self.mf, ibound=ibound, strt=self.strt)
@@ -133,10 +141,14 @@ class ModflowModel(object):
     # End setupBASPackage()
 
     def setupNWTpackage(self, headtol, fluxtol):
-        """TODO: Docs
+        """Create and setup the NWT package.
+        See [Flopy MF NWT]_ documentation
 
-        :param headtol:
-        :param fluxtol:
+        .. [Flopy MF NWT] MODFLOW NWT package
+           (https://modflowpy.github.io/flopydoc/mfnwt.html)
+
+        :param headtol: float, maximum head change
+        :param fluxtol: float, maximum flux
         """
         # Specify NWT settings
         self.nwt = flopy.modflow.ModflowNwt(self.mf,
@@ -151,14 +163,22 @@ class ModflowModel(object):
     # End setupNWTpackage()
 
     def setupPCGpackage(self):
-        """TODO: Docs"""
+        """Set up the upstream weighting package for the MODFLOW NWT solver.
+        See [Flopy MF PCG]_ documentation
 
+        .. [Flopy MF PCG] MODFLOW River package
+           (https://modflowpy.github.io/flopydoc/mfpcg.html)
+        """
         self.pcg = flopy.modflow.ModflowPcg(self.mf)  # if using mf 2005
     # End setupPCGpachage()
 
     def setupUPWpackage(self):
-        """Set up the upstream weighting package for the MODFLOW NWT solver."""
+        """Set up the upstream weighting package for the MODFLOW NWT solver.
+        See [Flopy MF UPW]_ documentation
 
+        .. [Flopy MF UPW] MODFLOW River package
+           (https://modflowpy.github.io/flopydoc/mfupw.html)
+        """
         # Add UPW package to the MODFLOW model to represent aquifers
         self.upw = flopy.modflow.ModflowUpw(self.mf,
                                             hk=self.hk,
@@ -181,7 +201,6 @@ class ModflowModel(object):
 
         :param lrcd: dict or None, stress period data. (Default value = None)
         """
-
         self.riv = flopy.modflow.ModflowRiv(self.mf, ipakcb=53, stress_period_data=lrcd)
         if self.verbose and self.check:
             self.riv.check()
@@ -197,7 +216,6 @@ class ModflowModel(object):
 
         :param STRvariables: dict or None, stress period data. (Default value = None)
         """
-
         self.str = flopy.modflow.ModflowStr(self.mf, ipakcb=53, stress_period_data=STRvariables)
         if self.verbose and self.check:
             self.str.check()
@@ -210,11 +228,9 @@ class ModflowModel(object):
         .. [Flopy MF SFR2] MODFLOW stream-flow routing package
            (https://modflowpy.github.io/flopydoc/mfsfr2.html)
 
-
         :param reach_data: ndarray, array holding reach data.
         :param segment_data: ndarray, array holding stream segment data.
         """
-
         if self.model_data.model_time.t['steady_state']:
             transroute = False
         else:
@@ -265,12 +281,16 @@ class ModflowModel(object):
     # End createSFRpackage()
 
     def createGagepackage(self, gages, files=None):
-        """TODO: Docs:
+        """Creates and adds the MODFLOW Gage package.
 
-        :param gages:
+        See [Flopy mfgage]_ documentation
+
+        .. [Flopy mfgage] MODFLOW DRN
+           (https://modflowpy.github.io/flopydoc/mfgage.html)
+
+        :param gages: list or ndarray, data for each gaging location
         :param files:  (Default value = None)
         """
-
         # gages should contain seg, rch, unit, outtype [set = 9]
         if files is None:
             files = ['Gage.gage']
@@ -284,33 +304,47 @@ class ModflowModel(object):
     # End createGagepackage()
 
     def createDRNpackage(self, lrcsc=None):
-        """TODO: Docs:
+        """Creates and adds the MODFLOW Drain package.
 
-        :param lrcsc:  (Default value = None)
+        See [Flopy mfdrn]_ documentation
+
+        .. [Flopy mfdrn] MODFLOW DRN
+           (https://modflowpy.github.io/flopydoc/mfdrn.html)
+
+        :param lrcsc: list of boundaries, recarrays, or dictionary of boundaries.
+                      (Default value = None)
         """
-
         self.drn = flopy.modflow.ModflowDrn(self.mf, ipakcb=53, stress_period_data=lrcsc)
         if self.verbose and self.check:
             self.drn.check()
     # End createDRNpackage()
 
     def createGHBpackage(self, lrcsc=None):
-        """TODO: Docs:
+        """Creates General Head Boundary module to the model.
 
-        :param lrcsc:  (Default value = None)
+        See [Flopy mfghb]_ documentation
+
+        .. [Flopy mfghb] MODFLOW GHB
+           (https://modflowpy.github.io/flopydoc/mfghb.html)
+
+        :param lrcsc: list of boundaries, recarray of boundaries or, dictionary of boundaries.
+                      (Default value = None)
         """
-
         self.ghb = flopy.modflow.ModflowGhb(self.mf, ipakcb=53, stress_period_data=lrcsc)
         if self.verbose and self.check:
             self.ghb.check()
     # end createGHBpackage()
 
     def createRCHpackage(self, rchrate=None):
-        """Add RCH package to the MODFLOW model to represent recharge
+        """Add RCH package to the MODFLOW model to represent recharge.
 
-        :param rchrate:  (Default value = None)
+        See [Flopy mfrch]_ documentation
+
+        .. [Flopy mfrch] MODFLOW Recharge
+           (https://modflowpy.github.io/flopydoc/mfrch.html)
+
+        :param rchrate: float or array of floats, recharge flux (Default value = None)
         """
-
         self.rch = flopy.modflow.ModflowRch(self.mf, ipakcb=53, rech=rchrate, nrchop=3)
         if self.verbose and self.check:
             self.rch.check()
@@ -326,15 +360,19 @@ class ModflowModel(object):
 
         :param lrcq: dict, stress period data. (Default value = None)
         """
-
         self.wel = flopy.modflow.ModflowWel(self.mf, ipakcb=53, stress_period_data=lrcq)
         if self.verbose and self.check:
             self.wel.check()
     # End createWElpackage()
 
     def createOCpackage(self):
-        """Add OC package to the MODFLOW model"""
+        """Add OC (output control) package to the MODFLOW model
 
+        See [Flopy mfoc]_ documentation
+
+        .. [Flopy mfoc] MODFLOW Output Control Module
+           (https://modflowpy.github.io/flopydoc/mfoc.html)
+        """
         spd_opts = ['save head', 'print budget', 'save budget']
         if self.steady:
             spd = {(0, 0): spd_opts[:],
@@ -351,8 +389,13 @@ class ModflowModel(object):
     # End createOCpackage()
 
     def createLMTpackage(self):
-        """Add LMT package to the MODFLOW model to allow linking with MT3DMS"""
+        """Add LMT package to the MODFLOW model to allow linking with MT3DMS
 
+        See [Flopy mflmt]_ documentation
+
+        .. [Flopy mflmt] MODFLOW Link-MT3DMS
+           (https://modflowpy.github.io/flopydoc/mflmt.html)
+        """
         self.lmt = flopy.modflow.ModflowLmt(self.mf,
                                             output_file_header='extended',
                                             output_file_format='formatted',
