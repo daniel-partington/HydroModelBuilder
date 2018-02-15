@@ -2,6 +2,7 @@ import datetime
 import inspect
 import os
 import warnings
+from types import MethodType
 
 import flopy
 import flopy.utils.binaryfile as bf
@@ -14,7 +15,6 @@ import viz.flopy_viz as fviz  # Visualization extension methods
 from MT3DModel import MT3DModel
 from MT3DPostProcess import MT3DPostProcess
 from Radon_EC_simple import Radon_EC_simple
-from types import MethodType
 
 
 class ModflowModel(object):
@@ -92,8 +92,13 @@ class ModflowModel(object):
     # End __init__()
 
     def createDiscretisation(self):
-        """TODO: Docs"""
+        """Create and setup MODFLOW DIS package.
 
+        See [Flopy MF DIS]_ documentation
+
+        .. [Flopy MF DIS] MODFLOW DIS package
+           (https://modflowpy.github.io/flopydoc/mfdis.html)
+        """
         # Create discretisation object
         self.dis = flopy.modflow.ModflowDis(self.mf,
                                             nlay=self.nlay,
@@ -117,13 +122,16 @@ class ModflowModel(object):
     def setupBASPackage(self, nlay, nrow, ncol):
         """Create and setup MODFLOW BAS package.
 
+        See [Flopy MF BAS]_ documentation
+
+        .. [Flopy MF BAS] MODFLOW BAS package
+           (https://modflowpy.github.io/flopydoc/mfbas.html)
+
         :param nlay: int, number of layers
         :param nrow: int, number of rows
         :param ncol: int, number of columns
         """
-
-        # Variables for the BAS package
-        ibound = np.copy(self.model_data.model_mesh3D[1])
+        ibound = np.copy(self.model_data.model_mesh3D[1])  # Variables for the BAS package
         ibound[ibound == -1] = 0
 
         self.bas = flopy.modflow.ModflowBas(self.mf, ibound=ibound, strt=self.strt)
@@ -133,10 +141,14 @@ class ModflowModel(object):
     # End setupBASPackage()
 
     def setupNWTpackage(self, headtol, fluxtol):
-        """TODO: Docs
+        """Create and setup the NWT package.
+        See [Flopy MF NWT]_ documentation
 
-        :param headtol:
-        :param fluxtol:
+        .. [Flopy MF NWT] MODFLOW NWT package
+           (https://modflowpy.github.io/flopydoc/mfnwt.html)
+
+        :param headtol: float, maximum head change
+        :param fluxtol: float, maximum flux
         """
         # Specify NWT settings
         self.nwt = flopy.modflow.ModflowNwt(self.mf,
@@ -151,14 +163,22 @@ class ModflowModel(object):
     # End setupNWTpackage()
 
     def setupPCGpackage(self):
-        """TODO: Docs"""
+        """Set up the upstream weighting package for the MODFLOW NWT solver.
+        See [Flopy MF PCG]_ documentation
 
+        .. [Flopy MF PCG] MODFLOW River package
+           (https://modflowpy.github.io/flopydoc/mfpcg.html)
+        """
         self.pcg = flopy.modflow.ModflowPcg(self.mf)  # if using mf 2005
     # End setupPCGpachage()
 
     def setupUPWpackage(self):
-        """Set up the upstream weighting package for the MODFLOW NWT solver."""
+        """Set up the upstream weighting package for the MODFLOW NWT solver.
+        See [Flopy MF UPW]_ documentation
 
+        .. [Flopy MF UPW] MODFLOW River package
+           (https://modflowpy.github.io/flopydoc/mfupw.html)
+        """
         # Add UPW package to the MODFLOW model to represent aquifers
         self.upw = flopy.modflow.ModflowUpw(self.mf,
                                             hk=self.hk,
@@ -181,7 +201,6 @@ class ModflowModel(object):
 
         :param lrcd: dict or None, stress period data. (Default value = None)
         """
-
         self.riv = flopy.modflow.ModflowRiv(self.mf, ipakcb=53, stress_period_data=lrcd)
         if self.verbose and self.check:
             self.riv.check()
@@ -197,7 +216,6 @@ class ModflowModel(object):
 
         :param STRvariables: dict or None, stress period data. (Default value = None)
         """
-
         self.str = flopy.modflow.ModflowStr(self.mf, ipakcb=53, stress_period_data=STRvariables)
         if self.verbose and self.check:
             self.str.check()
@@ -210,11 +228,9 @@ class ModflowModel(object):
         .. [Flopy MF SFR2] MODFLOW stream-flow routing package
            (https://modflowpy.github.io/flopydoc/mfsfr2.html)
 
-
         :param reach_data: ndarray, array holding reach data.
         :param segment_data: ndarray, array holding stream segment data.
         """
-
         if self.model_data.model_time.t['steady_state']:
             transroute = False
         else:
@@ -265,12 +281,16 @@ class ModflowModel(object):
     # End createSFRpackage()
 
     def createGagepackage(self, gages, files=None):
-        """TODO: Docs:
+        """Creates and adds the MODFLOW Gage package.
 
-        :param gages:
+        See [Flopy mfgage]_ documentation
+
+        .. [Flopy mfgage] MODFLOW Gage
+           (https://modflowpy.github.io/flopydoc/mfgage.html)
+
+        :param gages: list or ndarray, data for each gaging location
         :param files:  (Default value = None)
         """
-
         # gages should contain seg, rch, unit, outtype [set = 9]
         if files is None:
             files = ['Gage.gage']
@@ -284,33 +304,47 @@ class ModflowModel(object):
     # End createGagepackage()
 
     def createDRNpackage(self, lrcsc=None):
-        """TODO: Docs:
+        """Creates and adds the MODFLOW Drain package.
 
-        :param lrcsc:  (Default value = None)
+        See [Flopy mfdrn]_ documentation
+
+        .. [Flopy mfdrn] MODFLOW DRN
+           (https://modflowpy.github.io/flopydoc/mfdrn.html)
+
+        :param lrcsc: list of boundaries, recarrays, or dictionary of boundaries.
+                      (Default value = None)
         """
-
         self.drn = flopy.modflow.ModflowDrn(self.mf, ipakcb=53, stress_period_data=lrcsc)
         if self.verbose and self.check:
             self.drn.check()
     # End createDRNpackage()
 
     def createGHBpackage(self, lrcsc=None):
-        """TODO: Docs:
+        """Creates General Head Boundary module to the model.
 
-        :param lrcsc:  (Default value = None)
+        See [Flopy mfghb]_ documentation
+
+        .. [Flopy mfghb] MODFLOW GHB
+           (https://modflowpy.github.io/flopydoc/mfghb.html)
+
+        :param lrcsc: list of boundaries, recarray of boundaries or, dictionary of boundaries.
+                      (Default value = None)
         """
-
         self.ghb = flopy.modflow.ModflowGhb(self.mf, ipakcb=53, stress_period_data=lrcsc)
         if self.verbose and self.check:
             self.ghb.check()
     # end createGHBpackage()
 
     def createRCHpackage(self, rchrate=None):
-        """Add RCH package to the MODFLOW model to represent recharge
+        """Add RCH package to the MODFLOW model to represent recharge.
 
-        :param rchrate:  (Default value = None)
+        See [Flopy mfrch]_ documentation
+
+        .. [Flopy mfrch] MODFLOW Recharge
+           (https://modflowpy.github.io/flopydoc/mfrch.html)
+
+        :param rchrate: float or array of floats, recharge flux (Default value = None)
         """
-
         self.rch = flopy.modflow.ModflowRch(self.mf, ipakcb=53, rech=rchrate, nrchop=3)
         if self.verbose and self.check:
             self.rch.check()
@@ -324,17 +358,26 @@ class ModflowModel(object):
         >>> lrcq = {}
         >>> lrcq[0] = [[0, 7, 7, -100.]] # layer, row, column, flux
 
+        See [Flopy mfwel]_ documentation
+
+        .. [Flopy mfwel] MODFLOW WEL package
+           (https://modflowpy.github.io/flopydoc/mfwel.html)
+
         :param lrcq: dict, stress period data. (Default value = None)
         """
-
         self.wel = flopy.modflow.ModflowWel(self.mf, ipakcb=53, stress_period_data=lrcq)
         if self.verbose and self.check:
             self.wel.check()
     # End createWElpackage()
 
     def createOCpackage(self):
-        """Add OC package to the MODFLOW model"""
+        """Add OC (output control) package to the MODFLOW model
 
+        See [Flopy mfoc]_ documentation
+
+        .. [Flopy mfoc] MODFLOW Output Control Module
+           (https://modflowpy.github.io/flopydoc/mfoc.html)
+        """
         spd_opts = ['save head', 'print budget', 'save budget']
         if self.steady:
             spd = {(0, 0): spd_opts[:],
@@ -351,8 +394,13 @@ class ModflowModel(object):
     # End createOCpackage()
 
     def createLMTpackage(self):
-        """Add LMT package to the MODFLOW model to allow linking with MT3DMS"""
+        """Add LMT package to the MODFLOW model to allow linking with MT3DMS
 
+        See [Flopy mflmt]_ documentation
+
+        .. [Flopy mflmt] MODFLOW Link-MT3DMS
+           (https://modflowpy.github.io/flopydoc/mflmt.html)
+        """
         self.lmt = flopy.modflow.ModflowLmt(self.mf,
                                             output_file_header='extended',
                                             output_file_format='formatted',
@@ -360,16 +408,14 @@ class ModflowModel(object):
     # End createLMTpackage()
 
     def finaliseModel(self):
-        """TODO: Docs:"""
-
+        """Deprecated method"""
         # Write the MODFLOW model input files
         warnings.warn("Deprecated method called. Use `finalize_model()` instead", DeprecationWarning)
         self.finalize_model()
     # end finaliseModel
 
     def finalize_model(self):
-        """TODO: Docs:"""
-
+        """Write out inputs used."""
         self.mf.write_input()
     # End finalize_model()
 
@@ -377,9 +423,10 @@ class ModflowModel(object):
         """TODO: Docs:
 
         :param bc_array:
-        :param target:
-        """
+        :param target: dict, dictionary to update
 
+        :returns: dict, updated dictionary
+        """
         for key in bc_array:
             try:
                 target[key] += bc_array[key]
@@ -391,35 +438,33 @@ class ModflowModel(object):
         return target
     # End add_bc_to_river()
 
-    def cell_bc_to_3D_array_for_plot(self, boundary, bc_array, nper, use_final=False):
-        '''Convert cell data to 3D array for 3D plotting
-        
-        :param boundary: str, name of boundary condition
-        :param bc_array: dict of list data for different boundaries including 
-                         cell location layer, row, column and other pertinent 
-                         data required by MODFLOW depending on the package
-        :param nper: int, time period to use from bc_array
-        :param use_final: bool, force retrieval of last stress period data for that boundary
-        '''
-        if use_final:
-            nper = max(bc_array.keys())
-        # End if
-        self.bc_3D_array[boundary] = np.zeros_like(self.model_data.model_mesh3D[1])
-        bc_cells = [[lrc[0], lrc[1], lrc[2]] for lrc in bc_array[nper]]
-        vals = [val[3] for val in bc_array[nper]]
-        for index, c in enumerate(bc_cells):
-            self.bc_3D_array[boundary][c[0]][c[1]][c[2]] = vals[index]
-            self.bc_3D_array['bcs'][c[0]][c[1]][c[2]] = self.bc_counter
-        # End for
-        self.bc_counter += 1
-
-    def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False, detailed_bc_array=False):
+    def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False):
         """Build MODFLOW model.
 
-        :param transport:  (Default value = False)
-        :param write:  (Default value = True)
-        :param verbose:  (Default value = True)
-        :param check:  (Default value = False)
+        * Creates model discretization (MODFLOW dis package)
+        * Sets up the BAS, NWT, UPW, and OC packages
+        * Additionally sets up the RCH, DRN, GHB, and SFR packages based on boundary condition properties.
+
+        If necessary, creates linkages to the RIV, WEL, and LMT packages.
+
+        See the relevant docstring for the following methods:
+        * :func:`createDiscretisation <flopyInterface.ModflowModel.createDiscretisation>`
+        * :func:`createBASpackage <flopyInterface.ModflowModel.createBASpackage>`
+        * :func:`createNWTpackage <flopyInterface.ModflowModel.createNWTpackage>`
+        * :func:`createUPWpackage <flopyInterface.ModflowModel.createUPWpackage>`
+        * :func:`createOCpackage <flopyInterface.ModflowModel.createOCpackage>`
+        * :func:`createRCHpackage <flopyInterface.ModflowModel.createRCHpackage>`
+        * :func:`createDRNpackage <flopyInterface.ModflowModel.createDRNpackage>`
+        * :func:`createGHBpackage <flopyInterface.ModflowModel.createGHBpackage>`
+        * :func:`createSFRpackage <flopyInterface.ModflowModel.createSFRpackage>`
+        * :func:`createRIVpackage <flopyInterface.ModflowModel.createRIVpackage>`
+        * :func:`createWELpackage <flopyInterface.ModflowModel.createWELpackage>`
+        * :func:`createLMTpackage <flopyInterface.ModflowModel.createLMTpackage>`
+
+        :param transport: bool, use/setup the MODFLOW transport package  (Default value = False)
+        :param write: bool, writes out the inputs generated (Default value = True)
+        :param verbose: bool, print out verbose messages (Default value = True)
+        :param check: bool, check MODFLOW output for errors/convergence (Default value = False)
         """
         self.mf = flopy.modflow.Modflow(self.name, exe_name=self.executable,
                                         model_ws=self.data_folder, version='mfnwt')
@@ -432,17 +477,9 @@ class ModflowModel(object):
         self.setupUPWpackage()
         self.createOCpackage()
 
-        river_exists = False
-        wells_exist = False
         river = {}
         wel = {}
-        
-        if detailed_bc_array:
-            self.bc_3D_array = {'zone': np.copy(self.model_data.model_mesh3D[1])}
-            self.bc_3D_array = {'bcs': np.zeros_like(self.model_data.model_mesh3D[1])}
-            self.bc_counter = 1 
-        # End if
-           
+
         bc = self.model_data.boundaries.bc
         for boundary in bc:
             bc_boundary = bc[boundary]
@@ -451,65 +488,24 @@ class ModflowModel(object):
 
             if bc_type == 'recharge':
                 self.createRCHpackage(rchrate=bc_array)
-                if detailed_bc_array:
-                    self.bc_3D_array[boundary] = np.zeros_like(self.model_data.model_mesh3D[1])
-                    if 'zonal_array' in bc_boundary:
-                        self.bc_3D_array[boundary + '_zonal'] = np.zeros_like(self.model_data.model_mesh3D[1])
-                        self.bc_3D_array[boundary + '_zonal'][0] = bc_boundary['zonal_array'] 
-                        self.bc_3D_array[boundary + '_zonal'][self.model_data.model_mesh3D[1]==-1] = 0.
-                    # End if
-                    self.bc_3D_array[boundary][0] = bc_array[0] 
-                # End if
-            # End if
-
-            if bc_type == 'drain':
+            elif bc_type == 'drain':
                 self.createDRNpackage(bc_array)
-                if detailed_bc_array:
-                    self.cell_bc_to_3D_array_for_plot(boundary, bc_array, 0)
-                # End if
-            # End if
-
-            if bc_type == 'general head':
+            elif bc_type == 'general head':
                 self.createGHBpackage(bc_array)
-                if detailed_bc_array:
-                    self.cell_bc_to_3D_array_for_plot(boundary, bc_array, 0)
-                # End if
-            # End if
-
-            if (bc_type == 'river') or (bc_type == 'channel'):
-                river_exists = True
+            elif (bc_type == 'river') or (bc_type == 'channel'):
                 river = self.add_bc_to_target(bc_array, river)
-                if detailed_bc_array:
-                    self.cell_bc_to_3D_array_for_plot(boundary, bc_array, 0)
-                # End if
-            # End if
-
-            if (bc_type == 'river_flow'):
+            elif (bc_type == 'river_flow'):
                 self.createSFRpackage(bc_array[0], bc_array[1])
-                if detailed_bc_array:
-                    self.bc_3D_array[boundary] = np.zeros_like(self.model_data.model_mesh3D[1])
-                    bc_cells = [[lrc[0], lrc[1], lrc[2]] for lrc in bc_array[0]]
-                    vals = [val[5] for val in bc_array[0]]
-                    for index, c in enumerate(bc_cells):
-                        self.bc_3D_array[boundary][c[0]][c[1]][c[2]] = vals[index]
-                        self.bc_3D_array['bcs'][c[0]][c[1]][c[2]] = self.bc_counter
-                    self.bc_counter += 1
-                # End if
+            elif bc_type == 'wells':
+                wel = self.add_bc_to_target(bc_array, wel)
             # End if
 
-            if bc_type == 'wells':
-                wells_exist = True
-                wel = self.add_bc_to_target(bc_array, wel)
-                if detailed_bc_array:
-                    self.cell_bc_to_3D_array_for_plot(boundary, bc_array, 0, use_final=True)
-                # End if
-            # End if
         # End for
 
-        if river_exists:
+        if river:
             self.createRIVpackage(river)
 
-        if wells_exist:
+        if wel:
             self.createWELpackage(wel)
 
         if transport:
@@ -525,8 +521,7 @@ class ModflowModel(object):
     # End buildMODFLOW()
 
     def checkMODFLOW(self):
-        """TODO: Docs:"""
-
+        """Check model data for common errors."""
         self.mf.check()
     # End checkMODFLOW
 
@@ -539,7 +534,6 @@ class ModflowModel(object):
 
         :returns: bool, successful run with convergence.
         """
-
         success, buff = self.mf.run_model(silent=silent)
         return self.checkConvergence(fail=not success)
     # End runMODFLOW()
@@ -548,10 +542,10 @@ class ModflowModel(object):
         """TODO: Docs
 
         :param path:  (Default value = None)
-
         :param name:  (Default value = None)
-
         :param fail:  (Default value = False)
+
+        :returns: bool, model converged (`True`) or failed (`False`)
         """
         converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP",  # Clear statement of model fail in list file
                                  " PERCENT DISCREPANCY =         200.00",  # Convergence but extreme discrepancy in results
@@ -588,7 +582,7 @@ class ModflowModel(object):
         return True
     # End checkConvergence()
 
-    def Calculate_Rn_from_SFR_with_simple_model(self, df, Ini_cond, Rn_decay=0.181):
+    def Calculate_Rn_from_SFR_with_simple_model(self, df, ini_cond, Rn_decay=0.181):
         """Use a simple model to calculate Radon concentrations in the stream
         based on outputs from the SFR package and using some other data that
         is required as arguments to this function.
@@ -597,7 +591,7 @@ class ModflowModel(object):
         from the sfr package which can be imported via the sfroutputfile util
         from flopy. The other parameters required are:
 
-        * Ini_Cond = Ini_cond  # 3 item list containing Initial flow, radon and ec concentrations
+        * Ini_Cond = ini_cond  # 3 item list containing Initial flow, radon and ec concentrations
         * Rn_decay = Rn_decay  # constant for Radon decay
 
         # Dataframe variables
@@ -613,9 +607,7 @@ class ModflowModel(object):
         * df['dx'] # Reach length
 
         :param df: Pandas DataFrame, output from the SFR package
-
         :param Ini_cond: list, [intial flow, radon, and EC concentration]
-
         :param Rn_decay: float, constant for radon decay. (Default value = 0.181)
 
         :returns: tuple, (flow, radon, EC)
@@ -628,7 +620,7 @@ class ModflowModel(object):
             return
         # End try
 
-        FlRnEC = Radon_EC_simple(df, Ini_cond, Rn_decay=Rn_decay)
+        FlRnEC = Radon_EC_simple(df, ini_cond, Rn_decay=Rn_decay)
         Flow, Rn, EC = FlRnEC.Fl_Rn_EC_simul()
 
         return Flow, Rn, EC
@@ -641,7 +633,6 @@ class ModflowModel(object):
 
         :returns: ndarray, head levels
         """
-
         if not headobj:
             headobj = self.import_heads()
         times = headobj.get_times()
@@ -655,29 +646,26 @@ class ModflowModel(object):
 
         :returns: ndarray, head levels
         """
-
         headobj = bf.HeadFile(filename)
         return self.get_heads(headobj)
     # End get_final_heads()
 
     def getHeads(self, headobj=None):
-        """
+        """Deprecated method.
 
         :param headobj: Default value = None)
 
         :returns: ndarray, head level
         """
-
         warnings.warn("Use of deprecated method `getHeads`, use `get_heads` instead",
                       DeprecationWarning)
         return self.get_heads(headobj)
     # End getHeads()
 
     def getFinalHeads(self, filename):
-        """
+        """Deprecated method.
         :param filename: returns: ndarray, head level
         """
-
         warnings.warn("Use of deprecated method `getFinalHeads`, use `get_final_heads` instead",
                       DeprecationWarning)
         return self.get_final_heads(filename)
@@ -690,7 +678,6 @@ class ModflowModel(object):
 
         :returns: dict, river exchange values
         """
-
         cbbobj = self.importCbb()
         riv_flux = cbbobj.get_data(text='RIVER LEAKAGE', full3D=True)
 
@@ -731,7 +718,6 @@ class ModflowModel(object):
 
         :returns: dict, river exchange nodes
         """
-
         try:
             cbbobj = self.importCbb()
         except IndexError as e:
@@ -766,13 +752,12 @@ class ModflowModel(object):
     # End getRivFluxNodes()
 
     def get_average_depth_to_GW(self, mask=None):
-        """TODO Docs
+        """Get average head values.
 
         :param mask:  (Default value = None)
 
         :returns: float, average head value
         """
-
         head = self.get_heads()
         if mask:
             return np.mean(self.top[mask] - head[0][mask])
@@ -782,28 +767,31 @@ class ModflowModel(object):
     # End get_average_depth_to_GW()
 
     def getAverageDepthToGW(self, mask=None):
-        """
+        """Deprecated method.
+
         :param mask: (Default value = None)
         """
-
         warnings.warn("Use of deprecated method `getAverageDepthToGW`, use `get_average_depth_to_GW` instead",
                       DeprecationWarning)
         return self.get_average_depth_to_GW(mask)
     # End getAverageDepthToGW()
 
     def loop_over_zone(self, array):
-        """TODO Docs
+        """Generate a masked array and retrieve average values.
 
-        :param array:
+        :param array: ndarray, representing zone.
+
+        :returns: ndarray, average values for zone.
         """
         mesh_1 = self.model_data.model_mesh3D[1]
+        rows = mesh_1.shape[0]
         arr_zoned = [np.full(mesh_1.shape[1:3], np.nan)] * int(np.max(mesh_1))
 
         for zone in range(int(np.max(mesh_1))):
-            temp = np.array([np.full(mesh_1.shape[1:3], np.nan)] * mesh_1.shape[0])
+            temp = np.array([np.full(mesh_1.shape[1:3], np.nan)] * rows)
 
             zone_1 = float(zone + 1)
-            for layer in range(mesh_1.shape[0]):
+            for layer in range(rows):
                 mesh_1_layer = mesh_1[layer]
                 temp[layer][mesh_1_layer == zone_1] = array[layer][mesh_1_layer == zone_1]
             # End for
@@ -821,9 +809,10 @@ class ModflowModel(object):
         :param concs:
         """
         return self.loop_over_zone(concs)
+    # End concs_by_zone()
 
     def ConcsByZone(self, concs):
-        """
+        """Deprecated method.
         :param concs:
 
         :returns: ndarray
@@ -834,7 +823,7 @@ class ModflowModel(object):
     # End ConcsByZone()
 
     def heads_by_zone(self, heads):
-        """TODO: Docs
+        """Retrieve average head values for each zone.
 
         :param heads:
 
@@ -844,7 +833,7 @@ class ModflowModel(object):
     # End heads_by_zone()
 
     def HeadsByZone(self, heads):
-        """
+        """Deprecated method.
         :param heads:
         """
         warnings.warn("Use of deprecated method `HeadsByZone`, use `heads_by_zone` instead",
@@ -929,11 +918,13 @@ class ModflowModel(object):
     # End writeObservations()
 
     def get_observation(self, obs, interval, obs_set):
-        """TODO Docs
+        """Get observation data.
 
         :param obs:
         :param interval:
         :param obs_set:
+
+        :returns: tuple,
         """
         # Set model output arrays to None to initialise
         head = None
@@ -959,7 +950,7 @@ class ModflowModel(object):
     # End get_observation()
 
     def getObservation(self, obs, interval, obs_set):
-        """TODO Docs
+        """Deprecated method.
 
         :param obs:
         :param interval:
@@ -1031,7 +1022,8 @@ class ModflowModel(object):
     # End compare_observed_head()
 
     def CompareObservedHead(self, obs_set, simulated, nper=0):
-        """
+        """ Deprecated method.
+
         :param obs_set:
         :param simulated:
         :param nper:  (Default value = 0)
@@ -1074,7 +1066,8 @@ class ModflowModel(object):
     # End compare_observed()
 
     def CompareObserved(self, obs_set, simulated, nper=0):
-        """
+        """ Deprecated method.
+
         :param obs_set:
         :param simulated:
         :param nper:  (Default value = 0)
@@ -1086,7 +1079,6 @@ class ModflowModel(object):
 
     def import_heads_from_file(self, path=None, name=None):
         """Import head data from specified file.
-        Temporary method to handle deprecated behaviour.
 
         :param path: str, path to file. (Default value = None)
         :param name: str, filename to load data from. (Default value = None)
@@ -1115,12 +1107,13 @@ class ModflowModel(object):
     # End import_heads()
 
     def importHeads(self, path=None, name=None):
-        """
+        """ Deprecated method.
         :param path: Default value = None)
         :param name:  (Default value = None)
         :param name:  (Default value = None)
         """
-
+        warnings.warn("""Use of method that will be removed in the future.
+                      Use `import_heads()` or `import_heads_from_file()`""", FutureWarning)
         if not path:
             warnings.warn("Deprecated method called. Use `import_heads()` instead", DeprecationWarning)
             return self.import_heads()
@@ -1130,7 +1123,7 @@ class ModflowModel(object):
     # End importHeads()
 
     def importSfrOut(self, path=None, name=None, ext='.sfr.out'):
-        """TODO: Docs
+        """Deprecated method.
 
         :param path:  (Default value = None)
         :param name:  (Default value = None)
@@ -1168,8 +1161,7 @@ class ModflowModel(object):
     # End import_cbb()
 
     def importCbb(self):
-        """TODO: Docs"""
-
+        """Deprecated method."""
         warnings.warn("Use of deprecated method `importCbb`, use `import_cbb` instead",
                       DeprecationWarning)
         return self.import_cbb()

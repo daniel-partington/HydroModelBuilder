@@ -364,7 +364,7 @@ class GWModelBuilder(object):
     # End set_units()
 
     def check_for_existing(self, fn):
-        """Function to determine if input files have previously been processed
+        """Determine if input files have previously been processed
         and if so to do nothing unless flagged otherwise. This is done by
         checking the output data path.
 
@@ -385,7 +385,6 @@ class GWModelBuilder(object):
         """
         :param filename:
         """
-
         return self.ModelInterface.load_obj(filename)
     # End load_dataframe()
 
@@ -431,7 +430,7 @@ class GWModelBuilder(object):
     def set_model_boundary_from_corners(self, xmin, xmax, ymin, ymax):
         """
         WARNING: Duplicate function of one found in GDALInterface.
-        Function to set model boundary based on x and y bounds::
+        Set model boundary based on x and y bounds::
 
                     ._________.(xmax, ymax)
                     |         |
@@ -586,7 +585,7 @@ class GWModelBuilder(object):
     # End build_3D_mesh_from_rasters()
 
     def reclassIsolatedCells(self, passes=1, assimilate=False):
-        """Function to remove cells that are surrounded by non-active cells in the horizontal plane
+        """Remove cells that are surrounded by non-active cells in the horizontal plane
         e.g. if cells with positive integer is surrounded in
 
         :param passes:  (Default value = 1)
@@ -886,7 +885,7 @@ class GWModelBuilder(object):
     # End get_closest_riv_segments()
 
     def _adjust_elevations(self, us, active, ds, adjust=0.1, verbose=False):
-        """Function to force the river to be decreasing in elevation as you move downstream
+        """Force the river to be decreasing in elevation as you move downstream
 
         :param us: float, upstream elevation
         :param active: float, elevation being analysed
@@ -927,7 +926,7 @@ class GWModelBuilder(object):
     # End _adjust_elevations()
 
     def _create_centroids(self, x_pixel, y_pixel, bounds):
-        """Function to create centroids of raster cells given the bounds of the
+        """Create centroids of raster cells given the bounds of the
         raster and the width and height of the cells
 
         :param x_pixel: float,
@@ -954,7 +953,7 @@ class GWModelBuilder(object):
     # End _create_centroids()
 
     def get_raster_info(self, raster_file):
-        """Function to get raster data and array into python objects
+        """Get raster data and array into python objects
 
         :param raster_file: str,
         """
@@ -989,7 +988,7 @@ class GWModelBuilder(object):
     # End _get_lengths_for_polyline_in_cells()
 
     def _naive_cell_ordering_test(self, cell_list):
-        """Function to test the ordering of cells and see that they are sequentially
+        """Test the ordering of cells and see that they are sequentially
         neighbours and not jumping multiple cells.
 
         This is a test for river cell ordering which is specific for MODFLOW
@@ -1273,7 +1272,7 @@ class GWModelBuilder(object):
     # End find_closest_points_between_two_lists()
 
     def map_points_to_3Dmesh(self, points, identifier=None):
-        """Function to map points to the 3D mesh
+        """Map points to the 3D mesh
 
         :param points:
         :param identifier:  (Default value = None)
@@ -1287,7 +1286,7 @@ class GWModelBuilder(object):
     # End map_points_to_3Dmesh()
 
     def map_obs_loc2mesh3D(self, method='nearest', ignore=[-1]):
-        """This is a function to map the obs locations to the nearest node in the mesh.
+        """Map the observation locations to the nearest node in the mesh.
 
         :param method: (Default value = 'nearest')
         :param ignore: (Default value = [-1])
@@ -1402,9 +1401,7 @@ class GWModelBuilder(object):
     # End _findInterval()
 
     def map_obs2model_times(self):
-        """This is a function to map the obs at different times within the bounding interval in the
-        model times intervals
-        """
+        """Map the observations at different times within the bounding interval in the model times intervals"""
 
         obs_group = self.observations.obs_group
         if self.model_time.t['steady_state']:
@@ -1535,7 +1532,7 @@ class GWModelBuilder(object):
     # End points2shapefile()
 
     def mesh3DToVtk(self, val_array, val_name, out_path, vtk_out):
-        """Function to write the mesh array.
+        """Write the mesh array.
 
         :param val_array:
         :param val_name:
@@ -1544,7 +1541,8 @@ class GWModelBuilder(object):
         """
 
         from HydroModelBuilder.GISInterface.GDALInterface import array2Vtk
-        warnings.warn("Call to (possibly) deprecated method `mesh3DToVtk`", DeprecationWarning)
+        warnings.warn("Call to deprecated method `mesh3DToVtk`. Use `mesh3D_dict_to_vtk()` instead.",
+                      DeprecationWarning)
         nrow, ncol = self.model_mesh3D[1][0].shape
         delc, delr = self.gridWidth, self.gridHeight
         x0, y0 = self.model_boundary[0], self.model_boundary[3]
@@ -1557,30 +1555,40 @@ class GWModelBuilder(object):
                                        out_path, vtk_out)
     # End mesh3DToVtk()
 
-    def mesh3D_dict_ToVtk(self, val_dict, out_path, vtk_out):
-        """Function to write the mesh array.
-    
+    def mesh3D_dict_to_vtk(self, val_dict, out_path, vtk_out):
+        """Write out a mesh array.
+
         :param val_array:
         :param val_name:
         :param out_path:
         :param vtk_out:
         """
-    
         from HydroModelBuilder.GISInterface.GDALInterface import array2Vtk
-        warnings.warn("Call to (possibly) deprecated method `mesh3DToVtk`", DeprecationWarning)
         nrow, ncol = self.model_mesh3D[1][0].shape
         delc, delr = self.gridWidth, self.gridHeight
         x0, y0 = self.model_boundary[0], self.model_boundary[3]
         grid_info = [ncol, nrow, delc, delr, x0, y0]
         mesh = self.model_mesh3D[0]
-    
+
         array2Vtk.build_vtk_from_array(grid_info, np.fliplr(mesh), ["z_elev"],
                                        [np.fliplr(mesh)], val_dict.keys(),
                                        [np.fliplr(val_dict[key]) for key in val_dict],
                                        out_path, vtk_out)
+    # End mesh3D_dict_to_vtk()
+
+    def mesh3D_dict_ToVtk(self, val_dict, out_path, vtk_out):
+        """Write the mesh array.
+
+        :param val_array:
+        :param val_name:
+        :param out_path:
+        :param vtk_out:
+        """
+        warnings.warn("Call to deprecated method `mesh3D_dict_ToVtk`. Use `mesh3D_dict_to_vtk()` instead.",
+                      DeprecationWarning)
+        self.mesh3D_dict_to_vtk(val_dict, out_path, vtk_out)
     # End mesh3D_dict_ToVtk()
 
-    
     def package_data(self):
         """Option to save all important attributes of GWModelBuilder class to
         allow quick loading of data that may have required transforms and
