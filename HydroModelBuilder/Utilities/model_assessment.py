@@ -91,13 +91,13 @@ def plot_obs_vs_sim(obs_set, obs_sim_zone_all, unc=None):
     xmin, xmax = ax.get_xlim()
 
     ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.4 * (ymax - ymin),
-            'Model Efficiency = %4.2f' % (me(scattery, scatterx)))
+            'Model Efficiency = %4.2f' % (metric_me(scattery, scatterx)))
 
     ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.3 * (ymax - ymin),
-            'PBIAS = %4.2f%%' % (pbias(scattery, scatterx)))
+            'PBIAS = %4.2f%%' % (metric_pbias(scattery, scatterx)))
 
     ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.2 * (ymax - ymin),
-            'RMSE = %4.2f' % (rmse(scattery, scatterx)))
+            'RMSE = %4.2f' % (metric_rmse(scattery, scatterx)))
 
     xlim, ylim = ax.get_xlim(), ax.get_ylim()
     new = (min(xlim[0], ylim[0]), max(xlim[1], ylim[1]))
