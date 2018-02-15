@@ -285,7 +285,7 @@ class ModflowModel(object):
 
         See [Flopy mfgage]_ documentation
 
-        .. [Flopy mfgage] MODFLOW DRN
+        .. [Flopy mfgage] MODFLOW Gage
            (https://modflowpy.github.io/flopydoc/mfgage.html)
 
         :param gages: list or ndarray, data for each gaging location
@@ -357,6 +357,11 @@ class ModflowModel(object):
 
         >>> lrcq = {}
         >>> lrcq[0] = [[0, 7, 7, -100.]] # layer, row, column, flux
+
+        See [Flopy mfwel]_ documentation
+
+        .. [Flopy mfwel] MODFLOW WEL package
+           (https://modflowpy.github.io/flopydoc/mfwel.html)
 
         :param lrcq: dict, stress period data. (Default value = None)
         """
