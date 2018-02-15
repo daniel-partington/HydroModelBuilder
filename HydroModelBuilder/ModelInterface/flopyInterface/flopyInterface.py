@@ -2,6 +2,7 @@ import datetime
 import inspect
 import os
 import warnings
+from types import MethodType
 
 import flopy
 import flopy.utils.binaryfile as bf
@@ -14,7 +15,6 @@ import viz.flopy_viz as fviz  # Visualization extension methods
 from MT3DModel import MT3DModel
 from MT3DPostProcess import MT3DPostProcess
 from Radon_EC_simple import Radon_EC_simple
-from types import MethodType
 
 
 class ModflowModel(object):
@@ -393,10 +393,10 @@ class ModflowModel(object):
 
     def cell_bc_to_3D_array_for_plot(self, boundary, bc_array, nper, use_final=False):
         '''Convert cell data to 3D array for 3D plotting
-        
+
         :param boundary: str, name of boundary condition
-        :param bc_array: dict of list data for different boundaries including 
-                         cell location layer, row, column and other pertinent 
+        :param bc_array: dict of list data for different boundaries including
+                         cell location layer, row, column and other pertinent
                          data required by MODFLOW depending on the package
         :param nper: int, time period to use from bc_array
         :param use_final: bool, force retrieval of last stress period data for that boundary
@@ -416,10 +416,30 @@ class ModflowModel(object):
     def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False, detailed_bc_array=False):
         """Build MODFLOW model.
 
-        :param transport:  (Default value = False)
-        :param write:  (Default value = True)
-        :param verbose:  (Default value = True)
-        :param check:  (Default value = False)
+        * Creates model discretization (MODFLOW dis package)
+        * Sets up the BAS, NWT, UPW, and OC packages
+        * Additionally sets up the RCH, DRN, GHB, and SFR packages based on boundary condition properties.
+
+        If necessary, creates linkages to the RIV, WEL, and LMT packages.
+
+        See the relevant docstring for the following methods:
+        * :func:`createDiscretisation <flopyInterface.ModflowModel.createDiscretisation>`
+        * :func:`createBASpackage <flopyInterface.ModflowModel.createBASpackage>`
+        * :func:`createNWTpackage <flopyInterface.ModflowModel.createNWTpackage>`
+        * :func:`createUPWpackage <flopyInterface.ModflowModel.createUPWpackage>`
+        * :func:`createOCpackage <flopyInterface.ModflowModel.createOCpackage>`
+        * :func:`createRCHpackage <flopyInterface.ModflowModel.createRCHpackage>`
+        * :func:`createDRNpackage <flopyInterface.ModflowModel.createDRNpackage>`
+        * :func:`createGHBpackage <flopyInterface.ModflowModel.createGHBpackage>`
+        * :func:`createSFRpackage <flopyInterface.ModflowModel.createSFRpackage>`
+        * :func:`createRIVpackage <flopyInterface.ModflowModel.createRIVpackage>`
+        * :func:`createWELpackage <flopyInterface.ModflowModel.createWELpackage>`
+        * :func:`createLMTpackage <flopyInterface.ModflowModel.createLMTpackage>`
+
+        :param transport: bool, use/setup the MODFLOW transport package  (Default value = False)
+        :param write: bool, writes out the inputs generated (Default value = True)
+        :param verbose: bool, print out verbose messages (Default value = True)
+        :param check: bool, check MODFLOW output for errors/convergence (Default value = False)
         """
         self.mf = flopy.modflow.Modflow(self.name, exe_name=self.executable,
                                         model_ws=self.data_folder, version='mfnwt')
@@ -436,13 +456,13 @@ class ModflowModel(object):
         wells_exist = False
         river = {}
         wel = {}
-        
+
         if detailed_bc_array:
             self.bc_3D_array = {'zone': np.copy(self.model_data.model_mesh3D[1])}
             self.bc_3D_array = {'bcs': np.zeros_like(self.model_data.model_mesh3D[1])}
-            self.bc_counter = 1 
+            self.bc_counter = 1
         # End if
-           
+
         bc = self.model_data.boundaries.bc
         for boundary in bc:
             bc_boundary = bc[boundary]
@@ -455,10 +475,10 @@ class ModflowModel(object):
                     self.bc_3D_array[boundary] = np.zeros_like(self.model_data.model_mesh3D[1])
                     if 'zonal_array' in bc_boundary:
                         self.bc_3D_array[boundary + '_zonal'] = np.zeros_like(self.model_data.model_mesh3D[1])
-                        self.bc_3D_array[boundary + '_zonal'][0] = bc_boundary['zonal_array'] 
-                        self.bc_3D_array[boundary + '_zonal'][self.model_data.model_mesh3D[1]==-1] = 0.
+                        self.bc_3D_array[boundary + '_zonal'][0] = bc_boundary['zonal_array']
+                        self.bc_3D_array[boundary + '_zonal'][self.model_data.model_mesh3D[1] == -1] = 0.
                     # End if
-                    self.bc_3D_array[boundary][0] = bc_array[0] 
+                    self.bc_3D_array[boundary][0] = bc_array[0]
                 # End if
             # End if
 
