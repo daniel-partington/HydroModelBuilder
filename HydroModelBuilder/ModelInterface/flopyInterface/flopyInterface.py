@@ -408,16 +408,14 @@ class ModflowModel(object):
     # End createLMTpackage()
 
     def finaliseModel(self):
-        """TODO: Docs:"""
-
+        """Deprecated method"""
         # Write the MODFLOW model input files
         warnings.warn("Deprecated method called. Use `finalize_model()` instead", DeprecationWarning)
         self.finalize_model()
     # end finaliseModel
 
     def finalize_model(self):
-        """TODO: Docs:"""
-
+        """Write out inputs used."""
         self.mf.write_input()
     # End finalize_model()
 
@@ -427,7 +425,6 @@ class ModflowModel(object):
         :param bc_array:
         :param target:
         """
-
         for key in bc_array:
             try:
                 target[key] += bc_array[key]
@@ -440,7 +437,7 @@ class ModflowModel(object):
     # End add_bc_to_river()
 
     def cell_bc_to_3D_array_for_plot(self, boundary, bc_array, nper, use_final=False):
-        '''Convert cell data to 3D array for 3D plotting
+        '''Convert cell data to 3D array for 3D plotting.
 
         :param boundary: str, name of boundary condition
         :param bc_array: dict of list data for different boundaries including
@@ -593,8 +590,7 @@ class ModflowModel(object):
     # End buildMODFLOW()
 
     def checkMODFLOW(self):
-        """TODO: Docs:"""
-
+        """Check model data for common errors."""
         self.mf.check()
     # End checkMODFLOW
 
@@ -616,10 +612,10 @@ class ModflowModel(object):
         """TODO: Docs
 
         :param path:  (Default value = None)
-
         :param name:  (Default value = None)
-
         :param fail:  (Default value = False)
+
+        :returns: bool, model converged (`True`) or failed (`False`)
         """
         converge_fail_options = ["****FAILED TO MEET SOLVER CONVERGENCE CRITERIA IN TIME STEP",  # Clear statement of model fail in list file
                                  " PERCENT DISCREPANCY =         200.00",  # Convergence but extreme discrepancy in results
@@ -656,7 +652,7 @@ class ModflowModel(object):
         return True
     # End checkConvergence()
 
-    def Calculate_Rn_from_SFR_with_simple_model(self, df, Ini_cond, Rn_decay=0.181):
+    def Calculate_Rn_from_SFR_with_simple_model(self, df, ini_cond, Rn_decay=0.181):
         """Use a simple model to calculate Radon concentrations in the stream
         based on outputs from the SFR package and using some other data that
         is required as arguments to this function.
@@ -665,7 +661,7 @@ class ModflowModel(object):
         from the sfr package which can be imported via the sfroutputfile util
         from flopy. The other parameters required are:
 
-        * Ini_Cond = Ini_cond  # 3 item list containing Initial flow, radon and ec concentrations
+        * Ini_Cond = ini_cond  # 3 item list containing Initial flow, radon and ec concentrations
         * Rn_decay = Rn_decay  # constant for Radon decay
 
         # Dataframe variables
@@ -682,7 +678,7 @@ class ModflowModel(object):
 
         :param df: Pandas DataFrame, output from the SFR package
 
-        :param Ini_cond: list, [intial flow, radon, and EC concentration]
+        :param ini_cond: list, [intial flow, radon, and EC concentration]
 
         :param Rn_decay: float, constant for radon decay. (Default value = 0.181)
 
@@ -696,7 +692,7 @@ class ModflowModel(object):
             return
         # End try
 
-        FlRnEC = Radon_EC_simple(df, Ini_cond, Rn_decay=Rn_decay)
+        FlRnEC = Radon_EC_simple(df, ini_cond, Rn_decay=Rn_decay)
         Flow, Rn, EC = FlRnEC.Fl_Rn_EC_simul()
 
         return Flow, Rn, EC
@@ -709,7 +705,6 @@ class ModflowModel(object):
 
         :returns: ndarray, head levels
         """
-
         if not headobj:
             headobj = self.import_heads()
         times = headobj.get_times()
@@ -723,29 +718,26 @@ class ModflowModel(object):
 
         :returns: ndarray, head levels
         """
-
         headobj = bf.HeadFile(filename)
         return self.get_heads(headobj)
     # End get_final_heads()
 
     def getHeads(self, headobj=None):
-        """
+        """Deprecated method.
 
         :param headobj: Default value = None)
 
         :returns: ndarray, head level
         """
-
         warnings.warn("Use of deprecated method `getHeads`, use `get_heads` instead",
                       DeprecationWarning)
         return self.get_heads(headobj)
     # End getHeads()
 
     def getFinalHeads(self, filename):
-        """
+        """Deprecated method.
         :param filename: returns: ndarray, head level
         """
-
         warnings.warn("Use of deprecated method `getFinalHeads`, use `get_final_heads` instead",
                       DeprecationWarning)
         return self.get_final_heads(filename)
@@ -758,7 +750,6 @@ class ModflowModel(object):
 
         :returns: dict, river exchange values
         """
-
         cbbobj = self.importCbb()
         riv_flux = cbbobj.get_data(text='RIVER LEAKAGE', full3D=True)
 
@@ -799,7 +790,6 @@ class ModflowModel(object):
 
         :returns: dict, river exchange nodes
         """
-
         try:
             cbbobj = self.importCbb()
         except IndexError as e:
@@ -834,13 +824,12 @@ class ModflowModel(object):
     # End getRivFluxNodes()
 
     def get_average_depth_to_GW(self, mask=None):
-        """TODO Docs
+        """Get average head values.
 
         :param mask:  (Default value = None)
 
         :returns: float, average head value
         """
-
         head = self.get_heads()
         if mask:
             return np.mean(self.top[mask] - head[0][mask])
@@ -850,19 +839,21 @@ class ModflowModel(object):
     # End get_average_depth_to_GW()
 
     def getAverageDepthToGW(self, mask=None):
-        """
+        """Deprecated method.
+
         :param mask: (Default value = None)
         """
-
         warnings.warn("Use of deprecated method `getAverageDepthToGW`, use `get_average_depth_to_GW` instead",
                       DeprecationWarning)
         return self.get_average_depth_to_GW(mask)
     # End getAverageDepthToGW()
 
     def loop_over_zone(self, array):
-        """TODO Docs
+        """Generate a masked array and retrieve average values.
 
-        :param array:
+        :param array: ndarray, representing zone.
+
+        :returns: ndarray, average values for zone.
         """
         mesh_1 = self.model_data.model_mesh3D[1]
         arr_zoned = [np.full(mesh_1.shape[1:3], np.nan)] * int(np.max(mesh_1))
@@ -889,9 +880,10 @@ class ModflowModel(object):
         :param concs:
         """
         return self.loop_over_zone(concs)
+    # End concs_by_zone()
 
     def ConcsByZone(self, concs):
-        """
+        """Deprecated method.
         :param concs:
 
         :returns: ndarray
@@ -902,7 +894,7 @@ class ModflowModel(object):
     # End ConcsByZone()
 
     def heads_by_zone(self, heads):
-        """TODO: Docs
+        """Retrieve average head values for each zone.
 
         :param heads:
 
@@ -912,7 +904,7 @@ class ModflowModel(object):
     # End heads_by_zone()
 
     def HeadsByZone(self, heads):
-        """
+        """Deprecated method.
         :param heads:
         """
         warnings.warn("Use of deprecated method `HeadsByZone`, use `heads_by_zone` instead",
@@ -997,11 +989,13 @@ class ModflowModel(object):
     # End writeObservations()
 
     def get_observation(self, obs, interval, obs_set):
-        """TODO Docs
+        """Get observation data.
 
         :param obs:
         :param interval:
         :param obs_set:
+
+        :returns: tuple,
         """
         # Set model output arrays to None to initialise
         head = None
@@ -1027,7 +1021,7 @@ class ModflowModel(object):
     # End get_observation()
 
     def getObservation(self, obs, interval, obs_set):
-        """TODO Docs
+        """Deprecated method.
 
         :param obs:
         :param interval:
@@ -1099,7 +1093,8 @@ class ModflowModel(object):
     # End compare_observed_head()
 
     def CompareObservedHead(self, obs_set, simulated, nper=0):
-        """
+        """ Deprecated method.
+
         :param obs_set:
         :param simulated:
         :param nper:  (Default value = 0)
@@ -1142,7 +1137,8 @@ class ModflowModel(object):
     # End compare_observed()
 
     def CompareObserved(self, obs_set, simulated, nper=0):
-        """
+        """ Deprecated method.
+
         :param obs_set:
         :param simulated:
         :param nper:  (Default value = 0)
@@ -1183,12 +1179,11 @@ class ModflowModel(object):
     # End import_heads()
 
     def importHeads(self, path=None, name=None):
-        """
+        """ Deprecated method.
         :param path: Default value = None)
         :param name:  (Default value = None)
         :param name:  (Default value = None)
         """
-
         if not path:
             warnings.warn("Deprecated method called. Use `import_heads()` instead", DeprecationWarning)
             return self.import_heads()
@@ -1198,7 +1193,7 @@ class ModflowModel(object):
     # End importHeads()
 
     def importSfrOut(self, path=None, name=None, ext='.sfr.out'):
-        """TODO: Docs
+        """Deprecated method.
 
         :param path:  (Default value = None)
         :param name:  (Default value = None)
@@ -1236,8 +1231,7 @@ class ModflowModel(object):
     # End import_cbb()
 
     def importCbb(self):
-        """TODO: Docs"""
-
+        """Deprecated method."""
         warnings.warn("Use of deprecated method `importCbb`, use `import_cbb` instead",
                       DeprecationWarning)
         return self.import_cbb()
