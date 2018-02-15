@@ -21,8 +21,8 @@ from scipy import ndimage as nd
 
 import array2Vtk
 
-
 # Step 1. Load raster layers top and bottom
+
 
 def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
     """Function to remove cells that are surrounded by non-active cells in the horizontal plane
@@ -129,239 +129,222 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
                              min_height, max_height):
     """
 
-    :param hu_raster_path:
-    :param hu_raster_files:
-    :param out_path:
-    :param vtk_out:
-    :param min_height:
-    :param max_height:
+    :param hu_raster_path: str, path to files
+    :param hu_raster_files: list[str], hydrological unit raster files
+    :param out_path: str, output path
+    :param vtk_out: str, name to use for VTK output
+    :param min_height: float, minimum cell height
+    :param max_height: float, maximum cell height (not used?)
     """
     raster_set = {}
 
     print("HU Raster Path:", hu_raster_path)
     for raster in hu_raster_files:
-        fname = os.path.join(hu_raster_path, raster)  # + hu_ext
-        print 'Processing: ', fname
+        fname = os.path.join(hu_raster_path, raster)
+        print('Processing: ', fname)
         ds = gdal.Open(fname, gdalconst.GA_ReadOnly)
-        raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(),
-                              ds.GetRasterBand(1).GetNoDataValue()]
 
-        ds = gdal.Open(fname, gdalconst.GA_ReadOnly)
-        raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(),
-                              ds.GetRasterBand(1).GetNoDataValue()]
+        # raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(),
+        #                       ds.GetRasterBand(1).GetNoDataValue()]
+        raster_set[raster] = {
+            "original": ds.GetRasterBand(1).ReadAsArray(),
+            "no_data": ds.GetRasterBand(1).GetNoDataValue()
+        }
 
         if raster == hu_raster_files[0]:
+            # Get raster info from first file as these should be identical
             ncol = ds.RasterXSize
             nrow = ds.RasterYSize
             (x0, delr, z0, y0, z1, delc) = ds.GetGeoTransform()
             delc = -delc
-        ds = None
+        # End if
 
-    # This solution taken from:
-    # http://stackoverflow.com/questions/3662361/fill-in-missing-values-with-nearest-neighbour-in-python-numpy-masked-arrays
+        ds = None  # destroy GDAL object
+    # End for
+
     def fill(data, invalid=None):
-        """Replace the value of invalid 'data' cells (indicated by 'invalid')
-        by the value of the nearest valid data cell
+        """Replace the value of invalid 'data' cells with the value of the nearest valid data cell.
 
-        Input:
-            data:    numpy array of any dimension
-            invalid: a logical array of same shape as 'data'. True cells set
-                     where data value should be replaced.
-                     If None (default), use: invalid  = np.isnan(data)
+        This solution taken from:
+        http://stackoverflow.com/questions/3662361/fill-in-missing-values-with-nearest-neighbour-in-python-numpy-masked-arrays
 
-        Output:
-            Return a filled array.
+        :param data: ndarray, raster
+        :param invalid: ndarray, boolean array of same shape as `data`.
+                        `True` indicates cells to be replaced.
+                        If `None` (default), invalid cells will be determined with `np.isnan(data)`
 
-
-
-        :param data:
-        :param invalid:  (Default value = None)
+        :returns: ndarray
         """
-
         if invalid is None:
             invalid = np.isnan(data)
 
         ind = nd.distance_transform_edt(invalid, return_distances=False, return_indices=True)
         return data[tuple(ind)]
+    # End fill()
 
     for raster in hu_raster_files:
-        data = raster_set[raster][0]
+        data = raster_set[raster]['original']
         invalid = np.ma.masked_equal(data, np.min(data))
-        raster_set[raster] += [invalid]
-        a = fill(data, invalid=invalid.mask)
-        raster_set[raster] += [a]
-
-        # Clean_up
-        data = None
-        invalid = None
-        a = None
+        raster_set[raster]['invalid'] = invalid
+        raster_set[raster]['filled'] = fill(data, invalid=invalid.mask)
     # End for
+
+    # Clean_up
+    data = None
+    invalid = None
 
     # Determine required number of layers based on
     # Note: this is integer division
-    layers = len(hu_raster_files) / 2
-
+    num_hu_files = len(hu_raster_files)
+    layers = num_hu_files / 2
+    tgt_raster_set = raster_set[hu_raster_files[0]]['original']
     mesh = np.zeros((layers + 1,
-                     len(raster_set[hu_raster_files[0]][0]),
-                     len(raster_set[hu_raster_files[0]][0][0])))
+                     len(tgt_raster_set),
+                     len(tgt_raster_set[0])))
 
-    layer_set = (layers, len(raster_set[hu_raster_files[0]][0]),
-                 len(raster_set[hu_raster_files[0]][0][0]))
-
+    layer_set = (layers, len(tgt_raster_set), len(tgt_raster_set[0]))
     zone_matrix = np.zeros(layer_set)
     thickness = np.zeros(layer_set)
 
     # Create an array of ignored and applied values to keep track of processing
     mask_active = np.full(layer_set, False, dtype=bool)
-
     mask_thickness = np.full(layer_set, False, dtype=bool)
+    cumulative_active = np.full(layer_set, False, dtype=bool)  # array to keep track of what's going on...
 
-    cumulative_active = np.full(layer_set, False, dtype=bool)
+    # print raster_set[hu_raster_files[0]]
+    # print "----=-=-=-=-=-=-=-=-=----------------"
+    # print raster_set[hu_raster_files[0]]['filled']
 
     for index, raster in enumerate(hu_raster_files):
         if index % 2 == 1:
             continue
-        mask_active[index / 2] = raster_set[raster][2].mask
+
+        mod_idx = index / 2
+
+        this_raster = raster_set[raster]['filled']
+        next_raster = raster_set[hu_raster_files[index + 1]]['filled']
+        mask_active[mod_idx] = raster_set[raster]['invalid'].mask
 
         # Test if any of the cells are too thin and set to inactive if so, but
         # maintain the top of the layer to prevent mismatches between layer top
         # and bottoms
 
-        mask_thickness[index / 2] = raster_set[raster][3] - \
-            raster_set[hu_raster_files[index + 1]][3] < min_height
-        mask_active[index / 2] = mask_active[index / 2] | mask_thickness[index / 2]
+        mask_thickness[mod_idx] = (this_raster - next_raster) < min_height
+        mask_active[mod_idx] = mask_active[mod_idx] | mask_thickness[mod_idx]
     # End for
 
-    index = 0
-    # Set top
-    mesh[index / 2] = raster_set[hu_raster_files[index]][3]
-    # Set bottom of top layer
-    mesh[index / 2 + 1] = raster_set[hu_raster_files[index + 1]][3]
+    # !!! what if the first two layers have thicknesses below the min?
+    mesh[0] = raster_set[hu_raster_files[0]]['filled']  # Set top
+    mesh[1] = raster_set[hu_raster_files[1]]['filled']  # Set bottom of top layer
 
-    zone_matrix[index / 2][mask_active[index / 2]] = -1
-    zone_matrix[index / 2][~mask_active[index / 2]] = index / 2 + 1
+    zone_matrix[0][mask_active[0]] = -1  # Set inactive cells for zone to -1
+    zone_matrix[0][~mask_active[0]] = 1  # Set Zone IDs
 
-    for i in xrange(len(hu_raster_files)):
-        if i % 2 == 1:
-            continue
-        cumulative_active[i / 2] = ~mask_active[i / 2]
-    # end for
+    for i in xrange(1, num_hu_files, 2):
+        mod_idx = i / 2
+        cumulative_active[mod_idx] = ~mask_active[mod_idx]
+    # End for
 
-    for i in xrange(index + 2, len(hu_raster_files)):
-        if i % 2 == 1:
-            continue
+    for i in xrange(2, num_hu_files, 2):
+        mod_i_idx = i / 2
+
+        current_filled_raster = raster_set[hu_raster_files[i]]['filled']
+        next_filled_raster = raster_set[hu_raster_files[i + 1]]['filled']
 
         # Modify properties of layer using merge up logical array
-        for j in xrange(0, i):
-            if j % 2 == 1:
-                continue
+        for j in xrange(0, i, 2):
+            mod_j_idx = j / 2
 
-            # Identify intersection of where this layer is inactive and where
-            # layer below is active
-            merge_up_locations = ~(cumulative_active[j / 2] | mask_active[i / 2])
+            # Identify intersection of where this layer is inactive and where layer below is active
+            merge_up_locations = ~(cumulative_active[mod_j_idx] | mask_active[mod_i_idx])
             # Modify top of mesh in this layer to the merge up locations,
             # but excluding those where the thickness mask was applied
 
             # Find where existing mesh is higher than candidate replacement from
             # next layer, so we know where to keep existing mesh
-            new_elev = raster_set[hu_raster_files[i]][3] - mesh[j / 2] > 0
+            new_elev = (current_filled_raster - mesh[mod_j_idx]) > 0
 
             # Find cells where they need updating and where cells aren't already
             # defined by zone, i.e. inactive cells
-            modify_cells = new_elev & ~(cumulative_active[j / 2] | ~mask_active[i / 2])
+            modify_cells = new_elev & ~(cumulative_active[mod_j_idx] | ~mask_active[mod_i_idx])
 
+            # Combine the two above logical arrays to apply in mesh modification
+            combined = (merge_up_locations | modify_cells)
             if j > 0:
                 # Check above layer which might have active cells for which we don't want
                 # to modify the bottom of the layer
-                combined = (merge_up_locations | modify_cells) & ~cumulative_active[j / 2 - 1]
-            else:
-                # Combine the two above logical arrays to apply in mesh modification
-                combined = merge_up_locations | modify_cells
+                combined = combined & ~cumulative_active[mod_j_idx - 1]
+            # End if
 
-            # ----------------------------------------------------------------------
-            mesh[j / 2][combined] = raster_set[hu_raster_files[i]][3][combined]
-            # ----------------------------------------------------------------------
+            mesh[mod_j_idx][combined] = current_filled_raster[combined]
 
-            if j > 0:
-                test = mesh[j / 2 - 1] - mesh[j / 2] < 0
-                # if np.any(test == True):
-                #    print 'Error when processing layer test2', i/2
+            # if j > 0:
+            #     test = mesh[mod_j_idx - 1] - mesh[mod_j_idx] < 0
 
-            zone_matrix[j / 2][merge_up_locations] = i / 2 + 1
+            zone_matrix[mod_j_idx][merge_up_locations] = mod_i_idx + 1  # Setting Zone ID
 
-            # Modify the intermediate mesh levels for those layers that are
-            # split over multiple layers to retain original thickness
+            curr_merge_locs = current_filled_raster[merge_up_locations]
+            proposed_heights = (curr_merge_locs - (mod_j_idx + 1) *
+                                ((curr_merge_locs - next_filled_raster[merge_up_locations]) / (mod_i_idx + 1)))
 
-            # print 'Working on layer: ', i/2
-            # print 'Modifying mesh: ', j/2+1
-            # print 'Multiplier = ', (j/2+1)
-            # print 'Divisor = ', (i/2+1)
+            mesh[mod_j_idx + 1][merge_up_locations] = proposed_heights
 
-            proposed_heights = (raster_set[hu_raster_files[i]][3][merge_up_locations] -
-                                (j / 2 + 1) * ((raster_set[hu_raster_files[i]][3]
-                                                [merge_up_locations] -
-                                                raster_set[hu_raster_files[i + 1]
-                                                           ][3][merge_up_locations]) /
-                                               (i / 2 + 1)))
-
-            mesh[j / 2 + 1][merge_up_locations] = proposed_heights
-
-            test = mesh[j / 2] - mesh[j / 2 + 1] < 0
+            test = mesh[mod_j_idx] - mesh[mod_j_idx + 1] < 0
             # if np.any(test == True):
             #    print 'Error when processing layer test3', i/2
 
             # After modifying the layer, update cumulative active for modified layer
-            cumulative_active[j / 2] = cumulative_active[j / 2] | ~mask_active[i / 2]
+            cumulative_active[mod_j_idx] = cumulative_active[mod_j_idx] | ~mask_active[mod_i_idx]
+        # End for
 
         # Set properties for layer from i/2
-        zone_matrix[i / 2][mask_active[i / 2]] = -1
-        zone_matrix[i / 2][~mask_active[i / 2]] = i / 2 + 1
+        zone_matrix[mod_i_idx][mask_active[mod_i_idx]] = -1
+        zone_matrix[mod_i_idx][~mask_active[mod_i_idx]] = mod_i_idx + 1
         # Set the base for layer i/2
 
         # Implement bottom of mesh for this layer BUT first check that the
-        # inactive cell levels are not higher than the tpo of layer.
+        # inactive cell levels are not higher than the top of layer.
         # First identify where such cells might occur
-        level_test = raster_set[hu_raster_files[i + 1]][3] - mesh[i / 2] < 0
+        level_test = (next_filled_raster - mesh[mod_i_idx]) < 0
         # Get array of inactive cells in layer:
         # layer_inactive = ~cumulative_active[i/2]
         # Identify logical array of cells to modify:
         # modify = level_test & layer_inactive
 
-        mesh[i / 2 + 1][level_test] = raster_set[hu_raster_files[i + 1]][3][level_test]
+        mesh[mod_i_idx + 1][level_test] = next_filled_raster[level_test]
 
     # End for
 
     # Use the fill function to clean up the inactive parts of the mesh to assist
     # with the rendering
-
     for index, raster in enumerate(hu_raster_files):
         if index % 2 == 1:
             continue
-        if index / 2 == 0:
-            mesh[index / 2] = fill(mesh[index / 2], invalid=np.ma.masked_array(
-                zone_matrix[index / 2], zone_matrix[index / 2] == -1).mask)
-        elif index < len(hu_raster_files):
-            mesh[index / 2] = fill(mesh[index / 2],
-                                   invalid=np.ma.masked_array(zone_matrix[index / 2],
-                                                              zone_matrix[index / 2] == -1).mask |
-                                   np.ma.masked_array(zone_matrix[index / 2 - 1],
-                                                      zone_matrix[index / 2 - 1] == -1).mask)
 
-        if index / 2 == len(hu_raster_files) / 2 - 1:
-            mesh[index / 2 + 1] = fill(mesh[index / 2 + 1], invalid=np.ma.masked_array(
-                zone_matrix[index / 2], zone_matrix[index / 2] == -1).mask)
+        if index == 0:
+            mesh[index] = fill(mesh[index], invalid=np.ma.masked_array(
+                zone_matrix[index], zone_matrix[index] == -1).mask)
+        else:
+            mask1 = np.ma.masked_array(zone_matrix[index / 2], zone_matrix[index / 2] == -1).mask
+            mask2 = np.ma.masked_array(zone_matrix[index / 2 - 1], zone_matrix[index / 2 - 1] == -1).mask
+            mesh[index / 2] = fill(mesh[index / 2], invalid=mask1 | mask2)
+        # End if
+
+        if (index / 2) == ((num_hu_files / 2) - 1):
+            invalid_vals = np.ma.masked_array(zone_matrix[index / 2], zone_matrix[index / 2] == -1).mask
+            mesh[index / 2 + 1] = fill(mesh[index / 2 + 1], invalid=invalid_vals)
+    # End for
 
     # Check that all layers are not intersecting
     for index, raster in enumerate(hu_raster_files):
         if index % 2 == 1:
             continue
-        test = mesh[index / 2] - mesh[index / 2 + 1] <= min_height
+        test = (mesh[index / 2] - mesh[index / 2 + 1]) <= min_height
         if np.any(test == True):
             print 'Error when processing layer ', index / 2
 
     # Calculate the thickness of each layer on the final mesh
     for index, raster in enumerate(hu_raster_files):
-        # Only work on even index
         if index % 2 == 1:
             continue
 
@@ -379,17 +362,17 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             if index % 2 == 1:
                 continue
             raster_thickness[index / 2] = np.ma.masked_where(
-                (zone_matrix[index / 2] != index / 2 + 1), raster_set[raster][3] -
-                raster_set[hu_raster_files[index + 1]][3])
+                (zone_matrix[index / 2] != index / 2 + 1), raster_set[raster]['filled'] -
+                raster_set[hu_raster_files[index + 1]]['filled'])
             print 'Using', raster, ' and ', hu_raster_files[index + 1]
 
         mesh_zone_thickness = {}
 
-        for i in xrange(len(hu_raster_files) / 2):
-            top = np.zeros((len(raster_set[hu_raster_files[0]][0]),
-                            len(raster_set[hu_raster_files[0]][0][0])))
-            bot = np.zeros((len(raster_set[hu_raster_files[0]][0]),
-                            len(raster_set[hu_raster_files[0]][0][0])))
+        for i in xrange(num_hu_files / 2):
+            top = np.zeros((len(raster_set[hu_raster_files[0]]['original']),
+                            len(raster_set[hu_raster_files[0]]['original'][0])))
+            bot = np.zeros((len(raster_set[hu_raster_files[0]]['original']),
+                            len(raster_set[hu_raster_files[0]]['original'][0])))
 
             bot[zone_matrix[i] == i + 1] = mesh[i + 1][zone_matrix[i] == i + 1]
 
