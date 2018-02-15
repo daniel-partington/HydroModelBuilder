@@ -423,7 +423,9 @@ class ModflowModel(object):
         """TODO: Docs:
 
         :param bc_array:
-        :param target:
+        :param target: dict, dictionary to update
+
+        :returns: dict, updated dictionary
         """
         for key in bc_array:
             try:
@@ -436,29 +438,7 @@ class ModflowModel(object):
         return target
     # End add_bc_to_river()
 
-    def cell_bc_to_3D_array_for_plot(self, boundary, bc_array, nper, use_final=False):
-        '''Convert cell data to 3D array for 3D plotting.
-
-        :param boundary: str, name of boundary condition
-        :param bc_array: dict of list data for different boundaries including
-                         cell location layer, row, column and other pertinent
-                         data required by MODFLOW depending on the package
-        :param nper: int, time period to use from bc_array
-        :param use_final: bool, force retrieval of last stress period data for that boundary
-        '''
-        if use_final:
-            nper = max(bc_array.keys())
-        # End if
-        self.bc_3D_array[boundary] = np.zeros_like(self.model_data.model_mesh3D[1])
-        bc_cells = [[lrc[0], lrc[1], lrc[2]] for lrc in bc_array[nper]]
-        vals = [val[3] for val in bc_array[nper]]
-        for index, c in enumerate(bc_cells):
-            self.bc_3D_array[boundary][c[0]][c[1]][c[2]] = vals[index]
-            self.bc_3D_array['bcs'][c[0]][c[1]][c[2]] = self.bc_counter
-        # End for
-        self.bc_counter += 1
-
-    def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False, detailed_bc_array=False):
+    def buildMODFLOW(self, transport=False, write=True, verbose=True, check=False):
         """Build MODFLOW model.
 
         * Creates model discretization (MODFLOW dis package)
@@ -497,16 +477,8 @@ class ModflowModel(object):
         self.setupUPWpackage()
         self.createOCpackage()
 
-        river_exists = False
-        wells_exist = False
         river = {}
         wel = {}
-
-        if detailed_bc_array:
-            self.bc_3D_array = {'zone': np.copy(self.model_data.model_mesh3D[1])}
-            self.bc_3D_array = {'bcs': np.zeros_like(self.model_data.model_mesh3D[1])}
-            self.bc_counter = 1
-        # End if
 
         bc = self.model_data.boundaries.bc
         for boundary in bc:
@@ -516,65 +488,24 @@ class ModflowModel(object):
 
             if bc_type == 'recharge':
                 self.createRCHpackage(rchrate=bc_array)
-                if detailed_bc_array:
-                    self.bc_3D_array[boundary] = np.zeros_like(self.model_data.model_mesh3D[1])
-                    if 'zonal_array' in bc_boundary:
-                        self.bc_3D_array[boundary + '_zonal'] = np.zeros_like(self.model_data.model_mesh3D[1])
-                        self.bc_3D_array[boundary + '_zonal'][0] = bc_boundary['zonal_array']
-                        self.bc_3D_array[boundary + '_zonal'][self.model_data.model_mesh3D[1] == -1] = 0.
-                    # End if
-                    self.bc_3D_array[boundary][0] = bc_array[0]
-                # End if
-            # End if
-
-            if bc_type == 'drain':
+            elif bc_type == 'drain':
                 self.createDRNpackage(bc_array)
-                if detailed_bc_array:
-                    self.cell_bc_to_3D_array_for_plot(boundary, bc_array, 0)
-                # End if
-            # End if
-
-            if bc_type == 'general head':
+            elif bc_type == 'general head':
                 self.createGHBpackage(bc_array)
-                if detailed_bc_array:
-                    self.cell_bc_to_3D_array_for_plot(boundary, bc_array, 0)
-                # End if
-            # End if
-
-            if (bc_type == 'river') or (bc_type == 'channel'):
-                river_exists = True
+            elif (bc_type == 'river') or (bc_type == 'channel'):
                 river = self.add_bc_to_target(bc_array, river)
-                if detailed_bc_array:
-                    self.cell_bc_to_3D_array_for_plot(boundary, bc_array, 0)
-                # End if
-            # End if
-
-            if (bc_type == 'river_flow'):
+            elif (bc_type == 'river_flow'):
                 self.createSFRpackage(bc_array[0], bc_array[1])
-                if detailed_bc_array:
-                    self.bc_3D_array[boundary] = np.zeros_like(self.model_data.model_mesh3D[1])
-                    bc_cells = [[lrc[0], lrc[1], lrc[2]] for lrc in bc_array[0]]
-                    vals = [val[5] for val in bc_array[0]]
-                    for index, c in enumerate(bc_cells):
-                        self.bc_3D_array[boundary][c[0]][c[1]][c[2]] = vals[index]
-                        self.bc_3D_array['bcs'][c[0]][c[1]][c[2]] = self.bc_counter
-                    self.bc_counter += 1
-                # End if
+            elif bc_type == 'wells':
+                wel = self.add_bc_to_target(bc_array, wel)
             # End if
 
-            if bc_type == 'wells':
-                wells_exist = True
-                wel = self.add_bc_to_target(bc_array, wel)
-                if detailed_bc_array:
-                    self.cell_bc_to_3D_array_for_plot(boundary, bc_array, 0, use_final=True)
-                # End if
-            # End if
         # End for
 
-        if river_exists:
+        if river:
             self.createRIVpackage(river)
 
-        if wells_exist:
+        if wel:
             self.createWELpackage(wel)
 
         if transport:
@@ -603,7 +534,6 @@ class ModflowModel(object):
 
         :returns: bool, successful run with convergence.
         """
-
         success, buff = self.mf.run_model(silent=silent)
         return self.checkConvergence(fail=not success)
     # End runMODFLOW()
@@ -677,9 +607,7 @@ class ModflowModel(object):
         * df['dx'] # Reach length
 
         :param df: Pandas DataFrame, output from the SFR package
-
-        :param ini_cond: list, [intial flow, radon, and EC concentration]
-
+        :param Ini_cond: list, [intial flow, radon, and EC concentration]
         :param Rn_decay: float, constant for radon decay. (Default value = 0.181)
 
         :returns: tuple, (flow, radon, EC)
@@ -856,13 +784,14 @@ class ModflowModel(object):
         :returns: ndarray, average values for zone.
         """
         mesh_1 = self.model_data.model_mesh3D[1]
+        rows = mesh_1.shape[0]
         arr_zoned = [np.full(mesh_1.shape[1:3], np.nan)] * int(np.max(mesh_1))
 
         for zone in range(int(np.max(mesh_1))):
-            temp = np.array([np.full(mesh_1.shape[1:3], np.nan)] * mesh_1.shape[0])
+            temp = np.array([np.full(mesh_1.shape[1:3], np.nan)] * rows)
 
             zone_1 = float(zone + 1)
-            for layer in range(mesh_1.shape[0]):
+            for layer in range(rows):
                 mesh_1_layer = mesh_1[layer]
                 temp[layer][mesh_1_layer == zone_1] = array[layer][mesh_1_layer == zone_1]
             # End for
@@ -1150,7 +1079,6 @@ class ModflowModel(object):
 
     def import_heads_from_file(self, path=None, name=None):
         """Import head data from specified file.
-        Temporary method to handle deprecated behaviour.
 
         :param path: str, path to file. (Default value = None)
         :param name: str, filename to load data from. (Default value = None)
@@ -1184,6 +1112,8 @@ class ModflowModel(object):
         :param name:  (Default value = None)
         :param name:  (Default value = None)
         """
+        warnings.warn("""Use of method that will be removed in the future.
+                      Use `import_heads()` or `import_heads_from_file()`""", FutureWarning)
         if not path:
             warnings.warn("Deprecated method called. Use `import_heads()` instead", DeprecationWarning)
             return self.import_heads()
