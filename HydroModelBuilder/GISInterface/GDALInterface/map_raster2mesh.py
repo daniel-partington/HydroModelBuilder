@@ -21,6 +21,7 @@ from scipy import ndimage as nd
 
 import array2Vtk
 
+
 # Step 1. Load raster layers top and bottom
 
 
@@ -30,7 +31,7 @@ def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
     e.g. if cells with positive integer is surrounded in above, below and to each side, then reassign to -1.
 
     :param mesh3D_1:
-        :param passes:  (Default value = 1)
+    :param passes:  (Default value = 1)
     :param assimilate: Default value = False)
     :param passes:  (Default value = 1)
     """
@@ -76,15 +77,8 @@ def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
 
                             def most_common_oneliner(L):
                                 """
-
-
-
                                 :param L:
-
-
-
                                 """
-
                                 return max(g(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
 
                             most_common = most_common_oneliner(neighbours)
