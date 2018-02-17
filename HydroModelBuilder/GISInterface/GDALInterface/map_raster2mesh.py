@@ -246,10 +246,12 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
             zone_matrix[mod_j_idx][merge_up_locations] = mod_i_idx + 1  # Setting Zone ID to bottom raster id
 
-            curr_merge_locs = top_filled_raster[merge_up_locations]
-            next_merge_locs = bottom_filled_raster[merge_up_locations]
-            proposed_heights = (curr_merge_locs - (mod_j_idx + 1) *
-                                ((curr_merge_locs - next_merge_locs) / (mod_i_idx + 1)))
+            top_merge_locs = top_filled_raster[merge_up_locations]
+            bot_merge_locs = bottom_filled_raster[merge_up_locations]
+            merge_diff = top_merge_locs - bot_merge_locs
+            next_j = mod_j_idx + 1
+            proposed_heights = (top_merge_locs - (next_j * (merge_diff / next_j)))
+            # proposed_heights = bot_merge_locs + ((top_merge_locs - bot_merge_locs) * 0.5)
 
             mesh[mod_j_idx + 1][merge_up_locations] = proposed_heights
 
@@ -305,7 +307,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
     # End for
 
     zone_matrix = reclassIsolatedCells(zone_matrix)
-    # zone_matrix = filter_isolated_cells(zone_matrix)
+
     tester2 = True
     if tester2:
         raster_thickness = {}
