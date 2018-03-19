@@ -370,7 +370,7 @@ class ModelObservations(object):
 
         for name in self.obs_group.keys():
             ts = self.obs_group[name]['time_series']
-            ts['obs_map'] = 'null'
+            ts.loc[:, 'obs_map'] = 'null'
             for ob in ts.iterrows():
                 if ob[1]['active'] == True:
                     self.obs['ob' + str(self.obID)] = ob[1]['value']
