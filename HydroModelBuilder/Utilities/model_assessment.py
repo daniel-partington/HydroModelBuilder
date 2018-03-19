@@ -22,7 +22,7 @@ def metric_me(simulated, observed):
         sum1 += num1 ** np.float64(2.)
         sum2 += num2 ** np.float64(2.)
 
-    return 1 - sum1 / sum2
+    return 1.0 - sum1 / sum2
 
 # Percent BIAS
 def metric_pbias(simulated, observed):
@@ -35,7 +35,7 @@ def metric_pbias(simulated, observed):
     
     :returns: float    
     '''
-    return np.sum(simulated - observed) * 100 / np.sum(observed)
+    return np.sum(simulated - observed) * 100.0 / np.sum(observed)
 
 # For root mean squared error
 def metric_rmse(simulated, observed):
@@ -49,6 +49,29 @@ def metric_rmse(simulated, observed):
     :returns: float    
     '''
     return np.sqrt(((simulated - observed) ** 2).mean())
+
+# For root mean squared error
+def metric_srms(simulated, observed, weights=None):
+    '''
+    Calculates the scaled root mean square error. Length of both argument lists should be
+    equal
+    
+    :param simulated: list[float], list of simulated observations
+    :param observed: list[float], list of observed observations
+    :param weights: list[float], list of weights to apply to each residual
+    
+    :returns: float    
+    '''
+    sum1 = 0.0
+    if weights:
+        for i in range(len(observed)):
+            sum1 += weights[i] * (observed[i] - simulated[i]) ** 2
+    else:
+        for i in range(len(observed)):
+            sum1 += (observed[i] - simulated[i]) ** 2
+        
+    return 100.0 / float((max(observed) - min(observed))) * \
+        np.sqrt(1.0 / float(len(observed)) * sum1)
     
 def plot_obs_vs_sim(obs_set, obs_sim_zone_all, unc=None):
     '''Plot of observed vs simulated
