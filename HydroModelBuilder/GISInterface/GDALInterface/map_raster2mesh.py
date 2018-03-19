@@ -23,6 +23,9 @@ import array2Vtk
 
 
 # Step 1. Load raster layers top and bottom
+def plot_map(array):
+    plt.figure()
+    plt.imshow(array, interpolation='none')
 
 def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
     """Function to remove cells that are surrounded by non-active cells in the horizontal plane
@@ -124,6 +127,32 @@ def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
     return mesh3D_1
 # End reclassIsolatedCells()
 
+# This solution taken from:
+# http://stackoverflow.com/questions/3662361/fill-in-missing-values-with-nearest-neighbour-in-python-numpy-masked-arrays
+def fill(data, invalid=None):
+    """Replace the value of invalid 'data' cells (indicated by 'invalid')
+    by the value of the nearest valid data cell
+
+    Input:
+        data:    numpy array of any dimension
+        invalid: a logical array of same shape as 'data'. True cells set
+                 where data value should be replaced.
+                 If None (default), use: invalid  = np.isnan(data)
+
+    Output:
+        Return a filled array.
+
+
+
+    :param data:
+    :param invalid:  (Default value = None)
+    """
+
+    if invalid is None:
+        invalid = np.isnan(data)
+
+    ind = nd.distance_transform_edt(invalid, return_distances=False, return_indices=True)
+    return data[tuple(ind)]
 
 def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
                              min_height, max_height):
@@ -156,33 +185,6 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             (x0, delr, z0, y0, z1, delc) = ds.GetGeoTransform()
             delc = -delc
         ds = None
-
-    # This solution taken from:
-    # http://stackoverflow.com/questions/3662361/fill-in-missing-values-with-nearest-neighbour-in-python-numpy-masked-arrays
-    def fill(data, invalid=None):
-        """Replace the value of invalid 'data' cells (indicated by 'invalid')
-        by the value of the nearest valid data cell
-
-        Input:
-            data:    numpy array of any dimension
-            invalid: a logical array of same shape as 'data'. True cells set
-                     where data value should be replaced.
-                     If None (default), use: invalid  = np.isnan(data)
-
-        Output:
-            Return a filled array.
-
-
-
-        :param data:
-        :param invalid:  (Default value = None)
-        """
-
-        if invalid is None:
-            invalid = np.isnan(data)
-
-        ind = nd.distance_transform_edt(invalid, return_distances=False, return_indices=True)
-        return data[tuple(ind)]
 
     for raster in hu_raster_files:
         data = raster_set[raster][0]
@@ -264,12 +266,11 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
             # Find where existing mesh is higher than candidate replacement from
             # next layer, so we know where to keep existing mesh
-            new_elev = raster_set[hu_raster_files[i]][3] - mesh[j / 2] > 0
+            new_elev = raster_set[hu_raster_files[i]][3] - mesh[j / 2] > 0.
 
             # Find cells where they need updating and where cells aren't already
             # defined by zone, i.e. inactive cells
             modify_cells = new_elev & ~(cumulative_active[j / 2] | ~mask_active[i / 2])
-
             if j > 0:
                 # Check above layer which might have active cells for which we don't want
                 # to modify the bottom of the layer
@@ -283,7 +284,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             # ----------------------------------------------------------------------
 
             if j > 0:
-                test = mesh[j / 2 - 1] - mesh[j / 2] < 0
+                test = mesh[j / 2 - 1] - mesh[j / 2] < 0.
                 # if np.any(test == True):
                 #    print 'Error when processing layer test2', i/2
 
@@ -306,7 +307,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
             mesh[j / 2 + 1][merge_up_locations] = proposed_heights
 
-            test = mesh[j / 2] - mesh[j / 2 + 1] < 0
+            test = mesh[j / 2] - mesh[j / 2 + 1] < 0.
             # if np.any(test == True):
             #    print 'Error when processing layer test3', i/2
 
@@ -319,37 +320,34 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
         # Set the base for layer i/2
 
         # Implement bottom of mesh for this layer BUT first check that the
-        # inactive cell levels are not higher than the tpo of layer.
+        # inactive cell levels are not higher than the top of layer.
         # First identify where such cells might occur
-        level_test = raster_set[hu_raster_files[i + 1]][3] - mesh[i / 2] < 0
+        level_test = raster_set[hu_raster_files[i + 1]][3] - mesh[i / 2] < 0.
         # Get array of inactive cells in layer:
         # layer_inactive = ~cumulative_active[i/2]
         # Identify logical array of cells to modify:
         # modify = level_test & layer_inactive
 
-        mesh[i / 2 + 1][level_test] = raster_set[hu_raster_files[i + 1]][3][level_test]
+        mesh[i / 2 + 1] = raster_set[hu_raster_files[i + 1]][3] #mesh[i / 2 + 1][level_test] = raster_set[hu_raster_files[i + 1]][3][level_test]
 
     # End for
 
     # Use the fill function to clean up the inactive parts of the mesh to assist
     # with the rendering
+    cumulative_active_all = cumulative_active[0]
+#    for lay in range(cumulative_active.shape[0]):
+#        plot_map(cumulative_active[lay])
 
-    for index, raster in enumerate(hu_raster_files):
-        if index % 2 == 1:
-            continue
-        if index / 2 == 0:
-            mesh[index / 2] = fill(mesh[index / 2], invalid=np.ma.masked_array(
-                zone_matrix[index / 2], zone_matrix[index / 2] == -1).mask)
-        elif index < len(hu_raster_files):
-            mesh[index / 2] = fill(mesh[index / 2],
-                                   invalid=np.ma.masked_array(zone_matrix[index / 2],
-                                                              zone_matrix[index / 2] == -1).mask |
-                                   np.ma.masked_array(zone_matrix[index / 2 - 1],
-                                                      zone_matrix[index / 2 - 1] == -1).mask)
-
-        if index / 2 == len(hu_raster_files) / 2 - 1:
-            mesh[index / 2 + 1] = fill(mesh[index / 2 + 1], invalid=np.ma.masked_array(
-                zone_matrix[index / 2], zone_matrix[index / 2] == -1).mask)
+    for lay in range(mesh.shape[0]):
+        if lay == 0:
+            mesh[lay] = fill(mesh[lay], invalid=np.ma.masked_array(
+                zone_matrix[lay], zone_matrix[lay] == -1).mask)
+        elif lay < mesh.shape[0] - 1:
+            mesh[lay] = fill(mesh[lay], invalid=np.ma.masked_array(
+                zone_matrix[lay - 1], zone_matrix[lay - 1] == -1).mask)
+        else:
+            mesh[lay] = fill(mesh[lay], invalid=np.ma.masked_array(
+                zone_matrix[lay - 1], zone_matrix[lay - 1] == -1).mask)
 
     # Check that all layers are not intersecting
     for index, raster in enumerate(hu_raster_files):
@@ -357,7 +355,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             continue
         test = mesh[index / 2] - mesh[index / 2 + 1] <= min_height
         if np.any(test == True):
-            print 'Error when processing layer ', index / 2
+            print 'Minimum thickness not met when processing layer ', index / 2
 
     # Calculate the thickness of each layer on the final mesh
     for index, raster in enumerate(hu_raster_files):
@@ -366,11 +364,12 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             continue
 
         thickness[index / 2] = mesh[index / 2] - mesh[index / 2 + 1]
+        plot_map(np.ma.masked_where(thickness[index / 2] <= 0, thickness[index / 2]))
         zone_matrix[index / 2][thickness[index / 2] <= 0] = -1
     # End for
 
     zone_matrix = reclassIsolatedCells(zone_matrix)
-
+    
     tester2 = True
     if tester2:
         raster_thickness = {}
@@ -386,11 +385,12 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
         mesh_zone_thickness = {}
 
         for i in xrange(len(hu_raster_files) / 2):
-            top = np.zeros((len(raster_set[hu_raster_files[0]][0]),
-                            len(raster_set[hu_raster_files[0]][0][0])))
-            bot = np.zeros((len(raster_set[hu_raster_files[0]][0]),
-                            len(raster_set[hu_raster_files[0]][0][0])))
-
+#            top = np.zeros((len(raster_set[hu_raster_files[0]][0]),
+#                            len(raster_set[hu_raster_files[0]][0][0])))
+#            bot = np.zeros((len(raster_set[hu_raster_files[0]][0]),
+#                            len(raster_set[hu_raster_files[0]][0][0])))
+            top = np.zeros_like(mesh[0])
+            bot = np.zeros_like(mesh[0])
             bot[zone_matrix[i] == i + 1] = mesh[i + 1][zone_matrix[i] == i + 1]
 
             for layer in reversed(range(zone_matrix.shape[0])):
@@ -402,12 +402,12 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             fig = plt.figure()
             fig.add_subplot(1, 3, 1, aspect='equal')
             plt.imshow(mesh_zone_thickness[i], interpolation='none')
-            print(i, mesh_zone_thickness[i].min(), mesh_zone_thickness[i].max())
+            print(i, mesh_zone_thickness[i].min(), mesh_zone_thickness[i].max(), mesh_zone_thickness[i].mean())
             plt.title('Thickness in mesh: ' + hu_raster_files[i * 2])
             plt.colorbar()
             fig.add_subplot(1, 3, 2, aspect='equal')
             plt.imshow(raster_thickness[i], interpolation='none')
-            print(i, raster_thickness[i].min(), mesh_zone_thickness[i].max())
+            print(i, raster_thickness[i].min(), raster_thickness[i].max(), raster_thickness[i].mean())
             plt.title('Thickness in raster')
             plt.colorbar()
             fig.add_subplot(1, 3, 3, aspect='equal')
@@ -426,7 +426,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
         for i in xrange(thick_shape):
             thickness2[i] = np.ma.masked_where((zone_matrix[i] < 0), thickness[i])
-            thick_zero[i] = np.ma.masked_where((zone_matrix[i] != 0), thickness[i])
+            thick_zero[i] = np.ma.masked_where((thickness[i] != 0), thickness[i])
         # End for
 
         for i in xrange(thick_shape):
@@ -447,8 +447,12 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
     if np.any(thickness < 0.):
         print 'issues'
+        print np.where(thickness < 0.)
     # End if
+    for lay in range(thickness.shape[0]):
+        plot_map(np.ma.masked_where(thickness[lay] > 0., thickness[lay]))
 
+       
     grid_info = [ncol, nrow, delc, delr, x0, y0]
     array2Vtk.build_vtk_from_array(grid_info, np.fliplr(mesh), ["z_elev"], [np.fliplr(mesh)], [
                                    "zone", "thickness"],
@@ -463,12 +467,7 @@ if __name__ == "__main__":
     bottom_ext = "_2b"
     top_ext = "_1t"
 
-    # hu_raster_path = r"C:\Workspace\part0075\MDB modelling\VAF_v2.0_ESRI_GRID\ESRI_GRID\Preprocessed_data\Hydrogeological_Unit_Layers\\"
-    # hu_raster_files = ["qa_1t_bb", "qa_2b_bb", "utqa_1t_bb", "utqa_2b_bb",
-    # "utaf_1t_bb", "utaf_2b_bb", "lta_1t_bb", "lta_2b_bb", "cps_1t_bb",
-    # "cps_2b_bb"]
-
-    hu_raster_path = r"C:\Workspace\part0075\MDB modelling\testbox\00_Campaspe_Cascade\01_steady_state\structured_model_grid_1000m"
+    hu_raster_path = r"C:\Workspace\part0075\MDB modelling\testbox\00_Campaspe_Cascade\01_steady_state\structured_model_grid_100m"
     hu_raster_files = ["qa_1t_model_grid.tif", "qa_2b_model_grid.tif",
                        "utb_1t_model_grid.tif", "utb_2b_model_grid.tif",
                        "utqa_1t_model_grid.tif", "utqa_2b_model_grid.tif",
@@ -478,24 +477,21 @@ if __name__ == "__main__":
                        "bse_1t_model_grid.tif", "bse_2b.tif_model_grid.tif"
                        ]
 
-    dx = "1000m"
+#    hu_raster_path = r"C:\Workspace\part0075\MDB modelling\testbox\Campaspe_River_Small\steady_state\structured_model_grid_100m"
+#    hu_raster_files = ["qa_1t_model_grid.tif", "qa_2b_model_grid.tif",
+#                       "utb_1t_model_grid.tif", "utb_2b_model_grid.tif",
+#                       "utqa_1t_model_grid.tif", "utqa_2b_model_grid.tif"]
+                       
+                       
+#    dx = "100m"
+    dx = "100m"
 
-    #hu_raster_path = hu_raster_path[:-2] + dx + hu_raster_path[-2:]
-    # hu_raster_files = [x[:-4] + '_' + dx + x[-4:] for x in hu_raster_files]
-
-    #      "utb_1t_model_grid.bil", "utb_2b_model_grid.bil",
-    #      "qa_1t_model_grid.bil", "qa_2b_model_grid.bil",   , "bse_1t_model_grid.bil", "bse_2b.tif_model_grid.bil"
-
-    # hu_layers = {"qa":["qa_1t_mb", "qa_2b_mb"], "utb":["utb_1t_mb", "utb_2b_mb"], "utqa":["utqa_1t_mb", "utqa_2b_mb"], "utaf":["utaf_1t_mb", "utaf_2b_mb"], "lta":["lta_1t_mb", "lta_2b_mb"], "bse":["bse_1t_mb", "bse_2b_mb.tif"]}
-    #hu_layers_ordering = ["qa", "utb", "utqa", "utam", "utaf", "lta", "bse"]
-    hu_layers_ordering = ["qa", "utb", "utqa", "utam", "utaf", "lta", "bse"]
-    # hu_ext = "_mb"
     vtk_out = 'Campaspe_all_model_mesh'
 
     out_path = hu_raster_path  # r"C:\Workspace\part0075\MDB modelling\integrated\Modules\Groundwater\model_files\testing\\"
 
     # Minimum thickness of cells
-    min_height = 1
+    min_height = 0.0001
     # Maximum thickness of cells
     max_height = 1000
 
