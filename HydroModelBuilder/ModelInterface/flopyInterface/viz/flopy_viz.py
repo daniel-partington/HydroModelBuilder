@@ -8,7 +8,7 @@ import pandas as pd
 import six
 from flopy.utils.sfroutputfile import SfrFile
 from matplotlib import colors
-from HydroModelBuilder.Utilities.model_assessment import metric_me, metric_pbias, metric_rmse, plot_obs_vs_sim
+from HydroModelBuilder.Utilities.model_assessment import metric_me, metric_pbias, metric_rmse, metric_srms, plot_obs_vs_sim
 
 def cell_bc_to_3D_array_for_plot(self, boundary, bc_array, nper, val_pos):
     '''Convert cell data to 3D array for 3D plotting
@@ -167,12 +167,14 @@ def compareAllObs_metrics(self, to_file=False):
 
     RMSE = metric_rmse(scattery, scatterx)
 
+    SRMS = metric_srms(scattery, scatterx)
+    
     if to_file:
         with open(os.path.join(self.data_folder, 'Head_Obs_Model_Measures.txt'), 'w') as f:
             f.write('ME PBIAS RMSE\n')
-            f.write('{} {} {}'.format(ME, PBIAS, RMSE))
+            f.write('{} {}% {} {}%'.format(ME, PBIAS, RMSE, SRMS))
 
-    return ME, PBIAS, RMSE
+    return ME, PBIAS, RMSE, SRMS
 # End compareAllObs_metrics()
 
 
@@ -230,7 +232,9 @@ def compareAllObs(self):
     # End for
 
     plt.legend(loc='upper left', ncol=4, fontsize=11)
-
+    ylim = ax.get_ylim()
+    ax.set_ylim(ylim[0], ylim[1] + 0.25 * (ylim[1] - ylim[0]))
+    
     ax = fig.add_subplot(1, 3, 2)
     ax.set_title('Sim vs Obs (%d points)' % (len(scatterx)))
 
@@ -265,14 +269,26 @@ def compareAllObs(self):
     ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.2 * (ymax - ymin),
             'RMSE = %4.2f' % (metric_rmse(scattery, scatterx)))
 
-    ax.plot(ax.get_ylim(), ax.get_ylim())
+    #ax.plot(ax.get_ylim(), ax.get_ylim())
 
+    xlim, ylim = ax.get_xlim(), ax.get_ylim()
+    new = (min(xlim[0], ylim[0]), max(xlim[1], ylim[1]))
+#    new_upper = (min(xlim[0], ylim[0]) + unc, max(xlim[1], ylim[1]) + unc)
+#    new_lower = (min(xlim[0], ylim[0]) - unc, max(xlim[1], ylim[1]) - unc)
+    ax.plot(new, new, color='grey')
+#    ax.plot(new_upper, new_upper, color='grey')
+#    ax.plot(new_lower, new_lower, color='grey')
+#    ax.fill_between(new, new_lower, new_upper, color='grey', alpha=0.3)
+    ax.set_xlim(new)
+    ax.set_ylim(new)
+    
+    
     ax = fig.add_subplot(1, 3, 3)
     ax.set_title('Residuals in space')
 
     modelmap = flopy.plot.ModelMap(model=self.mf)
     modelmap.plot_ibound()
-
+    #modelmap.plot_bc('SFR', alpha=0.5, color='grey')
     x = np.array([h[3] for h in obs_sim_zone_all])
     y = np.array([h[4] for h in obs_sim_zone_all])
     zone = np.array([h[2] for h in obs_sim_zone_all])
@@ -313,6 +329,7 @@ def compareAllObs(self):
     end = end // 1000 * 1000 - 1000
     ax.xaxis.set_ticks(np.arange(start, end, 20000.))
     ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+    self.plotRiverFromRiverSegData(ax, alpha=0.4)
 
     plt.colorbar()
     plt.show()
@@ -725,6 +742,204 @@ def viewHeadsByZone2(self, iter_num, nper='all'):
 
 # End viewHeadsByZone2()
 
+def viewHeadsByZone3(self, iter_num, nper='all'):
+    """
+    :param iter_num: param nper:  (Default value = 'all')
+
+    :param nper:  (Default value = 'all')
+    """
+
+    # Create the headfile object
+    headobj = self.importHeads()
+    times = headobj.get_times()
+    if nper == 'all':
+        head = headobj.get_alldata()
+        head = np.mean(head, axis=0)
+        head_orig = head
+        zoned = self.HeadsByZone(head)
+        head = zoned
+    else:
+        head = headobj.get_data(totim=times[nper])
+        head_orig = head
+        zoned = self.HeadsByZone(head)
+        head = zoned
+    # End if
+
+    if nper == 'all':
+        scatterx = []
+        scattery = []
+        obs_sim_zone_all = []
+        for i in range(len(times)):
+            self.compare_observed('head', head_orig, nper=i)
+            scatterx += [h[0] for h in self.obs_sim_zone]
+            scattery += [h[1] for h in self.obs_sim_zone]
+            obs_sim_zone_all += self.obs_sim_zone
+        self.obs_sim_zone = obs_sim_zone_all
+    else:
+        self.compare_observed('head', head_orig, nper=nper)
+        scatterx = [h[0] for h in self.obs_sim_zone]
+        scattery = [h[1] for h in self.obs_sim_zone]
+    # End if
+
+    # First step is to set up the plot
+    width = 20
+    height = 10
+    multiplier = 1.0
+    fig = plt.figure(figsize=(width * multiplier, height * multiplier))
+
+    vmin = 0
+    vmax = 200
+
+    ax = fig.add_subplot(2, 4, 1, aspect='equal')
+
+    ax.set_title('ibound and bc')
+    # Next we create an instance of the ModelMap class
+    modelmap = flopy.plot.ModelMap(model=self.mf)
+    modelmap.plot_ibound()
+
+    modelmap.plot_bc('RIV', plotAll=True)
+    modelmap.plot_bc('WEL', plotAll=True)
+    modelmap.plot_bc('GHB', plotAll=True)
+    try:
+        modelmap.plot_bc('SFR', plotAll=True)
+    except Exception:
+        print("No SFR package present")
+    # End try
+
+    start, end = ax.get_xlim()
+    start = start // 1000 * 1000 + 1000
+    end = end // 1000 * 1000 - 1000
+    ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+
+    ax = fig.add_subplot(2, 4, 2, aspect='equal')
+    ax.set_title('Coonambidgal')
+    modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+    max_head = np.amax(head)
+    min_head = np.amin(head)
+
+    array = modelmap.plot_array(
+        head[0], masked_values=[-999.98999023, max_head, min_head], alpha=0.5, vmin=vmin, vmax=vmax)
+
+    ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+    ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+    cbar_ax2 = fig.add_axes([0.43, 0.525, 0.01, 0.42])
+    fig.colorbar(array, cax=cbar_ax2)
+
+    scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 1.0]
+    scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 1.0]
+    ax.scatter(scatterx2, scattery2, c=[loc[0] - loc[1] for loc in self.obs_sim_zone if loc[
+               2] == 1.0], alpha=0.8, vmin=vmin, vmax=vmax)
+
+    ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
+
+    ax = fig.add_subplot(2, 4, 3, aspect='equal')
+    ax.set_title('Shepparton')
+    modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
+    array = modelmap.plot_array(
+        head[2], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
+
+    ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+    ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+    cbar_ax1 = fig.add_axes([0.67, 0.525, 0.01, 0.42])
+    fig.colorbar(array, cax=cbar_ax1)
+
+    scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 3.0]
+    scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 3.0]
+    ax.scatter(scatterx2, scattery2, c=[loc[0] - loc[1] for loc in self.obs_sim_zone if loc[
+               2] == 3.0], alpha=0.8, vmin=vmin, vmax=vmax)
+    ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
+
+    ax = fig.add_subplot(2, 4, 4)
+    ax.set_title('Residuals')
+    ax.hist([loc[0] - loc[1] for loc in self.obs_sim_zone], bins=20, alpha=0.5)
+
+    ax = fig.add_subplot(2, 4, 5, aspect='equal')
+    ax.set_title('Calivil')
+    modelmap = flopy.plot.ModelMap(model=self.mf)
+    array = modelmap.plot_array(
+        head[4], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
+    ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+    ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+    cbar_ax3 = fig.add_axes([0.19, 0.055, 0.01, 0.42])
+    fig.colorbar(array, cax=cbar_ax3)
+
+    scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 5.0]
+    scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 5.0]
+    ax.scatter(scatterx2, scattery2, c=[loc[0] - loc[1] for loc in self.obs_sim_zone if loc[
+               2] == 5.0], alpha=0.8, vmin=vmin, vmax=vmax, cmap='viridis')
+    ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
+
+    ax = fig.add_subplot(2, 4, 6, aspect='equal')
+    ax.set_title('Renmark')
+    modelmap = flopy.plot.ModelMap(model=self.mf)
+    array = modelmap.plot_array(
+        head[5], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
+
+    ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+    ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+    cbar_ax4 = fig.add_axes([0.43, 0.055, 0.01, 0.42])
+    fig.colorbar(array, cax=cbar_ax4)
+
+    scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 6.0]
+    scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 6.0]
+    ax.scatter(scatterx2, scattery2, c=[loc[0] - loc[1] for loc in self.obs_sim_zone if loc[
+               2] == 6.0], alpha=0.8, vmin=vmin, vmax=vmax)
+    ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
+
+    ax = fig.add_subplot(2, 4, 7, aspect='equal')
+    ax.set_title('Basement')
+    modelmap = flopy.plot.ModelMap(model=self.mf)
+    array = modelmap.plot_array(
+        head[6], masked_values=[-999.98999023, max_head, min_head, np.nan], alpha=0.5, vmin=vmin, vmax=vmax)
+
+    ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+    ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+    cbar_ax5 = fig.add_axes([0.67, 0.055, 0.01, 0.42])
+    fig.colorbar(array, cax=cbar_ax5)
+
+    scatterx2 = [loc[3] for loc in self.obs_sim_zone if loc[2] == 7.0]
+    scattery2 = [loc[4] for loc in self.obs_sim_zone if loc[2] == 7.0]
+    ax.scatter(scatterx2, scattery2, c=[loc[0] - loc[1] for loc in self.obs_sim_zone if loc[
+               2] == 7.0], alpha=0.8, vmin=vmin, vmax=vmax)
+    ax.text(2.7e5, 6030000, 'Observations: %d' % (len(scatterx2)))
+
+    ax = fig.add_subplot(2, 4, 8, aspect=0.9)
+    ax.set_title('Sim vs Obs (%d points)' % (len(scatterx)))
+
+    comp_zone_plots = {}
+    colors = ['b', 'c', 'y', 'm', 'r', 'green', 'orange']
+    for i in range(1, 8):
+        scatterx2 = [loc[0] for loc in self.obs_sim_zone if loc[2] == float(i)]
+        scattery2 = [loc[1] for loc in self.obs_sim_zone if loc[2] == float(i)]
+        comp_zone_plots[i] = ax.scatter(scatterx2, scattery2, edgecolors=colors[
+                                        i - 1], facecolors='none', alpha=0.5)
+
+    plt.legend((comp_zone_plots[1], comp_zone_plots[2], comp_zone_plots[3],
+                comp_zone_plots[4], comp_zone_plots[5], comp_zone_plots[6],
+                comp_zone_plots[7]),
+               ('qa', 'utb', 'utqa', 'utam', 'utaf', 'lta', 'bse'),
+               scatterpoints=1,
+               loc='upper left',
+               ncol=4,
+               fontsize=11)
+
+    plt.xlabel('Observed')
+    plt.ylabel('Simulated', labelpad=10)
+
+    scatterx = np.array(scatterx)
+    scattery = np.array(scattery)
+
+    ax.text(150, 75, 'Model Efficiency = %4.2f' % (metric_me(scattery, scatterx)))
+
+    ax.text(150, 60, 'PBIAS = %4.2f%%' % (metric_pbias(scattery, scatterx)))
+
+    ax.text(150, 45, 'RMSE = %4.2f' % (metric_rmse(scattery, scatterx)))
+
+    ax.plot(ax.get_ylim(), ax.get_ylim())
+    fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
+    plt.savefig('run_viewheads_{}.png'.format(iter_num), bbox_inches='tight')
+
+# End viewHeadsByZone3()
 
 def viewHeads(self):
     """TODO: Docs"""
@@ -1036,7 +1251,7 @@ def viewHeads2(self):
     modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
     modelmap.plot_ibound()
     elev = self.mf.dis.top.array
-    elev = np.ma.masked_where(self.model_data.model_mesh3D[1][0] == 0, elev)
+    elev = np.ma.masked_where(self.model_data.model_mesh3D[1][0] == -1, elev)
     elevation = modelmap.plot_array(elev, alpha=0.5)
     self.plotRiverFromRiverSegData(ax)
     ax.yaxis.set_ticklabels([])
@@ -1051,7 +1266,7 @@ def viewHeads2(self):
     modelmap.plot_ibound()
     pressure = head[0] - elev
     storage = modelmap.plot_array(
-        pressure, masked_values=[x for x in np.unique(pressure) if x > 0.], alpha=0.5)  # , vmin=-50, vmax=50)
+        np.ma.masked_where(self.model_data.model_mesh3D[1][0] == -1, pressure), masked_values=[x for x in np.unique(pressure) if x > 0.], alpha=0.5)  # , vmin=-50, vmax=50)
     self.plotRiverFromRiverSegData(ax)
     ax.yaxis.set_ticklabels([])
     ax.xaxis.set_ticks(np.arange(start, end, 20000.))
