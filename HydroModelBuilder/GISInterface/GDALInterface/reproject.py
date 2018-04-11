@@ -220,6 +220,7 @@ def reproject_layer(lyr_src,
             )
     driver = ogr.GetDriverByName("ESRI Shapefile")
     ds = driver.Open(copy_dest)
+    
     return ds
 
 
@@ -228,7 +229,7 @@ if __name__ == "__main__":
     gdal.PushErrorHandler(gdal_error_handler)
     gdal.UseExceptions()
     # Test for raster reprojection
-    dataset = r"C:\Workspace\part0075\MDB modelling\Campaspe_model\GIS\GIS_preprocessed\Hydrogeological_Unit_Layers\qa_1t_bb"
+    dataset = r"C:\Workspace\part0075\MDB modelling\testbox\data_build\qa_1t_clipped.tif"
     pixel_spacing = 100
     epsg_from = None
     epsg_to = 28355
