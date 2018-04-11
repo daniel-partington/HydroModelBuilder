@@ -140,8 +140,15 @@ def SFRoutput_plot(self):
     sfr_df
 # End SFRoutput_plot()
 
+def plot_ts_obs_vs_sim(self, obs_name, obs_grp_name, obs_type):
+    '''
+    Plot a time series of the 
+    '''
+    if obs_type == 'head':
+        head_obs_ts = self.model_data.observations[obs_grp_name]['time_series']
+        head_obs_ts[head_obs_ts['name'] == obs_name].plot(x='datetime', y='value')
 
-def compareAllObs_metrics(self, to_file=False):
+def compareAllObs_metrics(self, to_file=False, head_name='head'):
 
     headobj = self.importHeads()
     times = headobj.get_times()
@@ -155,7 +162,7 @@ def compareAllObs_metrics(self, to_file=False):
 
     for i in range(self.model_data.model_time.t['steps']):
         head = headobj.get_data(totim=times[i])
-        self.CompareObserved('head', head, nper=i)
+        self.CompareObserved(head_name, head, nper=i)
         obs_sim_zone_all += self.obs_sim_zone
 
     scatterx = np.array([h[0] for h in obs_sim_zone_all])
@@ -178,7 +185,7 @@ def compareAllObs_metrics(self, to_file=False):
 # End compareAllObs_metrics()
 
 
-def compareAllObs(self):
+def compareAllObs(self, head_name):
     """TODO: Docs"""
 
     headobj = self.importHeads()
@@ -200,7 +207,7 @@ def compareAllObs(self):
     # self.obs_sim_zone += [[obs, sim, zone, x, y]]
     for i in range(self.model_data.model_time.t['steps']):
         head = headobj.get_data(totim=times[i])
-        self.compare_observed('head', head, nper=i)
+        self.compare_observed(head_name, head, nper=i)
         obs_sim_zone_all += self.obs_sim_zone
     # End for
 
@@ -432,7 +439,21 @@ def compareAllObs2(self):
 
 # End compareAllObs()
 
-def viewHeadsByZone(self, nper='all'):
+def plot_bc(self, modelmap, name):#, **kwargs):
+    '''
+    Plot boundary condition in active cells of passed modelmap object.
+    Includes rough test for overcoming non-existence of bc
+    '''
+    try:
+        modelmap.plot_bc(name)#, **kwargs)  
+    except:
+        print("Could not find '{}' package in model".format(name))
+
+def plot_bcs(self, modelmap, bcs):#, **kwargs):
+    for bc in bcs:
+        self.plot_bc(modelmap, bc)#, **kwargs)
+
+def viewHeadsByZone(self, nper='all', head_name='head'):
     """
     :param nper: Default value = 'all')
     """
@@ -451,7 +472,7 @@ def viewHeadsByZone(self, nper='all'):
         head_orig = head
         zoned = self.HeadsByZone(head)
         head = zoned
-        self.compare_observed('head', head_orig, nper=nper)
+        self.compare_observed(head_name, head_orig, nper=nper)
     # End if
 
     # First step is to set up the plot
@@ -470,9 +491,9 @@ def viewHeadsByZone(self, nper='all'):
     modelmap = flopy.plot.ModelMap(model=self.mf)
     modelmap.plot_ibound()
 
-    modelmap.plot_bc('RIV')  # Can also plot 'WEL' and 'DRN'
-    modelmap.plot_bc('SFR')
-    modelmap.plot_bc('GHB')
+    bcs = ['RIV', 'SFR', 'GHB']
+    self.plot_bcs(modelmap, bcs)
+    
     ax.axes.xaxis.set_ticklabels([])
 
     ax = fig.add_subplot(2, 4, 2, aspect='equal')
@@ -543,7 +564,7 @@ def viewHeadsByZone(self, nper='all'):
 # End viewHeadsByZone()
 
 
-def viewHeadsByZone2(self, iter_num, nper='all'):
+def viewHeadsByZone2(self, iter_num, nper='all', head_name='head'):
     """
     :param iter_num: param nper:  (Default value = 'all')
 
@@ -571,13 +592,13 @@ def viewHeadsByZone2(self, iter_num, nper='all'):
         scattery = []
         obs_sim_zone_all = []
         for i in range(len(times)):
-            self.compare_observed('head', head_orig, nper=i)
+            self.compare_observed(head_name, head_orig, nper=i)
             scatterx += [h[0] for h in self.obs_sim_zone]
             scattery += [h[1] for h in self.obs_sim_zone]
             obs_sim_zone_all += self.obs_sim_zone
         self.obs_sim_zone = obs_sim_zone_all
     else:
-        self.compare_observed('head', head_orig, nper=nper)
+        self.compare_observed(head_name, head_orig, nper=nper)
         scatterx = [h[0] for h in self.obs_sim_zone]
         scattery = [h[1] for h in self.obs_sim_zone]
     # End if
@@ -598,15 +619,9 @@ def viewHeadsByZone2(self, iter_num, nper='all'):
     modelmap = flopy.plot.ModelMap(model=self.mf)
     modelmap.plot_ibound()
 
-    modelmap.plot_bc('RIV', plotAll=True)
-    modelmap.plot_bc('WEL', plotAll=True)
-    modelmap.plot_bc('GHB', plotAll=True)
-    try:
-        modelmap.plot_bc('SFR', plotAll=True)
-    except Exception:
-        print("No SFR package present")
-    # End try
-
+    bcs = ['RIV', 'WEL', 'SFR', 'GHB']
+    self.plot_bcs(modelmap, bcs)
+    
     start, end = ax.get_xlim()
     start = start // 1000 * 1000 + 1000
     end = end // 1000 * 1000 - 1000
@@ -742,7 +757,7 @@ def viewHeadsByZone2(self, iter_num, nper='all'):
 
 # End viewHeadsByZone2()
 
-def viewHeadsByZone3(self, iter_num, nper='all'):
+def viewHeadsByZone3(self, iter_num, nper='all', head_name='head'):
     """
     :param iter_num: param nper:  (Default value = 'all')
 
@@ -770,13 +785,13 @@ def viewHeadsByZone3(self, iter_num, nper='all'):
         scattery = []
         obs_sim_zone_all = []
         for i in range(len(times)):
-            self.compare_observed('head', head_orig, nper=i)
+            self.compare_observed(head_name, head_orig, nper=i)
             scatterx += [h[0] for h in self.obs_sim_zone]
             scattery += [h[1] for h in self.obs_sim_zone]
             obs_sim_zone_all += self.obs_sim_zone
         self.obs_sim_zone = obs_sim_zone_all
     else:
-        self.compare_observed('head', head_orig, nper=nper)
+        self.compare_observed(head_name, head_orig, nper=nper)
         scatterx = [h[0] for h in self.obs_sim_zone]
         scattery = [h[1] for h in self.obs_sim_zone]
     # End if
@@ -797,14 +812,8 @@ def viewHeadsByZone3(self, iter_num, nper='all'):
     modelmap = flopy.plot.ModelMap(model=self.mf)
     modelmap.plot_ibound()
 
-    modelmap.plot_bc('RIV', plotAll=True)
-    modelmap.plot_bc('WEL', plotAll=True)
-    modelmap.plot_bc('GHB', plotAll=True)
-    try:
-        modelmap.plot_bc('SFR', plotAll=True)
-    except Exception:
-        print("No SFR package present")
-    # End try
+    bcs = ['RIV', 'WEL', 'SFR', 'GHB']
+    self.plot_bcs(modelmap, bcs)
 
     start, end = ax.get_xlim()
     start = start // 1000 * 1000 + 1000
@@ -958,8 +967,8 @@ def viewHeads(self):
     modelmap = flopy.plot.ModelMap(model=self.mf)
     modelmap.plot_ibound()
     self.plotRiverFromRiverSegData(ax)
-    modelmap.plot_bc('RIV', plotAll=True)
-    modelmap.plot_bc('SFR', plotAll=True)
+    bcs = ['RIV', 'SFR']
+    self.plot_bcs(modelmap, bcs)
     ax.axes.xaxis.set_ticklabels([])
     vmin = np.round(np.amin(head[head != -999.99]))
     vmax = np.amax(head)
@@ -1077,7 +1086,8 @@ def viewHeadLayer(self, layer=0, figsize=(20, 10)):
     # Next we create an instance of the ModelMap class
     modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
     modelmap.plot_ibound()
-    modelmap.plot_bc('RIV')
+    bcs = ['RIV']
+    self.plot_bcs(modelmap, bcs)
     ax.axes.xaxis.set_ticklabels([])
     vmin = np.round(np.amin(head[head != -999.99]))
     vmax = 150
@@ -1159,12 +1169,8 @@ def viewHeads2(self):
     # Next we create an instance of the ModelMap class
     modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
     modelmap.plot_ibound()
-    modelmap.plot_bc('RIV', plotAll=True)
-    modelmap.plot_bc('SFR', plotAll=True)
-    try:
-        modelmap.plot_bc('GHB', plotAll=True)
-    except Exception:
-        pass
+    bcs = ['RIV', 'SFR', 'GHB']
+    self.plot_bcs(modelmap, bcs)
     self.plotRiverFromRiverSegData(ax)
     ax.axes.xaxis.set_ticklabels([])
 
@@ -1337,29 +1343,24 @@ def viewGHB(self):
     # Next we create an instance of the ModelMap class
     modelmap = flopy.plot.ModelMap(model=self.mf)
     modelmap.plot_ibound()
-    modelmap.plot_bc('RIV')
-
-    try:
-        modelmap.plot_bc('GHB')
-    except Exception as e:
-        print(e)
-    # End try
+    bcs = ['RIV', 'GHB']
+    self.plot_bcs(modelmap, bcs)
 
     ax.axes.xaxis.set_ticklabels([])
     ax = fig.add_subplot(2, 4, 2, aspect='equal')
     ax.set_title('Riv flux')
     modelmap = flopy.plot.ModelMap(model=self.mf)
     modelmap.plot_ibound()
-    max_val = np.amax(water_balance['RIVER LEAKAGE'][0])
-    min_val = np.amin(water_balance['RIVER LEAKAGE'][0])
+    max_val = np.amax(water_balance['RIVER LEAKAGE'].sum(axis=0))
+    min_val = np.amin(water_balance['RIVER LEAKAGE'].sum(axis=0))
     if max_val > abs(min_val):
         min_val = -max_val
     else:
         max_val = -min_val
     # End if
 
-    array = modelmap.plot_array(water_balance['RIVER LEAKAGE'][
-                                0], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
+    array = modelmap.plot_array(water_balance['RIVER LEAKAGE'].sum(axis=0),
+                                alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
     ax.xaxis.set_ticklabels([])
     ax.yaxis.set_ticklabels([])
     cbar_ax2 = fig.add_axes([0.43, 0.525, 0.01, 0.42])
