@@ -62,8 +62,8 @@ class MeshGenerator(object):
         self.model_mesh3D_centroids = (X, Y, self.model_mesh3D[0])
         self.centroid2mesh3Dindex = {}
         if self.mesh_type == 'structured' and array_ordering.array_order == 'UL_RowColumn':
-            for lay, row, col in [(lay, row, col) for lay in xrange(lays - 1)
-                                  for row in xrange(rows) for col in xrange(cols)]:
+            for lay, row, col in [(l, r, c) for l in xrange(lays - 1)
+                                  for r in xrange(rows) for c in xrange(cols)]:
                 self.centroid2mesh3Dindex[(
                     x[col],
                     y[row],
@@ -141,7 +141,14 @@ class MeshGenerator(object):
             self.ModelInterface.save_array(zone_pth, self.model_mesh3D[1])
         # End if
 
-        self.build_centroids_array3D(array_ordering)  # Build 3D centroids array
+        try:
+            self.build_centroids_array3D(array_ordering)  # Build 3D centroids array
+        except IndexError as e:
+            msg = "Error occurred when processing mesh files.\n"
+            msg += "This may be due to existing files from a previous build attempt."
+            msg += "Try emptying the folder: {}".format(out_data_folder_grid)
+            raise RuntimeError(msg)
+        # End try
     # End build_3D_mesh_from_rasters()
 
     def reclassIsolatedCells(self, passes=1, assimilate=False):
@@ -311,7 +318,7 @@ class MeshGenerator(object):
                     if type(observations.obs_group[key]['locations']) == pd.core.frame.DataFrame:
                         points = [list(x) for x in observations.obs_group[
                             key]['locations'].to_records(index=False)]
-                    
+
                         observations.obs_group[key]['mapped_observations'] = \
                             self.map_points_to_3Dmesh(kdtree,
                                                       points,
