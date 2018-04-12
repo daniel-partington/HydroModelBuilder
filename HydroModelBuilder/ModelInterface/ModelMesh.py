@@ -145,7 +145,7 @@ class MeshGenerator(object):
             self.build_centroids_array3D(array_ordering)  # Build 3D centroids array
         except IndexError as e:
             msg = "Error occurred when processing mesh files.\n"
-            msg += "This may be due to existing files from a previous build attempt."
+            msg += "This may be due to existing files from a previous build attempt.\n"
             msg += "Try emptying the folder: {}".format(out_data_folder_grid)
             raise RuntimeError(msg)
         # End try
@@ -308,6 +308,7 @@ class MeshGenerator(object):
         :param kdtree:
         :param method:  (Default value = 'nearest')
         :param ignore:  (Default value = [-1])
+        
         :param verbose: bool, (Default value = False)
         """
         if method == 'nearest':
