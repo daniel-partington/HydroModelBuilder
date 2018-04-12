@@ -3,7 +3,6 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from more_itertools import unique_everseen
 from scipy import spatial
 
 from ModelInterface.ModelInterface import ModelInterface
@@ -11,6 +10,7 @@ from ModelInterface.ModelMesh import MeshGenerator
 from ModelProperties import (ArrayOrdering, ModelBoundaries, ModelBuilderType,
                              ModelInitialConditions, ModelObservations,
                              ModelParameters, ModelProperties, ModelTime)
+from more_itertools import unique_everseen
 from Utilities import interpolation
 from Utilities.PilotPoints import pilotpoints
 
@@ -501,7 +501,6 @@ class GWModelBuilder(object):
         2. Creates a dictionary with centroids as key and lay row col as entries
         If key isn't found then it returns nearest centroid
         """
-
         return self.MeshGen.build_centroids_array3D(self.array_ordering)
     # build_centroids_array3D()
 
