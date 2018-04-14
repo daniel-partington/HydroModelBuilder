@@ -1,16 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Feb 16 08:11:11 2016
-
 @author: part0075
-
 Mesh builder from stratigraphy
-
 Build from top to bottom.
-
 This is only to be called once the rasters have been reprojected into the
 correct coordinate system
-
 """
 import os
 
@@ -27,11 +22,10 @@ def plot_map(array):
     plt.figure()
     plt.imshow(array, interpolation='none')
 
+
 def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
     """Function to remove cells that are surrounded by non-active cells in the horizontal plane
-
     e.g. if cells with positive integer is surrounded in above, below and to each side, then reassign to -1.
-
     :param mesh3D_1:
         :param passes:  (Default value = 1)
     :param assimilate: Default value = False)
@@ -79,13 +73,7 @@ def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
 
                             def most_common_oneliner(L):
                                 """
-
-
-
                                 :param L:
-
-
-
                                 """
 
                                 return max(g(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
@@ -129,21 +117,18 @@ def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
 
 # This solution taken from:
 # http://stackoverflow.com/questions/3662361/fill-in-missing-values-with-nearest-neighbour-in-python-numpy-masked-arrays
+
+
 def fill(data, invalid=None):
     """Replace the value of invalid 'data' cells (indicated by 'invalid')
     by the value of the nearest valid data cell
-
     Input:
         data:    numpy array of any dimension
         invalid: a logical array of same shape as 'data'. True cells set
                  where data value should be replaced.
                  If None (default), use: invalid  = np.isnan(data)
-
     Output:
         Return a filled array.
-
-
-
     :param data:
     :param invalid:  (Default value = None)
     """
@@ -154,10 +139,10 @@ def fill(data, invalid=None):
     ind = nd.distance_transform_edt(invalid, return_distances=False, return_indices=True)
     return data[tuple(ind)]
 
+
 def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
                              min_height, max_height):
     """
-
     :param hu_raster_path:
     :param hu_raster_files:
     :param out_path:
@@ -328,7 +313,8 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
         # Identify logical array of cells to modify:
         # modify = level_test & layer_inactive
 
-        mesh[i / 2 + 1] = raster_set[hu_raster_files[i + 1]][3] #mesh[i / 2 + 1][level_test] = raster_set[hu_raster_files[i + 1]][3][level_test]
+        # mesh[i / 2 + 1][level_test] = raster_set[hu_raster_files[i + 1]][3][level_test]
+        mesh[i / 2 + 1] = raster_set[hu_raster_files[i + 1]][3]
 
     # End for
 
@@ -369,7 +355,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
     # End for
 
     zone_matrix = reclassIsolatedCells(zone_matrix)
-    
+
     tester2 = True
     if tester2:
         raster_thickness = {}
@@ -385,10 +371,10 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
         mesh_zone_thickness = {}
 
         for i in xrange(len(hu_raster_files) / 2):
-#            top = np.zeros((len(raster_set[hu_raster_files[0]][0]),
-#                            len(raster_set[hu_raster_files[0]][0][0])))
-#            bot = np.zeros((len(raster_set[hu_raster_files[0]][0]),
-#                            len(raster_set[hu_raster_files[0]][0][0])))
+            #            top = np.zeros((len(raster_set[hu_raster_files[0]][0]),
+            #                            len(raster_set[hu_raster_files[0]][0][0])))
+            #            bot = np.zeros((len(raster_set[hu_raster_files[0]][0]),
+            #                            len(raster_set[hu_raster_files[0]][0][0])))
             top = np.zeros_like(mesh[0])
             bot = np.zeros_like(mesh[0])
             bot[zone_matrix[i] == i + 1] = mesh[i + 1][zone_matrix[i] == i + 1]
@@ -452,7 +438,6 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
     for lay in range(thickness.shape[0]):
         plot_map(np.ma.masked_where(thickness[lay] > 0., thickness[lay]))
 
-       
     grid_info = [ncol, nrow, delc, delr, x0, y0]
     array2Vtk.build_vtk_from_array(grid_info, np.fliplr(mesh), ["z_elev"], [np.fliplr(mesh)], [
                                    "zone", "thickness"],
@@ -481,8 +466,7 @@ if __name__ == "__main__":
 #    hu_raster_files = ["qa_1t_model_grid.tif", "qa_2b_model_grid.tif",
 #                       "utb_1t_model_grid.tif", "utb_2b_model_grid.tif",
 #                       "utqa_1t_model_grid.tif", "utqa_2b_model_grid.tif"]
-                       
-                       
+
 #    dx = "100m"
     dx = "100m"
 

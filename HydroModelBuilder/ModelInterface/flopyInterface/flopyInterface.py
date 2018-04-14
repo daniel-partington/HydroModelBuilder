@@ -2,19 +2,19 @@ import datetime
 import inspect
 import os
 import warnings
-from types import MethodType
+
+import numpy as np
+import pandas as pd
 
 import flopy
 import flopy.utils.binaryfile as bf
-import numpy as np
-import pandas as pd
-from flopy.utils.sfroutputfile import SfrFile
-
 import viz.flopy_viz as fviz  # Visualization extension methods
+from flopy.utils.sfroutputfile import SfrFile
 # allow import from this module to maintain backwards compatibility
 from MT3DModel import MT3DModel
 from MT3DPostProcess import MT3DPostProcess
 from Radon_EC_simple import Radon_EC_simple
+from types import MethodType
 
 
 class ModflowModel(object):
@@ -759,11 +759,7 @@ class ModflowModel(object):
         :returns: float, average head value
         """
         head = self.get_heads()
-        if mask:
-            return np.mean(self.top[mask] - head[0][mask])
-        else:
-            return np.mean(self.top - head[0])
-        # End if
+        return np.mean(self.top[mask] - head[0][mask])
     # End get_average_depth_to_GW()
 
     def getAverageDepthToGW(self, mask=None):
