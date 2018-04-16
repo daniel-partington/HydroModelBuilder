@@ -8,7 +8,13 @@ import pandas as pd
 import six
 from flopy.utils.sfroutputfile import SfrFile
 from matplotlib import colors
-from HydroModelBuilder.Utilities.model_assessment import metric_me, metric_pbias, metric_rmse, metric_srms, plot_obs_vs_sim
+
+from HydroModelBuilder.Utilities.model_assessment import (metric_me,
+                                                          metric_pbias,
+                                                          metric_rmse,
+                                                          metric_srms,
+                                                          plot_obs_vs_sim)
+
 
 def cell_bc_to_3D_array_for_plot(self, boundary, bc_array, nper, val_pos):
     '''Convert cell data to 3D array for 3D plotting
@@ -29,6 +35,7 @@ def cell_bc_to_3D_array_for_plot(self, boundary, bc_array, nper, val_pos):
     # End for
     self.bc_counter += 1
 # End cell_bc_to_3D_array_for_plot()
+
 
 def create_3D_bc_array(self):
     """Create dict of 3D arrays for visualiation of boundary conditions, which
@@ -69,6 +76,7 @@ def create_3D_bc_array(self):
     # End for
 
 # End create_3D_bc_array()
+
 
 def plotRiverFromRiverSegData(self, ax, names=None, **kwargs):
     """
@@ -140,13 +148,15 @@ def SFRoutput_plot(self):
     sfr_df
 # End SFRoutput_plot()
 
+
 def plot_ts_obs_vs_sim(self, obs_name, obs_grp_name, obs_type):
     '''
-    Plot a time series of the 
+    Plot a time series of the
     '''
     if obs_type == 'head':
         head_obs_ts = self.model_data.observations[obs_grp_name]['time_series']
         head_obs_ts[head_obs_ts['name'] == obs_name].plot(x='datetime', y='value')
+
 
 def compareAllObs_metrics(self, to_file=False, head_name='head'):
 
@@ -175,7 +185,7 @@ def compareAllObs_metrics(self, to_file=False, head_name='head'):
     RMSE = metric_rmse(scattery, scatterx)
 
     SRMS = metric_srms(scattery, scatterx)
-    
+
     if to_file:
         with open(os.path.join(self.data_folder, 'Head_Obs_Model_Measures.txt'), 'w') as f:
             f.write('ME PBIAS RMSE\n')
@@ -241,7 +251,7 @@ def compareAllObs(self, head_name):
     plt.legend(loc='upper left', ncol=4, fontsize=11)
     ylim = ax.get_ylim()
     ax.set_ylim(ylim[0], ylim[1] + 0.25 * (ylim[1] - ylim[0]))
-    
+
     ax = fig.add_subplot(1, 3, 2)
     ax.set_title('Sim vs Obs (%d points)' % (len(scatterx)))
 
@@ -288,8 +298,7 @@ def compareAllObs(self, head_name):
 #    ax.fill_between(new, new_lower, new_upper, color='grey', alpha=0.3)
     ax.set_xlim(new)
     ax.set_ylim(new)
-    
-    
+
     ax = fig.add_subplot(1, 3, 3)
     ax.set_title('Residuals in space')
 
@@ -341,6 +350,7 @@ def compareAllObs(self, head_name):
     plt.colorbar()
     plt.show()
 # End compareAllObs()
+
 
 def compareAllObs2(self):
 
@@ -434,24 +444,26 @@ def compareAllObs2(self):
             # End for
         # End if
 
-        plot_obs_vs_sim(obs_set, obs_sim_zone_all, unc=2)       
+        plot_obs_vs_sim(obs_set, obs_sim_zone_all, unc=2)
 
 
 # End compareAllObs()
 
-def plot_bc(self, modelmap, name):#, **kwargs):
+def plot_bc(self, modelmap, name):  # , **kwargs):
     '''
     Plot boundary condition in active cells of passed modelmap object.
     Includes rough test for overcoming non-existence of bc
     '''
     try:
-        modelmap.plot_bc(name)#, **kwargs)  
+        modelmap.plot_bc(name)  # , **kwargs)
     except:
         print("Could not find '{}' package in model".format(name))
 
-def plot_bcs(self, modelmap, bcs):#, **kwargs):
+
+def plot_bcs(self, modelmap, bcs):  # , **kwargs):
     for bc in bcs:
-        self.plot_bc(modelmap, bc)#, **kwargs)
+        self.plot_bc(modelmap, bc)  # , **kwargs)
+
 
 def viewHeadsByZone(self, nper='all', head_name='head'):
     """
@@ -493,7 +505,7 @@ def viewHeadsByZone(self, nper='all', head_name='head'):
 
     bcs = ['RIV', 'SFR', 'GHB']
     self.plot_bcs(modelmap, bcs)
-    
+
     ax.axes.xaxis.set_ticklabels([])
 
     ax = fig.add_subplot(2, 4, 2, aspect='equal')
@@ -621,7 +633,7 @@ def viewHeadsByZone2(self, iter_num, nper='all', head_name='head'):
 
     bcs = ['RIV', 'WEL', 'SFR', 'GHB']
     self.plot_bcs(modelmap, bcs)
-    
+
     start, end = ax.get_xlim()
     start = start // 1000 * 1000 + 1000
     end = end // 1000 * 1000 - 1000
@@ -757,6 +769,7 @@ def viewHeadsByZone2(self, iter_num, nper='all', head_name='head'):
     plt.savefig('run_viewheads_{}.png'.format(iter_num), bbox_inches='tight')
 
 # End viewHeadsByZone2()
+
 
 def viewHeadsByZone3(self, iter_num, nper='all', head_name='head'):
     """
@@ -951,12 +964,13 @@ def viewHeadsByZone3(self, iter_num, nper='all', head_name='head'):
 
 # End viewHeadsByZone3()
 
+
 def viewHeads(self):
     """TODO: Docs"""
 
     # Create the headfile object
     headobj = self.importHeads()
-    cbbobj = self.importCbb()
+    cbbobj = self.import_cbb()
     times = headobj.get_times()
     head = headobj.get_data(totim=times[-1])
 
