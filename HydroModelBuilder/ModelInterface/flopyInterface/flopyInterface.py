@@ -759,11 +759,7 @@ class ModflowModel(object):
         :returns: float, average head value
         """
         head = self.get_heads()
-        if mask:
-            return np.mean(self.top[mask] - head[0][mask])
-        else:
-            return np.mean(self.top - head[0])
-        # End if
+        return np.mean(self.top[mask] - head[0][mask])
     # End get_average_depth_to_GW()
 
     def getAverageDepthToGW(self, mask=None):
