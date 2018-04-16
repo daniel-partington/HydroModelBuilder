@@ -155,7 +155,7 @@ def fill(data, invalid=None):
     return data[tuple(ind)]
 
 def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
-                             min_height, max_height):
+                             min_height, max_height, plot=False):
     """
 
     :param hu_raster_path:
@@ -364,7 +364,8 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             continue
 
         thickness[index / 2] = mesh[index / 2] - mesh[index / 2 + 1]
-        plot_map(np.ma.masked_where(thickness[index / 2] <= 0, thickness[index / 2]))
+        if plot:
+            plot_map(np.ma.masked_where(thickness[index / 2] <= 0, thickness[index / 2]))
         zone_matrix[index / 2][thickness[index / 2] <= 0] = -1
     # End for
 
@@ -398,23 +399,24 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
             mesh_zone_thickness[i] = np.ma.masked_where((zone_matrix[i] != i + 1), top - bot)
 
-        for i in xrange(thickness.shape[0]):
-            fig = plt.figure()
-            fig.add_subplot(1, 3, 1, aspect='equal')
-            plt.imshow(mesh_zone_thickness[i], interpolation='none')
-            print(i, mesh_zone_thickness[i].min(), mesh_zone_thickness[i].max(), mesh_zone_thickness[i].mean())
-            plt.title('Thickness in mesh: ' + hu_raster_files[i * 2])
-            plt.colorbar()
-            fig.add_subplot(1, 3, 2, aspect='equal')
-            plt.imshow(raster_thickness[i], interpolation='none')
-            print(i, raster_thickness[i].min(), raster_thickness[i].max(), raster_thickness[i].mean())
-            plt.title('Thickness in raster')
-            plt.colorbar()
-            fig.add_subplot(1, 3, 3, aspect='equal')
-            plt.imshow(mesh_zone_thickness[i] - raster_thickness[i], interpolation='none')
-            plt.title('Difference in thickness')
-            plt.colorbar()
-        # End for
+        if plot:
+            for i in xrange(thickness.shape[0]):
+                fig = plt.figure()
+                fig.add_subplot(1, 3, 1, aspect='equal')
+                plt.imshow(mesh_zone_thickness[i], interpolation='none')
+                print(i, mesh_zone_thickness[i].min(), mesh_zone_thickness[i].max(), mesh_zone_thickness[i].mean())
+                plt.title('Thickness in mesh: ' + hu_raster_files[i * 2])
+                plt.colorbar()
+                fig.add_subplot(1, 3, 2, aspect='equal')
+                plt.imshow(raster_thickness[i], interpolation='none')
+                print(i, raster_thickness[i].min(), raster_thickness[i].max(), raster_thickness[i].mean())
+                plt.title('Thickness in raster')
+                plt.colorbar()
+                fig.add_subplot(1, 3, 3, aspect='equal')
+                plt.imshow(mesh_zone_thickness[i] - raster_thickness[i], interpolation='none')
+                plt.title('Difference in thickness')
+                plt.colorbar()
+            # End for
 
     tester = True
     if tester:
@@ -428,29 +430,30 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             thickness2[i] = np.ma.masked_where((zone_matrix[i] < 0), thickness[i])
             thick_zero[i] = np.ma.masked_where((thickness[i] != 0), thickness[i])
         # End for
-
-        for i in xrange(thick_shape):
-            fig = plt.figure()
-            fig.add_subplot(1, 3, 1, aspect='equal')
-            plt.imshow(thickness2[i], interpolation='none')
-            plt.title('Thickness in active cells: {}'.format(hu_raster_files[i * 2][0:5]))
-            plt.colorbar()
-            fig.add_subplot(1, 3, 2, aspect='equal')
-            plt.imshow(thick_zero[i], interpolation='none')
-            plt.title('Areas where thickness is 0')
-            plt.colorbar()
-            fig.add_subplot(1, 3, 3, aspect='equal')
-            plt.imshow(zone_matrix[i], interpolation='none')
-            plt.title('Zonal delineation')
-            plt.colorbar()
-        # End for
+        if plot:
+            for i in xrange(thick_shape):
+                fig = plt.figure()
+                fig.add_subplot(1, 3, 1, aspect='equal')
+                plt.imshow(thickness2[i], interpolation='none')
+                plt.title('Thickness in active cells: {}'.format(hu_raster_files[i * 2][0:5]))
+                plt.colorbar()
+                fig.add_subplot(1, 3, 2, aspect='equal')
+                plt.imshow(thick_zero[i], interpolation='none')
+                plt.title('Areas where thickness is 0')
+                plt.colorbar()
+                fig.add_subplot(1, 3, 3, aspect='equal')
+                plt.imshow(zone_matrix[i], interpolation='none')
+                plt.title('Zonal delineation')
+                plt.colorbar()
+            # End for
 
     if np.any(thickness < 0.):
         print 'issues'
         print np.where(thickness < 0.)
     # End if
-    for lay in range(thickness.shape[0]):
-        plot_map(np.ma.masked_where(thickness[lay] > 0., thickness[lay]))
+    if plot:
+        for lay in range(thickness.shape[0]):
+            plot_map(np.ma.masked_where(thickness[lay] > 0., thickness[lay]))
 
        
     grid_info = [ncol, nrow, delc, delr, x0, y0]
