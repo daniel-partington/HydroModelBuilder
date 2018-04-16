@@ -81,7 +81,14 @@ class GDALInterface(GISInterface):
 
         else:
             fname = os.path.join(shapefile_path, shapefile_name)
-            driver = ogr.Open(fname).GetDriver()
+
+            try:
+                driver = ogr.Open(fname).GetDriver()
+            except AttributeError as e:
+                print("Failed loading {}".format(fname))
+                raise AttributeError(e)
+            # End try
+
             ds = driver.Open(fname, 0)
             self._test_osgeo_load(ds, fname)
 

@@ -2,19 +2,19 @@ import datetime
 import inspect
 import os
 import warnings
-from types import MethodType
+
+import numpy as np
+import pandas as pd
 
 import flopy
 import flopy.utils.binaryfile as bf
-import numpy as np
-import pandas as pd
-from flopy.utils.sfroutputfile import SfrFile
-
 import viz.flopy_viz as fviz  # Visualization extension methods
+from flopy.utils.sfroutputfile import SfrFile
 # allow import from this module to maintain backwards compatibility
 from MT3DModel import MT3DModel
 from MT3DPostProcess import MT3DPostProcess
 from Radon_EC_simple import Radon_EC_simple
+from types import MethodType
 
 
 class ModflowModel(object):
