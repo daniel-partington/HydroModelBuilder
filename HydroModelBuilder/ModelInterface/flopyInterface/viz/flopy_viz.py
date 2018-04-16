@@ -752,6 +752,7 @@ def viewHeadsByZone2(self, iter_num, nper='all', head_name='head'):
     ax.text(150, 20, 'RMSE = %4.2f' % (metric_rmse(scattery, scatterx)))
 
     ax.plot(ax.get_ylim(), ax.get_ylim())
+
     fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
     plt.savefig('run_viewheads_{}.png'.format(iter_num), bbox_inches='tight')
 
@@ -1102,7 +1103,7 @@ def viewHeadLayer(self, layer=0, figsize=(20, 10)):
 
     levels = np.arange(vmin, vmax, 1)
 
-    modelmap.plot_bc('RIV', alpha=0.3)
+    modelmap.plot_bc('RIV', alpha=0.3, plotAll=True)
     array = modelmap.contour_array(head[0], masked_values=[-999.98999023, max_head,
                                                            min_head], alpha=0.9, vmin=vmin, vmax=vmax, cmap=cmap, levels=levels)
     plt.clabel(array, inline=True, fontsize=10)
@@ -1207,7 +1208,10 @@ def viewHeads2(self):
     modelmap.plot_ibound()
     ax.set_title('Campaspe exchange')
     modelmap = flopy.plot.ModelMap(model=self.mf)  # , sr=self.mf.dis.sr, dis=self.mf.dis)
-    river_flux = modelmap.plot_array(water_balance['STREAM LEAKAGE'].sum(axis=0), alpha=0.5)
+    try:
+        river_flux = modelmap.plot_array(water_balance['STREAM LEAKAGE'].sum(axis=0), alpha=0.5)
+    except:
+        river_flux = modelmap.plot_array(water_balance['RIVER LEAKAGE'].sum(axis=0), alpha=0.5)
     self.plotRiverFromRiverSegData(ax)
     ax.xaxis.set_ticklabels([])
     ax.yaxis.set_ticklabels([])
