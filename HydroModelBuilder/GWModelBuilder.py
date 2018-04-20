@@ -3,6 +3,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+from more_itertools import unique_everseen
 from scipy import spatial
 
 from ModelInterface.ModelInterface import ModelInterface
@@ -10,7 +11,6 @@ from ModelInterface.ModelMesh import MeshGenerator
 from ModelProperties import (ArrayOrdering, ModelBoundaries, ModelBuilderType,
                              ModelInitialConditions, ModelObservations,
                              ModelParameters, ModelProperties, ModelTime)
-from more_itertools import unique_everseen
 from Utilities import interpolation
 from Utilities.PilotPoints import pilotpoints
 
@@ -704,7 +704,7 @@ class GWModelBuilder(object):
         amalg_riv_points, amalg_riv_points_collection = self._amalgamate_points(point2mesh_map2, point_merge)
         # Do test and report any cell jumps more than 1 up, down, left, right
         if verbose:
-            print("Test order the cells")
+            print("Test order of the cells")
         self._naive_cell_ordering_test(amalg_riv_points)
 
         dist = self._dist
