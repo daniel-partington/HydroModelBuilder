@@ -818,14 +818,14 @@ class ModflowModel(object):
         return self.concs_by_zone(concs)
     # End ConcsByZone()
 
-    def heads_by_zone(self, heads):
+    def output_var_by_zone(self, output_var_array):
         """Retrieve average head values for each zone.
 
         :param heads:
 
         :returns: ndarray
         """
-        return self.loop_over_zone(heads)
+        return self.loop_over_zone(output_var_array)
     # End heads_by_zone()
 
     def HeadsByZone(self, heads):
@@ -834,7 +834,7 @@ class ModflowModel(object):
         """
         warnings.warn("Use of deprecated method `HeadsByZone`, use `heads_by_zone` instead",
                       DeprecationWarning)
-        return self.heads_by_zone(heads)
+        return self.output_var_by_zone(heads)
     # End HeadsByZone()
 
     def writeObservations(self):
