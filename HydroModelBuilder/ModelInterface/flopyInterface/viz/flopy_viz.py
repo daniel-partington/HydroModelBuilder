@@ -130,14 +130,20 @@ def water_balance_plot(self, iter_num, wat_bal_df, save):
     # End if
 # End water_balance_plot()
 
+def SFR_get_data_at_time():
+    pass    
 
-def SFRoutput_plot(self):
+def SFRoutput_plot(self, stream_name, nper=0, to_file=False):
     """TODO: Docs"""
 
     raise NotImplementedError("Tried to call unfinished method!")
     sfrout = SfrFile(os.path.join(self.data_folder, self.name + ".sfr.out"))
     sfr_df = sfrout.get_dataframe()
-    sfr_df
+    sfr_df_time = sfr_df[sfr_df['time'] == nper]
+    sfr_info = pd.DataFrame.from_records(self.model_data.boundaries.bc[stream_name]['bc_array'][0])
+    sfr_info.loc[:, 'segment'] = sfr_info['iseg']
+    sfr_df_time = pd.merge(sfr_df_time, sfr_info)
+    sfr_df_time
 # End SFRoutput_plot()
 
 def plot_ts_obs_vs_sim(self, obs_name, obs_grp_name, obs_type):
@@ -411,9 +417,9 @@ def compareAllObs2(self):
         if obs_type == 'head':
             for zone in obs_df['zone'].unique():
                 if len(obs_df['zone'].unique()) == 1:
-                    zone_txt = 'head'
+                    zone_txt = obs_set #'head'
                 else:
-                    zone_txt = zone
+                    zone_txt = obs_set + zone
                 # End if
                 obs_df_zone = obs_df[obs_df['zone'] == zone]
                 for observation in obs_df_zone.index:
@@ -453,6 +459,19 @@ def plot_bcs(self, modelmap, bcs):#, **kwargs):
     for bc in bcs:
         self.plot_bc(modelmap, bc)#, **kwargs)
 
+def plot_bc_by_layer(self, bc_name, plot_rows=2):
+    
+    num_plots = self.nlay
+    plot_cols = num_plots / plot_rows + 1
+    
+    fig = plt.figure()
+    for plot in range(num_plots):
+        fig.add_subplot(plot_rows, plot_cols, plot + 1, aspect='equal')
+        modelmap = flopy.plot.ModelMap(model=self.mf, layer=plot)
+        modelmap.plot_ibound()
+        self.plot_bc(modelmap, bc_name)
+        
+        
 def viewHeadsByZone(self, nper='all', head_name='head'):
     """
     :param nper: Default value = 'all')
@@ -1379,7 +1398,7 @@ def viewGHB(self):
     # End if
 
     ax = fig.add_subplot(2, 4, 3, aspect='equal')
-    ax.set_title('GHB layer 2')
+    ax.set_title('GHB layer 1')
     modelmap = flopy.plot.ModelMap(model=self.mf)
     modelmap.plot_ibound()
     river_flux = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][
@@ -1402,8 +1421,8 @@ def viewGHB(self):
         max_val = -min_val
     # End if
 
-    ax = fig.add_subplot(2, 4, 5, aspect='equal')
-    ax.set_title('GHB layer 3')
+    ax = fig.add_subplot(2, 4, 4, aspect='equal')
+    ax.set_title('GHB layer 2')
     modelmap = flopy.plot.ModelMap(model=self.mf)
     modelmap.plot_ibound()
     recharge = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][2], masked_values=[
@@ -1426,8 +1445,8 @@ def viewGHB(self):
         max_val = -min_val
     # End if
 
-    ax = fig.add_subplot(2, 4, 6, aspect='equal')
-    ax.set_title('GHB layer 4')
+    ax = fig.add_subplot(2, 4, 5, aspect='equal')
+    ax.set_title('GHB layer 3')
     modelmap = flopy.plot.ModelMap(model=self.mf)
     modelmap.plot_ibound()
     elevation = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][
@@ -1436,6 +1455,25 @@ def viewGHB(self):
     ax.xaxis.set_ticks(np.arange(start, end, 20000.))
     ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
 
+    max_val = np.amax(water_balance['HEAD DEP BOUNDS'][4])
+    min_val = np.amin(water_balance['HEAD DEP BOUNDS'][4])
+    if max_val > abs(min_val):
+        min_val = -max_val
+    else:
+        max_val = -min_val
+    # End if
+
+    ax = fig.add_subplot(2, 4, 6, aspect='equal')
+    ax.set_title('GHB layer 4')
+    modelmap = flopy.plot.ModelMap(model=self.mf)
+    modelmap.plot_ibound()
+    elevation = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][
+                                    4], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
+    ax.yaxis.set_ticklabels([])
+    ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+    ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+    
+    
     cbar_ax4 = fig.add_axes([0.43, 0.055, 0.01, 0.42])
     fig.colorbar(elevation, cax=cbar_ax4)
 
@@ -1460,7 +1498,114 @@ def viewGHB(self):
     cbar_ax5 = fig.add_axes([0.67, 0.055, 0.01, 0.42])
     fig.colorbar(storage, cax=cbar_ax5)
 
+    max_val = np.amax(water_balance['HEAD DEP BOUNDS'][6])
+    min_val = np.amin(water_balance['HEAD DEP BOUNDS'][6])
+    if max_val > abs(min_val):
+        min_val = -max_val
+    else:
+        max_val = -min_val
+    # End if
+
+    ax = fig.add_subplot(2, 4, 8, aspect='equal')
+    ax.set_title('GHB layer 6')
+    modelmap = flopy.plot.ModelMap(model=self.mf)
+    modelmap.plot_ibound()
+    storage = modelmap.plot_array(water_balance['HEAD DEP BOUNDS'][
+                                  6], alpha=1, cmap='seismic', vmin=min_val, vmax=max_val)
+    ax.yaxis.set_ticklabels([])
+    ax.xaxis.set_ticks(np.arange(start, end, 20000.))
+    ax.xaxis.get_major_formatter().set_powerlimits((0, 1))
+
+    cbar_ax5 = fig.add_axes([0.67, 0.055, 0.01, 0.42])
+    fig.colorbar(storage, cax=cbar_ax5)
+    
+    
     fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95,
                         wspace=0.1, hspace=0.12)
     plt.show()
 # End viewGHB()
+
+def plot_bc_by_zone(self, bc_name, nper=-1):
+    """TODO: Docs"""
+
+    cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
+
+    water_balance_components = cbbobj.textlist
+    water_balance = {}
+    water_balance_summary = {}
+    water_bal_summed_titles = []
+    water_bal_summed_values = []
+
+    for component in water_balance_components:
+        component_stripped = component.lstrip().rstrip()
+        if 'FLOW' in component_stripped:
+            continue
+        # End if
+        water_balance[component_stripped] = cbbobj.get_data(text=component, full3D=True)[nper]
+
+        if np.any(water_balance[component_stripped][0] > 0):
+            water_balance_summary[component_stripped + '_pos'] = np.sum(
+                water_balance[component_stripped][0][water_balance[component_stripped][0] > 0])
+        else:
+            water_balance_summary[component_stripped + '_pos'] = 0.0
+        # End if
+
+        if np.any(water_balance[component_stripped][0] < 0):
+            water_balance_summary[component_stripped + '_neg'] = np.sum(
+                water_balance[component_stripped][0][water_balance[component_stripped][0] < 0])
+        else:
+            water_balance_summary[component_stripped + '_neg'] = 0.0
+        # End if
+
+        water_bal_summed_titles += component_stripped + '_pos', component_stripped + '_neg'
+        water_bal_summed_values += water_balance_summary[component_stripped +
+                                                         '_pos'], water_balance_summary[component_stripped + '_neg']
+        # End if
+    # End for
+
+    water_bal_summed_titles += ['Error']
+    Error = sum(water_bal_summed_values)
+    water_bal_summed_values += [Error]
+
+    wat_bal_df = pd.DataFrame(water_bal_summed_values, water_bal_summed_titles)
+    wat_bal_df.columns = ['Flux m^3/d']
+    wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.]
+
+    wb_bc = water_balance[bc_name]
+    
+    if nper == 'all':
+        wb_bc = np.mean(wb_bc, axis=0)
+        zoned = self.output_var_by_zone(wb_bc)
+        wb_bc = zoned
+    else:
+        zoned = self.output_var_by_zone(wb_bc)
+        wb_bc = zoned
+    # End if    
+
+    # First step is to set up the plot
+    fig = plt.figure(figsize=(20, 10))
+
+    layers = {0: 'Coonambidgal',
+              1: 'Basalt',
+              2: 'Shepparton',
+              3: 'utam',
+              4: 'Calivil',
+              5: 'Renmark',
+              6: 'Basement'}
+
+    for key in layers:          
+        ax = fig.add_subplot(2, 4, key + 1, aspect='equal')
+        ax.set_title(layers[key])
+        # Next we create an instance of the ModelMap class
+        modelmap = flopy.plot.ModelMap(model=self.mf)
+        modelmap.plot_ibound()
+
+        array = modelmap.plot_array(wb_bc[key], masked_values= [0.],
+                                    alpha=1, cmap='seismic')
+        
+        ax.xaxis.set_ticklabels([])
+        ax.yaxis.set_ticklabels([])
+        cbar_ax2 = fig.add_axes([0.95, 0.98, 0.1, 0.42])
+        fig.colorbar(array, cax=cbar_ax2)
+    
+ # End plot_bc_by_zone()
