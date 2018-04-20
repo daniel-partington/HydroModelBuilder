@@ -23,8 +23,9 @@ def GridData(points, values, xi, method='nearest'):
     if method in ['linear', 'cubic']:
         z2 = griddata(points, values, xi, method=method)
         mask = np.isnan(z2)
-        z2[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), z2[~mask])
-        
+        points2 = zip(xi[0][~mask].flatten(), xi[1][~mask].flatten())
+        values2 = z2[~mask].flatten()
+        z2 = griddata(np.array(points2), np.array(values2), xi, method='nearest')
     else:
         z2 = griddata(points, values, xi, method=method)
     # End if

@@ -1423,6 +1423,17 @@ class GWModelBuilder(object):
         # End if
     # End map_obs2model_times()
 
+    def write_parameters_to_file(self, fname='parameters.txt'):
+        """
+        Write out currently held parameters to file 
+        
+        :param fname: str, filename to write out to.
+        """
+        with open(fname, 'w') as f:
+            f.write("PARNAME PARVAL1\n")
+            for param in self.parameters.param:
+                f.write("{}\t{}\n".format(param, self.parameters.param[param]['PARVAL1']))
+        
     def updateModelParameters(self, fname, verbose=True):
         """Update model parameters based on values given in a file.
 

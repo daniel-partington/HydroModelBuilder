@@ -3,6 +3,7 @@ from itertools import groupby
 
 import numpy as np
 import pandas as pd
+from math import ceil
 
 
 class MeshGenerator(object):
@@ -89,8 +90,8 @@ class MeshGenerator(object):
         (xmin, xmax, ymin, ymax) = self.model_boundary[0:4]
         gridHeight = gridHeight
 
-        rows = int((ymax - ymin) / gridHeight) + 1  # get rows
-        cols = int((xmax - xmin) / gridHeight) + 1  # get columns
+        rows = int(ceil((ymax - ymin) / gridHeight))  # get rows
+        cols = int(ceil((xmax - xmin) / gridHeight))  # get columns
 
         # Nasty workaround until I find out why extent is wrong:
         (xmin, xmax, ymin, ymax) = self.model_mesh.GetLayer().GetExtent()
