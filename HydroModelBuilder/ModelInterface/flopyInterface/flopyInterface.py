@@ -565,6 +565,7 @@ class ModflowModel(object):
                     f.write("Model did not converge, @ %s" %
                             datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
                     f.write("Error: \n {}".format(converge_fail))
+                raise RuntimeError("MODFLOW failed to converge")
                 return False
             # End if
 
