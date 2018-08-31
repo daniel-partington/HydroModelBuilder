@@ -188,7 +188,8 @@ class ModflowModel(object):
                                             ss=self.ss,
                                             hdry=-999.9,
                                             laywet=0,
-                                            laytyp=1)
+                                            laytyp=1,
+                                            ipakcb=53)
 
     # End setupUPWpackage()
 
@@ -837,7 +838,7 @@ class ModflowModel(object):
         return self.output_var_by_zone(heads)
     # End HeadsByZone()
 
-    def writeObservations(self):
+    def write_observations(self):
         """Write out observation data."""
         # Set model output arrays to None to initialise
         head = None
@@ -913,6 +914,15 @@ class ModflowModel(object):
         # End for
     # End writeObservations()
 
+    def writeObservations(self):
+        """Deprecated method.
+                """
+        warnings.warn("Use of deprecated method `writeObservations`, use `write_observations` instead",
+                      DeprecationWarning)
+        self.write_observations()
+    # End writeObservations()
+    
+    
     def get_observation(self, obs, interval, obs_set):
         """Get observation data.
 
@@ -1041,6 +1051,7 @@ class ModflowModel(object):
         self.obs_sim_zone = []
         obs_group = self.model_data.observations.obs_group[obs_set]
         obs_df = self.get_active_obs_group(obs_group, nper)
+        obs_df.loc[:, 'simulated'] = [np.nan] * obs_df.shape[0]
         sim_map_dict = obs_group['mapped_observations']
 
         for observation in obs_df['name']:
@@ -1055,6 +1066,7 @@ class ModflowModel(object):
             if np.isnan(sim):
                 print("Sim is NaN:", sim, obs, zone, "|", observation)
                 continue
+            obs_df.set_value(idx, 'simulated', sim)
             self.obs_sim_zone += [[obs, sim, zone, x, y]]
         # End for
 
@@ -1244,13 +1256,13 @@ class ModflowModel(object):
             for nper in range(len(times)):
                 wb_element = water_balance[component_stripped][nper]
 
-                if not np.sum(wb_element[wb_element > 0]) is np.ma.masked:
-                    water_balance_summary[pos] += [np.sum(wb_element[wb_element > 0])]
+                if not np.sum(wb_element[wb_element > 0.]) is np.ma.masked:
+                    water_balance_summary[pos] += [np.sum(wb_element[wb_element > 0.])]
                 else:
                     water_balance_summary[pos] += [0.]
 
-                if not np.sum(wb_element[wb_element < 0]) is np.ma.masked:
-                    water_balance_summary[neg] += [np.sum(wb_element[wb_element < 0])]
+                if not np.sum(wb_element[wb_element < 0.]) is np.ma.masked:
+                    water_balance_summary[neg] += [np.sum(wb_element[wb_element < 0.])]
                 else:
                     water_balance_summary[neg] += [0.]
 
@@ -1262,7 +1274,7 @@ class ModflowModel(object):
         water_bal_summed_values += [Error]
 
         wat_bal_ts_df = pd.DataFrame(water_balance_summary)
-        wat_bal_ts_df = wat_bal_ts_df[[x for x in wat_bal_ts_df.sum().index if wat_bal_ts_df.sum()[x] != 0]]
+        wat_bal_ts_df = wat_bal_ts_df[[x for x in wat_bal_ts_df.sum().index if wat_bal_ts_df.sum()[x] != 0.]]
         wat_bal_ts_df['time'] = pd.to_datetime(self.start_datetime)
         wat_bal_ts_df['time'] = wat_bal_ts_df['time'] + pd.to_timedelta(times, unit='d')
 
