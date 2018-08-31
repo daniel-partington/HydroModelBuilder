@@ -3,13 +3,13 @@ import inspect
 import os
 import warnings
 
-import numpy as np
-import pandas as pd
-
 import flopy
 import flopy.utils.binaryfile as bf
-import viz.flopy_viz as fviz  # Visualization extension methods
+import numpy as np
+import pandas as pd
 from flopy.utils.sfroutputfile import SfrFile
+
+import viz.flopy_viz as fviz  # Visualization extension methods
 # allow import from this module to maintain backwards compatibility
 from MT3DModel import MT3DModel
 from MT3DPostProcess import MT3DPostProcess
@@ -566,6 +566,7 @@ class ModflowModel(object):
                     f.write("Model did not converge, @ %s" %
                             datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
                     f.write("Error: \n {}".format(converge_fail))
+                raise RuntimeError("MODFLOW failed to converge")
                 return False
             # End if
 
@@ -679,7 +680,7 @@ class ModflowModel(object):
 
         :returns: dict, river exchange values
         """
-        cbbobj = self.importCbb()
+        cbbobj = self.import_cbb()
         riv_flux = cbbobj.get_data(text='RIVER LEAKAGE', full3D=True)
 
         times = cbbobj.get_times()
@@ -720,7 +721,7 @@ class ModflowModel(object):
         :returns: dict, river exchange nodes
         """
         try:
-            cbbobj = self.importCbb()
+            cbbobj = self.import_cbb()
         except IndexError as e:
             raise IndexError("""Error occurred reading cell-by-cell file - check if model converged
             Error: {}""".format(e))
@@ -1163,7 +1164,6 @@ class ModflowModel(object):
 
     def import_cbb(self):
         """Retrieve data in cell-by-cell budget file"""
-
         self.cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + ".cbc"))
         return self.cbbobj
     # End import_cbb()

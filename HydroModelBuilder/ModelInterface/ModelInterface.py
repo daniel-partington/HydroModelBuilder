@@ -132,7 +132,7 @@ class ModelInterface(object):
 
         if filename.endswith('.pkl'):
             with open(filename, 'rb') as f:
-                print "Loading: ", f, filename
+                print "Loading: ", filename
                 p = pickle.load(f)
                 return p
             # End with

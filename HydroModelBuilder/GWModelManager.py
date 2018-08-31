@@ -53,6 +53,12 @@ class GWModelManager(object):
             'river_mapping',
             'mf_sfr_df'
         ]
+    # End
+
+    @property
+    def name(self):
+        return self.GW_build.keys()[0]
+    # End name()
 
     # Save and load utility using pickle
     def save_obj(self, obj, filename):
