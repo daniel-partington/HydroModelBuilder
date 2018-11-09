@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/63133420.svg)](https://zenodo.org/badge/latestdoi/63133420)
+
 # HydroModelBuilder
 
 HydroModelBuilder is made up of a set of utilities to build, run, and optimise numerical groundwater models.
