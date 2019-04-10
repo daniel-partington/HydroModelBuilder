@@ -16,6 +16,23 @@ from MT3DPostProcess import MT3DPostProcess
 from Radon_EC_simple import Radon_EC_simple
 from types import MethodType
 
+def get_previous_conditions(data_path):
+    """Read previous head conditions from existing hds file.
+
+    :param data_folder: str, path to data folder
+    :param fname: str, target sub-folder
+    :param name: str, name of hds file (without extension)
+    """
+    if not data_path.endswith('.hds'):
+        data_path = data_path+'.hds'
+
+    headobj = bf.HeadFile(data_path)
+    times = headobj.get_times()
+    head = headobj.get_data(totim=times[-1])
+    headobj.close()
+    return head
+# End get_previous_conditions()
+
 
 class ModflowModel(object):
 
@@ -90,6 +107,21 @@ class ModflowModel(object):
         # End for
 
     # End __init__()
+
+    @property
+    def headobj(self):
+        """Opens HeadFile pointer only if necessary.
+
+        :returns: HeadFile object
+        """
+        if hasattr(self, '_headobj'):
+            return self._headobj
+
+        headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
+        self._headobj = headobj
+
+        return headobj
+    # End headobj()
 
     def createDiscretisation(self):
         """Create and setup MODFLOW DIS package.
@@ -628,6 +660,12 @@ class ModflowModel(object):
         return Flow, Rn, EC
     # End Calculate_Rn_from_SFR_with_simple_model()
 
+    def get_all_heads(self):
+        head_data = self.headobj.get_alldata()
+
+        return head_data
+    # End get_all_heads()
+
     def get_heads(self, headobj=None):
         """Get latest head level.
 
@@ -636,8 +674,10 @@ class ModflowModel(object):
         :returns: ndarray, head levels
         """
         if not headobj:
-            headobj = self.import_heads()
+            headobj = self.headobj
+
         times = headobj.get_times()
+
         return headobj.get_data(totim=times[-1])
     # End get_heads()
 
@@ -859,8 +899,7 @@ class ModflowModel(object):
             if obs_type == 'head':
                 # Check if model outputs have already been imported and if not import
                 if not head:
-                    headobj = self.import_heads()
-                    head = headobj.get_alldata()
+                    head = self.get_all_heads()
             elif obs_type in stream_options:
                 try:
                     self.sfr_df
@@ -949,8 +988,8 @@ class ModflowModel(object):
         if obs_type == 'head':
             # Check if model outputs have already been imported and if not import
             if not head:
-                headobj = self.import_heads()
-                head = headobj.get_alldata()
+                head = self.get_all_heads()
+
         elif obs_type == 'stage':
             pass
         # End if
@@ -1103,7 +1142,7 @@ class ModflowModel(object):
         if path:
             headobj = bf.HeadFile(os.path.join(path, name + '.hds'))
         else:
-            headobj = self.import_heads()
+            headobj = self.headobj
         # End if
 
         return headobj
@@ -1114,10 +1153,7 @@ class ModflowModel(object):
 
         :returns: flopy headobj data
         """
-        if not hasattr(self, 'headobj'):
-            self.headobj = bf.HeadFile(os.path.join(self.data_folder, self.name + '.hds'))
-        # End if
-
+        warnings.warn("Deprecated method - get associated data from self.headobj property instead")
         return self.headobj
     # End import_heads()
 
@@ -1131,7 +1167,7 @@ class ModflowModel(object):
                       Use `import_heads()` or `import_heads_from_file()`""", FutureWarning)
         if not path:
             warnings.warn("Deprecated method called. Use `import_heads()` instead", DeprecationWarning)
-            return self.import_heads()
+            return self.headobj
         else:
             warnings.warn("Deprecated method called. Use `import_heads_from_file()` instead", DeprecationWarning)
             return self.import_heads_from_file(path, name)
@@ -1296,6 +1332,15 @@ class ModflowModel(object):
         # End if
 
     # End waterBalanceTS()
+
+    def cleanup(self):
+        # Close open head file pointer
+        if hasattr(self, '_headobj'):
+            self.headobj.close()
+
+    def __del__(self):
+        self.cleanup()
+    # End __del__()
 
 # End ModflowModel()
 
