@@ -989,7 +989,7 @@ def viewHeads(self):
 
     # Create the headfile object
     headobj = self.importHeads()
-    cbbobj = self.import_cbb()
+    # cbbobj = self.import_cbb()
     times = headobj.get_times()
     head = headobj.get_data(totim=times[-1])
 
@@ -1322,6 +1322,9 @@ def viewHeads2(self):
                         wspace=0.1, hspace=0.12)
     plt.show()
 
+    cbbobj.close()
+    headobj.close()
+
 # End viewHeads2()
 
 
@@ -1537,6 +1540,9 @@ def viewGHB(self):
     fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95,
                         wspace=0.1, hspace=0.12)
     plt.show()
+
+    cbbobj.close()
+    headobj.close()
 # End viewGHB()
 
 def plot_bc_by_zone(self, bc_name, nper=-1):
@@ -1594,7 +1600,9 @@ def plot_bc_by_zone(self, bc_name, nper=-1):
     else:
         zoned = self.output_var_by_zone(wb_bc)
         wb_bc = zoned
-    # End if    
+    # End if
+
+    cbbobj.close()
 
     # First step is to set up the plot
     fig = plt.figure(figsize=(20, 10))

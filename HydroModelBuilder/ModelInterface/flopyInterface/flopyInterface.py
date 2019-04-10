@@ -649,7 +649,9 @@ class ModflowModel(object):
         :returns: ndarray, head levels
         """
         headobj = bf.HeadFile(filename)
-        return self.get_heads(headobj)
+        heads = self.get_heads(headobj)
+        headobj.close()
+        return heads
     # End get_final_heads()
 
     def getHeads(self, headobj=None):
@@ -710,6 +712,8 @@ class ModflowModel(object):
             # End for
         # End for
 
+        cbbobj.close()
+
         return riv_exchange
     # End getRivFlux()
 
@@ -749,6 +753,8 @@ class ModflowModel(object):
         # End for
 
         riv_exchange = np.array([x[0] for x in riv_exchange[0] if type(x[0]) == np.float32]).sum()
+
+        cbbobj.close()
 
         return riv_exchange
     # End getRivFluxNodes()
@@ -1220,6 +1226,8 @@ class ModflowModel(object):
         wat_bal_df.columns = ['Flux m^3/d']
         wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.0]
 
+        cbbobj.close()
+
         if plot:
             self.water_balance_plot(iter_num, wat_bal_df, save)
         else:
@@ -1278,12 +1286,15 @@ class ModflowModel(object):
         wat_bal_ts_df['time'] = pd.to_datetime(self.start_datetime)
         wat_bal_ts_df['time'] = wat_bal_ts_df['time'] + pd.to_timedelta(times, unit='d')
 
+        cbbobj.close()
+
         if plot:
             ax = wat_bal_ts_df.plot(x='time')
             return wat_bal_ts_df, ax
         else:
             return wat_bal_ts_df
         # End if
+
     # End waterBalanceTS()
 
 # End ModflowModel()
