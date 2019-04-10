@@ -83,21 +83,24 @@ class PilotPoints(object):
 
         :param zone_array:
         """
-        zones = [x + 1 for x in range(len(np.unique(zone_array)) - 1)]
+        #zones = [x + 1 for x in range(len(np.unique(zone_array)) - 1)]
+        zones = np.unique(zone_array).astype(int).tolist()
+        zones.remove(-1)
         layers = zone_array.shape[0]
         zone_mask2D = {}
         for index, zone in enumerate(zones):
             zone_mask = np.ma.masked_array(zone_array,
                                            zone_array == zone).mask
 
-            zone_mask2D[index] = np.full_like(zone_mask[0], False, dtype=bool)
+            zone_mask2D[zone] = np.full_like(zone_mask[0], False, dtype=bool)
             for layer in range(layers):
-                zone_mask2D[index] |= zone_mask[layer]
+                zone_mask2D[zone] |= zone_mask[layer]
 
         return zone_mask2D
 
     def generate_points_from_mesh(self, mesh_array, cell_centers, zone_prop_dict=None,
-                                  skip=0, skip_active=0, add_noise=False):
+                                  skip=0, skip_active=0, add_noise=False, zones=None,
+                                  force_single_point=False):
         """Generate pilot points based in the zonal array in the mesh array object.
 
         :param mesh_array:
@@ -110,12 +113,15 @@ class PilotPoints(object):
         :returns: array, points zone array and initial values.
         """
         # First get the number of zones and layers from the mesh_array object
-        zones = [x + 1 for x in range(len(np.unique(mesh_array[1])) - 1)]
+        if zones is None:
+            zones = [x + 1 for x in range(len(np.unique(mesh_array[1])) - 1)]
+        
         points_dict = {}
         points_zone_dict = {}
         points_val_dict = {}
 
         zone_mask2D = self._zone_array2layers(mesh_array[1])
+        zone_active = []
         self.zone_array = mesh_array[1]
         # For each zone find the extent through cycling through the layers and
         # creating a mask.
@@ -130,14 +136,14 @@ class PilotPoints(object):
             else:
                 skip_active_n = skip_active
 
-            points_dict[index] = []
-            points_zone_dict[index] = []
-            points_val_dict[index] = []
+            points_dict[zone] = []
+            points_zone_dict[zone] = []
+            points_val_dict[zone] = []
 
             row_points = 0
             col_points = 0
             points_active = 0
-            for row in range(zone_mask2D[index].shape[0]):
+            for row in range(zone_mask2D[zone].shape[0]):
                 if skip != 0:
                     row_points += 1
                     if row_points > 1 and row_points < skip_n:
@@ -145,7 +151,7 @@ class PilotPoints(object):
                     elif row_points == skip_n:
                         row_points = 0
                         continue
-                for col in range(zone_mask2D[index].shape[1]):
+                for col in range(zone_mask2D[zone].shape[1]):
                     if skip_n != 0:
                         col_points += 1
                         if col_points > 1 and col_points < skip_n:
@@ -154,7 +160,7 @@ class PilotPoints(object):
                             col_points = 0
                             continue
 
-                    if zone_mask2D[index][row][col]:
+                    if zone_mask2D[zone][row][col]:
                         if skip_active_n != 0:
                             points_active += 1
                             if points_active > 1 and points_active < skip_active_n:
@@ -163,27 +169,36 @@ class PilotPoints(object):
                                 points_active = 0
                                 continue
 
-                        points_dict[index] += [(cell_centers[0][row][col],
+                        points_dict[zone] += [(cell_centers[0][row][col],
                                                 cell_centers[1][row][col])]
 
-                        points_zone_dict[index] += [index]
+                        points_zone_dict[zone] += [zone]
                         if zone_prop_dict is not None:
-                            x = zone_prop_dict[index]
+                            x = zone_prop_dict[zone]
                             if add_noise:
-                                points_val_dict[index] += [x + 0.1 * x * np.random.standard_normal()]
+                                points_val_dict[zone] += [x + 0.1 * x * np.random.standard_normal()]
                             else:
-                                points_val_dict[index] += [x]
+                                points_val_dict[zone] += [x]
                         else:
                             if add_noise:
-                                points_val_dict[index] += [1.0 + np.random.lognormal(-0.5, 0.2)]
+                                points_val_dict[zone] += [1.0 + np.random.lognormal(-0.5, 0.2)]
                             else:
-                                points_val_dict[index] += [1.0]
+                                points_val_dict[zone] += [1.0]
+            
+            # Test that points were derived and if not pop it from the list but with warning
+            if points_dict[zone] == []:
+                points_dict.pop(zone)
+                points_zone_dict.pop(zone)
+                points_val_dict.pop(zone)
+                print("WARNING! No points were determined for zone: {}, removing".format(zone))
+            else:
+                zone_active += [zone]
 
         self.points_dict = points_dict
         self.points_zone_dict = points_zone_dict
         self.points_val_dict = points_val_dict
         self.zone_mask2D = zone_mask2D
-        return points_dict, points_zone_dict, points_val_dict, zone_mask2D
+        return points_dict, points_zone_dict, points_val_dict, zone_mask2D, zone_active
 
     def write_grid_spec(self, mesh_array, model_boundary,
                         grid_spec_fname='grid.spc', delc=None, delr=None):
@@ -254,7 +269,7 @@ class PilotPoints(object):
         :param zone_array:
         :param zone_fname:  (Default value = 'zone.inf')
         """
-        layer = 0
+        layer = zone_array.keys()[0]
         row, col = zone_array[layer].shape[0], zone_array[layer].shape[1]
         zone_array = zone_array[int(zone_fname[4])]
         zone_array = zone_array.astype(int)
@@ -284,10 +299,10 @@ class PilotPoints(object):
         :param a:  (Default value = 500.0)
         :param anisotropy:  (Default value = 1.0)
         """
-        zones = len(np.unique(mesh_array[1])) - 1
-
+        zones = np.unique(mesh_array[1]).astype(int).tolist()
+        zones.remove(-1)
         with open(os.path.join(self.output_directory, struct_fname), 'w') as f:
-            for zone in range(zones):
+            for zone in zones:
                 f.write('STRUCTURE structure{}\n'.format(zone))
                 f.write('  NUGGET {}\n'.format(nugget))
                 f.write('  TRANSFORM {}\n'.format(transform))
@@ -295,7 +310,7 @@ class PilotPoints(object):
                 f.write('  VARIOGRAM vario{0} {1}\n'.format(zone, variogram))
                 f.write('END STRUCTURE\n')
                 f.write('\n')
-            for zone in range(zones):
+            for zone in zones:
                 f.write('VARIOGRAM vario{}\n'.format(zone))
                 f.write('  VARTYPE {}\n'.format(vartype))
                 f.write('  BEARING {}\n'.format(bearing))
@@ -330,7 +345,8 @@ class PilotPoints(object):
         :param sd_fname:  (Default value = 'sd.ref')
         :param reg_fname:  (Default value = 'reg.dat')
         """
-        zones = len(np.unique(mesh_array[1])) - 1
+        zones = np.unique(mesh_array[1]).astype(int).tolist()
+        zones.remove(-1)
         with open(os.path.join(self.output_directory, instruct_fname), 'w') as f:
             f.write('{} \n'.format(grid_spec_fname))
             f.write('{} \n'.format(points_fname))
@@ -510,10 +526,10 @@ class PilotPoints(object):
         :param out_dir:  (Default value = '')
         """
         val_array = np.zeros_like(zone_array)
-        zones = [x + 1 for x in range(len(np.unique(zone_array)) - 1)]
-
+        #zones = [x + 1 for x in range(len(np.unique(zone_array)) - 1)]
+        zones = self.points_dict.keys()         
         for index, zone in enumerate(zones):
-            fname = os.path.join(self.output_directory, 'values{}.ref'.format(index))
+            fname = os.path.join(self.output_directory, 'values{}.ref'.format(zone))
             with open(fname, 'r') as f:
                 lines = f.readlines()
                 vals = []
@@ -557,9 +573,13 @@ class PilotPoints(object):
         :param verbose:  (Default value = True)
         :param prefixes:  (Default value = None)
         """
-        for zone in range(zones):
+        if type(zones) == int:
+            zones = range(zones)
+        # end if
+        
+        for index, zone in enumerate(zones):
             if prefixes is not None:
-                prefix = prefixes[zone]
+                prefix = prefixes[index]
             else:
                 prefix = None
             print prefix
@@ -583,14 +603,14 @@ class PilotPoints(object):
                                         sd_fname='sd{}.ref'.format(zone),
                                         reg_fname='reg{}.dat'.format(zone),
                                         min_allowable_points_separation=0.0, kriging='o',
-                                        search_radius=search_radius[zone],
+                                        search_radius=search_radius[index],
                                         min_pilot_points=1,
                                         max_pilot_points=50)
 
             # if os.path.exists(os.path.join(self.output_directory, 'factors{}.dat'.format(zone))):
             #    os.remove(os.path.join(self.output_directory, 'factors{}.dat'.format(zone)))
 
-        for zone in range(zones):
+        for zone in zones:
             self.run_ppk2fac(self.ppk2fac_exe,
                              instruct_fname='ppk2fac{}.in'.format(zone))
 
@@ -605,9 +625,13 @@ class PilotPoints(object):
 
         This is based on creating a pilot point grid per zone in the mesh.
 
-        :param zones:
+        :param zones: int of number of zones or list of zone ids
         """
-        for zone in range(zones):
+        if type(zones) == int:
+            zones = range(zones)
+        # end if
+
+        for zone in zones:
             self.write_ppcov_instruct('points{}.pts'.format(zone),
                                       'struct.dat',
                                       'structure{}'.format(zone),
@@ -615,7 +639,7 @@ class PilotPoints(object):
                                       instruct_fname='ppcov{}.in'.format(zone)
                                       )
 
-        for zone in range(zones):
+        for zone in zones:
             self.run_ppcov(self.ppcov_exe, instruct_fname='ppcov{}.in'.format(zone))
 
     def run_pyfac2real_by_zones(self, zones):
@@ -623,9 +647,14 @@ class PilotPoints(object):
 
         This should only be used after running setup_pilot_points_by_zones
 
-        :param zones:
+        :param zones: int of number of zones or list of zone ids
         """
-        for zone in range(zones):
+        
+        if type(zones) == int:
+            zones = range(zones)
+        # end if
+        
+        for zone in zones:
             count = 0
             while not os.path.exists(os.path.join(self.output_directory, "factors{}.dat".format(zone))):
                 print('Factors file not found ...waiting 1 more second')

@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from osgeo import gdal, gdalconst
 from scipy import ndimage as nd
+from skimage import measure
 
 import array2Vtk
 
@@ -22,6 +23,60 @@ def plot_map(array):
     plt.figure()
     plt.imshow(array, interpolation='none')
 
+def remove_detached_clusters(zone_array, inactive=-1, ignore=[], explain=False, 
+                             save_folder=''):
+    '''
+    Function to make use of image processing to detect detached clusters of HGU
+    cells which should be discluded from the mesh.
+
+    :param zone_array: 3D numpy int array of zone which each mesh cell belongs to
+    :param ignore: list of zone values to ignore, default is empty list
+    
+    Steps in the process:
+    1. create copy of zone array and modify all positive integer zone values to 
+    the same value while allowing ignoring of some zones which can be set to -1
+    
+    2. use image processing to determine clusters by connectivity
+    
+    3. reclass all cells in secondary clusters as -1, i.e. inactive
+    
+    '''
+    
+    zone_array_mod = zone_array.copy()
+    zone_array_new = zone_array.copy()
+    for ig in ignore:
+        zone_array_mod[zone_array_mod==ig] = inactive
+
+    for num in range(1, int(np.max(zone_array)) + 1):
+        zone_array_mod[zone_array_mod == num] = 1
+
+    zone_array_labeled = measure.label(zone_array_mod, connectivity=1, background=inactive)
+    
+    for label in np.unique(zone_array_labeled):
+        # For secondary clusters (label > 1) reassign cell zone to inactive
+        if label > 1:
+            zone_array_new[np.where(zone_array_labeled == label)] = inactive
+
+    if explain:
+        for layer in range(zone_array.shape[0]):                     
+            fig = plt.figure(figsize=(20,8))
+            #plt.title('Using image processing to detect anomalies\n in automatically generated mesh')
+            ax1 = fig.add_subplot(1, 4, 1)
+            ax1.imshow(zone_array[layer], interpolation='none')
+            ax1.set_title('1. Generated mesh where colours represent\n hydrogeological units (HGU)\n blue and red are bad')
+            ax2 = fig.add_subplot(1, 4, 2)
+            ax2.imshow(zone_array_mod[layer], interpolation='none')
+            ax2.set_title('2. Simplified mesh where we differentiate\n useful (red) and bad cells (blue)\n')
+            ax3 = fig.add_subplot(1, 4, 3)
+            ax3.imshow(zone_array_labeled[layer], interpolation='none')
+            ax3.set_title('3. Image processing to identify connectivity\n and detached useful cells to reassign\n')
+            ax3 = fig.add_subplot(1, 4, 4)
+            ax3.imshow(zone_array_new[layer], interpolation='none')
+            ax3.set_title('4. Improved mesh without detached HGUs\n\n')
+            plt.subplots_adjust(top=0.87, bottom=0.1, left=0.04, right=0.98)
+            plt.savefig(os.path.join(save_folder, "Image_processing_for_mesh_anomaly_detection{}.png".format(layer)), dpi=300)
+                           
+    return zone_array_new
 
 def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
     """Function to remove cells that are surrounded by non-active cells in the horizontal plane
@@ -356,6 +411,8 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
     # End for
 
     zone_matrix = reclassIsolatedCells(zone_matrix)
+
+    zone_matrix = remove_detached_clusters(zone_matrix, ignore=[7])
 
     tester2 = True
     if tester2:

@@ -283,15 +283,6 @@ def compareAllObs(self, head_name):
     ymin, ymax = ax.get_ylim()
     xmin, xmax = ax.get_xlim()
 
-    ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.4 * (ymax - ymin),
-            'Model Efficiency = %4.2f' % (metric_me(scattery, scatterx)))
-
-    ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.3 * (ymax - ymin),
-            'PBIAS = %4.2f%%' % (metric_pbias(scattery, scatterx)))
-
-    ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.2 * (ymax - ymin),
-            'RMSE = %4.2f' % (metric_rmse(scattery, scatterx)))
-
     #ax.plot(ax.get_ylim(), ax.get_ylim())
 
     xlim, ylim = ax.get_xlim(), ax.get_ylim()
@@ -305,6 +296,18 @@ def compareAllObs(self, head_name):
     ax.set_xlim(new)
     ax.set_ylim(new)
 
+    ymin, ymax = ax.get_ylim()
+    xmin, xmax = ax.get_xlim()
+
+    ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.4 * (ymax - ymin),
+            'Model Efficiency = %4.2f' % (metric_me(scattery, scatterx)))
+
+    ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.3 * (ymax - ymin),
+            'PBIAS = %4.2f%%' % (metric_pbias(scattery, scatterx)))
+
+    ax.text(xmin + 0.45 * (xmax - xmin), ymin + 0.2 * (ymax - ymin),
+            'RMSE = %4.2f' % (metric_rmse(scattery, scatterx)))
+    
     ax = fig.add_subplot(1, 3, 3)
     ax.set_title('Residuals in space')
 
