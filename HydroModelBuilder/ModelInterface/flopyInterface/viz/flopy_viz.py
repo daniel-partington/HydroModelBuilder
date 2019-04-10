@@ -166,7 +166,7 @@ def plot_ts_obs_vs_sim(self, obs_name, obs_grp_name, obs_type):
 
 def compareAllObs_metrics(self, to_file=False, head_name='head'):
 
-    headobj = self.importHeads()
+    headobj = self.import_heads()
     times = headobj.get_times()
 
     scatterx = []
@@ -204,7 +204,7 @@ def compareAllObs_metrics(self, to_file=False, head_name='head'):
 def compareAllObs(self, head_name):
     """TODO: Docs"""
 
-    headobj = self.importHeads()
+    headobj = self.import_heads()
     times = headobj.get_times()
 
     obs_sim_zone_all = []
@@ -378,7 +378,7 @@ def compareAllObs2(self):
         if obs_type == 'head':
             # Check if model outputs have already been imported and if not import
             if not head:
-                headobj = self.importHeads()
+                headobj = self.import_heads()
                 head = headobj.get_alldata()
         elif obs_type in stream_options:
             try:
@@ -490,7 +490,7 @@ def viewHeadsByZone(self, nper='all', head_name='head'):
     """
 
     # Create the headfile object
-    headobj = self.importHeads()
+    headobj = self.import_heads()
     times = headobj.get_times()
     if nper == 'all':
         head = headobj.get_alldata()
@@ -603,7 +603,7 @@ def viewHeadsByZone2(self, iter_num, nper='all', head_name='head'):
     """
 
     # Create the headfile object
-    headobj = self.importHeads()
+    headobj = self.import_heads()
     times = headobj.get_times()
     if nper == 'all':
         head = headobj.get_alldata()
@@ -798,7 +798,7 @@ def viewHeadsByZone3(self, iter_num, nper='all', head_name='head'):
     """
 
     # Create the headfile object
-    headobj = self.importHeads()
+    headobj = self.import_heads()
     times = headobj.get_times()
     if nper == 'all':
         head = headobj.get_alldata()
@@ -988,7 +988,7 @@ def viewHeads(self):
     """TODO: Docs"""
 
     # Create the headfile object
-    headobj = self.importHeads()
+    headobj = self.import_heads()
     # cbbobj = self.import_cbb()
     times = headobj.get_times()
     head = headobj.get_data(totim=times[-1])
@@ -1105,7 +1105,7 @@ def viewHeadLayer(self, layer=0, figsize=(20, 10)):
     :param figsize: (Default value = (20, 10))
     """
     # Create the headfile object
-    headobj = self.importHeads()
+    headobj = self.import_heads()
     #cbbobj = self.importCbb()
     times = headobj.get_times()
     head = headobj.get_data(totim=times[-1])
@@ -1323,7 +1323,6 @@ def viewHeads2(self):
     plt.show()
 
     cbbobj.close()
-    headobj.close()
 
 # End viewHeads2()
 
@@ -1542,7 +1541,6 @@ def viewGHB(self):
     plt.show()
 
     cbbobj.close()
-    headobj.close()
 # End viewGHB()
 
 def plot_bc_by_zone(self, bc_name, nper=-1):
