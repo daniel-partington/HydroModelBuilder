@@ -651,7 +651,7 @@ class PilotPoints(object):
         """
         
         if type(zones) == int:
-            zones = range(zones)
+            zones = range(1, zones+1)
         # end if
         
         for zone in zones:
@@ -677,8 +677,8 @@ class PilotPoints(object):
         :param new_values_dict:
         """
         for zone in range(zones):
-            self.update_pilot_points_file_by_zone(new_values_dict[zone], zone,
-                                                  points_fname='points{}.pts'.format(zone))
+            self.update_pilot_points_file_by_zone(new_values_dict[zone], zone+1,
+                                                  points_fname='points{}.pts'.format(zone+1))
 
 # End PilotPoints()
 
