@@ -989,7 +989,6 @@ def viewHeads(self):
 
     # Create the headfile object
     headobj = self.import_heads()
-    # cbbobj = self.import_cbb()
     times = headobj.get_times()
     head = headobj.get_data(totim=times[-1])
 
@@ -1106,7 +1105,6 @@ def viewHeadLayer(self, layer=0, figsize=(20, 10)):
     """
     # Create the headfile object
     headobj = self.import_heads()
-    #cbbobj = self.importCbb()
     times = headobj.get_times()
     head = headobj.get_data(totim=times[-1])
 
@@ -1540,6 +1538,7 @@ def viewGHB(self):
                         wspace=0.1, hspace=0.12)
     plt.show()
 
+    headobj.close()
     cbbobj.close()
 # End viewGHB()
 
