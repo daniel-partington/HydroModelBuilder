@@ -1,6 +1,7 @@
 import datetime
 import inspect
 import os
+import sys
 import warnings
 
 import flopy
@@ -15,6 +16,9 @@ from MT3DModel import MT3DModel
 from MT3DPostProcess import MT3DPostProcess
 from Radon_EC_simple import Radon_EC_simple
 from types import MethodType
+
+if sys.version_info[0] < 3:
+    range = xrange
 
 def get_previous_conditions(data_path):
     """Read previous head conditions from existing hds file.
@@ -122,6 +126,22 @@ class ModflowModel(object):
 
         return headobj
     # End headobj()
+
+    @property
+    def cbbobj(self):
+        """Opens and provides cbb file pointer.
+        :returns: CBB object
+        """
+        if hasattr(self, '_cbbobj'):
+            return self._cbbobj
+
+        cbbobj = bf.CellBudgetFile(
+            os.path.join(self.data_folder, self.name + ".cbc"))
+        
+        self._cbbobj = cbbobj
+
+        return cbbobj
+    # End import_cbb()
 
     def createDiscretisation(self):
         """Create and setup MODFLOW DIS package.
@@ -501,6 +521,7 @@ class ModflowModel(object):
         """
         self.mf = flopy.modflow.Modflow(self.name, exe_name=self.executable,
                                         model_ws=self.data_folder, version='mfnwt')
+
         self.verbose = verbose
         self.check = check
 
@@ -586,7 +607,7 @@ class ModflowModel(object):
                                  ]
         path = path if path else self.data_folder
         name = name if name else self.name
-        with open(os.path.join(path, name + '.list'), 'r') as f:
+        with open(os.path.join(path, '{}.list'.format(name)), 'r') as f:
             list_file = f.read()
 
         # TODO consolidate these file writing processes, see `Utilities.text_writer`
@@ -722,7 +743,7 @@ class ModflowModel(object):
 
         :returns: dict, river exchange values
         """
-        cbbobj = self.import_cbb()
+        cbbobj = self.cbbobj
         riv_flux = cbbobj.get_data(text='RIVER LEAKAGE', full3D=True)
 
         times = cbbobj.get_times()
@@ -752,8 +773,6 @@ class ModflowModel(object):
             # End for
         # End for
 
-        cbbobj.close()
-
         return riv_exchange
     # End getRivFlux()
 
@@ -765,7 +784,7 @@ class ModflowModel(object):
         :returns: dict, river exchange nodes
         """
         try:
-            cbbobj = self.import_cbb()
+            cbbobj = self.cbbobj
         except IndexError as e:
             raise IndexError("""Error occurred reading cell-by-cell file - check if model converged
             Error: {}""".format(e))
@@ -793,8 +812,6 @@ class ModflowModel(object):
         # End for
 
         riv_exchange = np.array([x[0] for x in riv_exchange[0] if type(x[0]) == np.float32]).sum()
-
-        cbbobj.close()
 
         return riv_exchange
     # End getRivFluxNodes()
@@ -1205,16 +1222,20 @@ class ModflowModel(object):
     # End import_sfr_out()
 
     def import_cbb(self):
-        """Retrieve data in cell-by-cell budget file"""
-        self.cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + ".cbc"))
+        """Retrieve data in cell-by-cell budget file
+
+        :returns: flopy cbc budget file
+        """
+        warnings.warn("Deprecated method - get associated data from self.cbbobj property instead")
         return self.cbbobj
-    # End import_cbb()
+    # End import_heads()
+
 
     def importCbb(self):
         """Deprecated method."""
-        warnings.warn("Use of deprecated method `importCbb`, use `import_cbb` instead",
+        warnings.warn("Use of deprecated method `importCbb`, get associated data from self.cbbobj property instead",
                       DeprecationWarning)
-        return self.import_cbb()
+        return self.cbbobj
     # End importCbb()
 
     def waterBalance(self, iter_num, plot=True, save=False, nper=0):
@@ -1225,7 +1246,7 @@ class ModflowModel(object):
         :param save:  (Default value = False)
         :param nper:  (Default value = 0)
         """
-        cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
+        cbbobj = self.cbbobj
 
         water_balance_components = cbbobj.textlist
         water_balance = {}
@@ -1262,8 +1283,6 @@ class ModflowModel(object):
         wat_bal_df.columns = ['Flux m^3/d']
         wat_bal_df = wat_bal_df[wat_bal_df['Flux m^3/d'] != 0.0]
 
-        cbbobj.close()
-
         if plot:
             self.water_balance_plot(iter_num, wat_bal_df, save)
         else:
@@ -1277,7 +1296,7 @@ class ModflowModel(object):
         :param plot:  (Default value = True)
         """
 
-        cbbobj = bf.CellBudgetFile(os.path.join(self.data_folder, self.name + '.cbc'))
+        cbbobj = self.cbbobj
 
         water_balance_components = cbbobj.textlist
         times = cbbobj.get_times()
@@ -1322,8 +1341,6 @@ class ModflowModel(object):
         wat_bal_ts_df['time'] = pd.to_datetime(self.start_datetime)
         wat_bal_ts_df['time'] = wat_bal_ts_df['time'] + pd.to_timedelta(times, unit='d')
 
-        cbbobj.close()
-
         if plot:
             ax = wat_bal_ts_df.plot(x='time')
             return wat_bal_ts_df, ax
@@ -1337,6 +1354,12 @@ class ModflowModel(object):
         # Close open head file pointer
         if hasattr(self, '_headobj'):
             self.headobj.close()
+            del self._headobj
+        
+        if hasattr(self, '_cbbobj'):
+            self.cbbobj.close()
+            del self._cbbobj
+    # End cleanup()
 
     def __del__(self):
         self.cleanup()
