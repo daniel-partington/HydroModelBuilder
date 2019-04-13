@@ -1351,6 +1351,11 @@ class ModflowModel(object):
     # End waterBalanceTS()
 
     def cleanup(self):
+        """Ensure file pointers are closed after model run.
+
+        WARNING: Do NOT put this inside the __del__ dunder method.
+        It will lead to severe memory leak issues.
+        """
         # Close open head file pointer
         if hasattr(self, '_headobj'):
             self.headobj.close()
@@ -1360,10 +1365,6 @@ class ModflowModel(object):
             self.cbbobj.close()
             del self._cbbobj
     # End cleanup()
-
-    def __del__(self):
-        self.cleanup()
-    # End __del__()
 
 # End ModflowModel()
 
