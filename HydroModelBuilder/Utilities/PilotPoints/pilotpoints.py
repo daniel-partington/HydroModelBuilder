@@ -13,10 +13,14 @@ Contains functions for generating files:
 
 '''
 import os
+import sys
 import subprocess
 import time
 
 import numpy as np
+
+if sys.version_info[0] < 3:
+    range = xrange
 
 
 class PilotPointsLinear(object):
