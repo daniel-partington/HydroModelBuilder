@@ -266,6 +266,8 @@ class PilotPoints(object):
                 else:
                     f.write('pp{0} {1} {2} {3} {4} \n'.format(index, point[0],
                                                               point[1], self.points_zone_dict[zone][index] + 1, new_values[index]))
+            f.flush()
+            os.fsync(f)  # wait for file to be fully written out
 
     def write_zone_file(self, zone_array, zone_fname='zone.inf'):
         """Write the zone array file for use in ppk2fac based on an integer array of cell zones.
