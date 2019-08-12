@@ -15,7 +15,7 @@ from osgeo import gdal, gdalconst
 from scipy import ndimage as nd
 from skimage import measure
 
-import array2Vtk
+from . import array2Vtk
 
 
 # Step 1. Load raster layers top and bottom
@@ -89,10 +89,10 @@ def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
 
     # Clean up idle cells:
     (lay, row, col) = mesh3D_1.shape
-    for p in xrange(passes):
-        for k in xrange(lay):
-            for j in xrange(row):
-                for i in xrange(col):
+    for p in range(passes):
+        for k in range(lay):
+            for j in range(row):
+                for i in range(col):
                     cell_zone = mesh3D_1[k][j][i]
                     if cell_zone == -1:
                         continue
@@ -131,7 +131,7 @@ def reclassIsolatedCells(mesh3D_1, passes=1, assimilate=False):
                                 :param L:
                                 """
 
-                                return max(g(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
+                                return max(g(sorted(L)), key=lambda x_v: (len(list(x_v[1])), -L.index(x_v[0])))[0]
 
                             most_common = most_common_oneliner(neighbours)
                             if most_common != -1:
@@ -207,10 +207,10 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
     """
     raster_set = {}
 
-    print("HU Raster Path:", hu_raster_path)
+    print(("HU Raster Path:", hu_raster_path))
     for raster in hu_raster_files:
         fname = os.path.join(hu_raster_path, raster)  # + hu_ext
-        print 'Processing: ', fname
+        print('Processing: ', fname)
         ds = gdal.Open(fname, gdalconst.GA_ReadOnly)
         raster_set[raster] = [ds.GetRasterBand(1).ReadAsArray(),
                               ds.GetRasterBand(1).GetNoDataValue()]
@@ -283,18 +283,18 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
     zone_matrix[index / 2][mask_active[index / 2]] = -1
     zone_matrix[index / 2][~mask_active[index / 2]] = index / 2 + 1
 
-    for i in xrange(len(hu_raster_files)):
+    for i in range(len(hu_raster_files)):
         if i % 2 == 1:
             continue
         cumulative_active[i / 2] = ~mask_active[i / 2]
     # end for
 
-    for i in xrange(index + 2, len(hu_raster_files)):
+    for i in range(index + 2, len(hu_raster_files)):
         if i % 2 == 1:
             continue
 
         # Modify properties of layer using merge up logical array
-        for j in xrange(0, i):
+        for j in range(0, i):
             if j % 2 == 1:
                 continue
 
@@ -396,7 +396,7 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             continue
         test = mesh[index / 2] - mesh[index / 2 + 1] <= min_height
         if np.any(test == True):
-            print 'Minimum thickness not met when processing layer ', index / 2
+            print('Minimum thickness not met when processing layer ', index / 2)
 
     # Calculate the thickness of each layer on the final mesh
     for index, raster in enumerate(hu_raster_files):
@@ -424,11 +424,11 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             raster_thickness[index / 2] = np.ma.masked_where(
                 (zone_matrix[index / 2] != index / 2 + 1), raster_set[raster][3] -
                 raster_set[hu_raster_files[index + 1]][3])
-            print 'Using', raster, ' and ', hu_raster_files[index + 1]
+            print('Using', raster, ' and ', hu_raster_files[index + 1])
 
         mesh_zone_thickness = {}
 
-        for i in xrange(len(hu_raster_files) / 2):
+        for i in range(len(hu_raster_files) / 2):
             #            top = np.zeros((len(raster_set[hu_raster_files[0]][0]),
             #                            len(raster_set[hu_raster_files[0]][0][0])))
             #            bot = np.zeros((len(raster_set[hu_raster_files[0]][0]),
@@ -437,22 +437,22 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             bot = np.zeros_like(mesh[0])
             bot[zone_matrix[i] == i + 1] = mesh[i + 1][zone_matrix[i] == i + 1]
 
-            for layer in reversed(range(zone_matrix.shape[0])):
+            for layer in reversed(list(range(zone_matrix.shape[0]))):
                 top[zone_matrix[layer] == i + 1] = mesh[layer][zone_matrix[layer] == i + 1]
 
             mesh_zone_thickness[i] = np.ma.masked_where((zone_matrix[i] != i + 1), top - bot)
 
         if plot:
-            for i in xrange(thickness.shape[0]):
+            for i in range(thickness.shape[0]):
                 fig = plt.figure()
                 fig.add_subplot(1, 3, 1, aspect='equal')
                 plt.imshow(mesh_zone_thickness[i], interpolation='none')
-                print(i, mesh_zone_thickness[i].min(), mesh_zone_thickness[i].max(), mesh_zone_thickness[i].mean())
+                print((i, mesh_zone_thickness[i].min(), mesh_zone_thickness[i].max(), mesh_zone_thickness[i].mean()))
                 plt.title('Thickness in mesh: ' + hu_raster_files[i * 2])
                 plt.colorbar()
                 fig.add_subplot(1, 3, 2, aspect='equal')
                 plt.imshow(raster_thickness[i], interpolation='none')
-                print(i, raster_thickness[i].min(), raster_thickness[i].max(), raster_thickness[i].mean())
+                print((i, raster_thickness[i].min(), raster_thickness[i].max(), raster_thickness[i].mean()))
                 plt.title('Thickness in raster')
                 plt.colorbar()
                 fig.add_subplot(1, 3, 3, aspect='equal')
@@ -469,12 +469,12 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
 
         thick_shape = thickness.shape[0]
 
-        for i in xrange(thick_shape):
+        for i in range(thick_shape):
             thickness2[i] = np.ma.masked_where((zone_matrix[i] < 0), thickness[i])
             thick_zero[i] = np.ma.masked_where((thickness[i] != 0), thickness[i])
         # End for
         if plot:
-            for i in xrange(thick_shape):
+            for i in range(thick_shape):
                 fig = plt.figure()
                 fig.add_subplot(1, 3, 1, aspect='equal')
                 plt.imshow(thickness2[i], interpolation='none')
@@ -491,8 +491,8 @@ def map_raster_array_to_mesh(hu_raster_path, hu_raster_files, out_path, vtk_out,
             # End for
 
     if np.any(thickness < 0.):
-        print 'issues'
-        print np.where(thickness < 0.)
+        print('issues')
+        print(np.where(thickness < 0.))
     # End if
     if plot:
         for lay in range(thickness.shape[0]):

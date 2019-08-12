@@ -18,15 +18,15 @@ def raster2polygon(raster, band_num=1):
     """
     src_ds = gdal.Open(raster)
     if src_ds is None:
-        print 'Unable to open %s' % raster
+        print('Unable to open %s' % raster)
         sys.exit(1)
 
     try:
         srcband = src_ds.GetRasterBand(band_num)
-    except RuntimeError, e:
+    except RuntimeError as e:
         # for example, try GetRasterBand(10)
-        print 'Band ( %i ) not found' % band_num
-        print e
+        print('Band ( %i ) not found' % band_num)
+        print(e)
         sys.exit(1)
 
     #

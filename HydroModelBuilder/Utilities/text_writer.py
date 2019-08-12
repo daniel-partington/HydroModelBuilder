@@ -74,7 +74,7 @@ if __name__ == '__main__':
         print("Test passed")
     except AssertionError as e:
         print(e)
-        print("{} \n should be \n {}".format(lines, pass_case))
+        print(("{} \n should be \n {}".format(lines, pass_case)))
     # End try
 
     os.remove(fname)

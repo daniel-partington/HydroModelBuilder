@@ -41,7 +41,7 @@ def compareAllObs(self):
 
     comp_zone_plots = {}
     colours = ['r', 'orangered', 'y', 'green', 'teal', 'blue', 'fuchsia']
-    for i in xrange(1, 8):
+    for i in range(1, 8):
         scatterx2 = [loc[0] for loc in obs_sim_zone_all if loc[2] == float(i)]
         scattery2 = [loc[1] for loc in obs_sim_zone_all if loc[2] == float(i)]
         # print len(scatterx2), colours[i-1]
@@ -255,7 +255,7 @@ def compareAllObs2(self, specimen):
         if obs_type not in ['concentration', 'EC', 'Radon']:
             continue
         else:
-            print("Processing {}".format(obs_set))
+            print(("Processing {}".format(obs_set)))
             if (obs_type == 'concentration') & (specimen == 'C14'):
                 # Check if model outputs have already been imported and if not import
                 if not conc:

@@ -16,7 +16,7 @@ HGU_map = {'bse':'Bedrock', 'utb':'Newer Volcanics Basalts',
 MM = GWModelManager()
 model_folder = r'C:/Workspace/part0075/MDB modelling/testbox/00_Campaspe_Cascade/01_steady_state/structured_model_grid_{}m'.format(resolution)
 MM.load_GW_model(os.path.join(model_folder, r"01_steady_state_packaged.pkl"))
-name = MM.GW_build.keys()[0]
+name = list(MM.GW_build.keys())[0]
 m = MM.GW_build[name]
 mesh_array = m.model_mesh3D
 zones = len(np.unique(mesh_array[1])) - 1
@@ -113,7 +113,7 @@ if params:
     def update_pilot_points(zone_map, Zone, prop_array, par_name, prop_name, prop_folder, m, prop_array_fname):
         points_values_dict = create_pp_points_dict(zone_map, Zone, prop_array, prop_name, m)
         p = m.pilot_points[par_name]
-        zones = len(zone_map.keys())
+        zones = len(list(zone_map.keys()))
         p.output_directory = os.path.join(data_folder, prop_folder)
         p.update_pilot_points_files_by_zones(zones, points_values_dict)
         time.sleep(3)
@@ -142,7 +142,7 @@ height = 10
 multiplier = 1.
 fig = plt.figure(figsize=(width * multiplier, height * multiplier))
 
-for key in b.keys():
+for key in list(b.keys()):
     fname = os.path.join(pp.output_directory, 'values{}.ref'.format(key))
     with open(fname, 'r') as f:
         lines = f.readlines()
@@ -179,7 +179,7 @@ fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hs
 
 fig = plt.figure(figsize=(width * multiplier, height * multiplier))
 
-for key in b.keys():
+for key in list(b.keys()):
     fname = os.path.join(pp.output_directory, 'values{}.ref'.format(key))
     with open(fname, 'r') as f:
         lines = f.readlines()
@@ -201,7 +201,7 @@ for key in b.keys():
     #modelmap.plot_grid()    
     #array = modelmap.plot_array(hk[key], masked_values=[1E6, 0], alpha=1.0)#, 
     current = np.ma.masked_where(~a[3][key], hk[key])
-    print("maximum: {}, minimum: {}".format(np.amax(current), np.amin(current)))
+    print(("maximum: {}, minimum: {}".format(np.amax(current), np.amin(current))))
     array = modelmap.plot_array(np.ma.masked_where(~a[3][key], hk[key]), masked_values=[0], alpha=1.0, cmap='viridis')#, 
                                 #vmin=vmin, vmax=vmax)
     #array = modelmap.plot_array(vals, masked_values=[1E6], alpha=1.0)#, 
@@ -224,13 +224,13 @@ cmap = colors.ListedColormap(['lightgrey', 'white'])
 fig = plt.figure(figsize=(width * multiplier, height * multiplier))
 
 total_pp = 0
-for key in b.keys():
-    print("{}:{}".format(key, len(b[key])))
+for key in list(b.keys()):
+    print(("{}:{}".format(key, len(b[key]))))
     total_pp += len(b[key])
-print total_pp
+print(total_pp)
 
 counter = 0
-for key in b.keys():
+for key in list(b.keys()):
     if key in [1, 3, 6]:
         continue
     fname = os.path.join(pp.output_directory, 'values{}.ref'.format(key))

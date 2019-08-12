@@ -19,7 +19,7 @@ def createFolders(num, inlocation=None, prefix=None):
     if prefix == None:
         prefix = ''
 
-    print('Creating %i folders' % (num))
+    print(('Creating %i folders' % (num)))
 
     folder_list = []
 
@@ -32,7 +32,7 @@ def createFolders(num, inlocation=None, prefix=None):
                 folder_list += folder_name
                 f.write(folder_name + '\n')
             except:
-                print 'Could not create: ', folder_name
+                print('Could not create: ', folder_name)
 
 
 def cleanupFolders(num, inlocation=None, prefix=None):
@@ -49,14 +49,14 @@ def cleanupFolders(num, inlocation=None, prefix=None):
     if prefix == None:
         prefix = ''
 
-    print 'Deleting %i folders' % (num)
+    print('Deleting %i folders' % (num))
 
     for i in range(num):
         folder_name = inlocation + os.path.sep + prefix + str(i)
         try:
             shutil.rmtree(folder_name)
         except:
-            print 'Unable to remove: ', folder_name
+            print('Unable to remove: ', folder_name)
 
 
 def cleanupFoldersByList(folder_list):
@@ -73,13 +73,13 @@ def cleanupFoldersByList(folder_list):
         with open(filename, 'r') as f:
             folder_list = f.readlines()
 
-    print 'Deleting %i folders' % (len(folder_list))
+    print('Deleting %i folders' % (len(folder_list)))
 
     for folder_name in folder_list:
         try:
             shutil.rmtree(folder_name.strip('\n'))
         except:
-            print 'Unable to remove: ', folder_name
+            print('Unable to remove: ', folder_name)
 
 # From http://stackoverflow.com/questions/1868714/how-do-i-copy-an-entire-directory-of-files-into-an-existing-directory-using-pyth
 

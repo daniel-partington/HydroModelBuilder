@@ -1,4 +1,8 @@
-import cPickle as pickle
+try:
+    import pickle as pickle
+except ImportError:
+    import pickle
+
 import os
 import shutil
 
@@ -71,7 +75,7 @@ class ModelInterface(object):
             save_func = self.types.data_formats[self.data_format]
             save_func(filename, array)
         else:
-            print("Data format not recognised, use one of {}".format(self.types.data_formats.keys()))
+            print(("Data format not recognised, use one of {}".format(list(self.types.data_formats.keys()))))
         # End if
     # End save_array()
 
@@ -132,7 +136,7 @@ class ModelInterface(object):
 
         if filename.endswith('.pkl'):
             with open(filename, 'rb') as f:
-                print "Loading: ", filename
+                print("Loading: ", filename)
                 p = pickle.load(f)
                 return p
             # End with

@@ -80,7 +80,7 @@ def create_basement_bottom(hu_raster_path,
             elif diff == lower_bound:
                 thickness = max_thickness
             elif diff < 0:
-                print 'Error, top is below bottom'
+                print('Error, top is below bottom')
 
             cache[diff] = thickness
         # End if

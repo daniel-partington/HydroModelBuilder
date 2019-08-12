@@ -17,7 +17,7 @@ def create_buffer4poly(shpfile, buffile=None, buffer_distance=1000.0):
     """
     shp = ogr.Open(shpfile)
     if shp == None:
-        print 'Could not open: ' + shpfile
+        print('Could not open: ' + shpfile)
         sys.exit(1)
 
     if buffile == None:
@@ -26,7 +26,7 @@ def create_buffer4poly(shpfile, buffile=None, buffer_distance=1000.0):
     # End if
 
     # OGR fails to handle unicode characters!
-    if type(buffile) is unicode:
+    if type(buffile) is str:
         warnings.warn("unicode characters encountered - OGR sometimes fails to handle unicode")
         buffile = str(buffile)
 
@@ -39,7 +39,7 @@ def create_buffer4poly(shpfile, buffile=None, buffer_distance=1000.0):
     lyr = buf.GetLayer(0)
     count = lyr.GetFeatureCount()
 
-    for i in xrange(count):
+    for i in range(count):
         feat = lyr.GetFeature(i)
         lyr.DeleteFeature(i)
         geom = feat.GetGeometryRef()

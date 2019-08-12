@@ -23,7 +23,7 @@ def GridData(points, values, xi, method='nearest'):
     if method in ['linear', 'cubic']:
         z2 = griddata(points, values, xi, method=method)
         mask = np.isnan(z2)
-        points2 = zip(xi[0][~mask].flatten(), xi[1][~mask].flatten())
+        points2 = list(zip(xi[0][~mask].flatten(), xi[1][~mask].flatten()))
         values2 = z2[~mask].flatten()
         z2 = griddata(np.array(points2), np.array(values2), xi, method='nearest')
     else:
@@ -103,14 +103,14 @@ def Interpolator(mesh_type, points, values, to_array, method='linear',
                                                theta0=theta0, thetaL=thetaL, 
                                                thetaU=thetaU, nugget=nugget)
         else:
-            print 'Interpolation "use" not recognised'
+            print('Interpolation "use" not recognised')
         # End if
     elif mesh_type == 'structured' and len(points.shape) > 2:
         pass
     elif mesh_type == 'unstructured':
         pass
     else:
-        print 'mesh type not recognised: ', mesh_type
+        print('mesh type not recognised: ', mesh_type)
     # End if
 
     return to_values

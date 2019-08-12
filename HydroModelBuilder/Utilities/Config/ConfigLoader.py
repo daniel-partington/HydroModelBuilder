@@ -24,7 +24,7 @@ class ConfigLoader(object):
         if config_file is not None:
             here = os.path.dirname(config_file)
             try:
-                with open(config_file) as _invalidJSON:
+                with open(config_file, 'r') as _invalidJSON:
                     temp = jsmin(_invalidJSON.read())
                 # End with
             except Exception as e:
@@ -58,7 +58,7 @@ class ConfigLoader(object):
                         self.model_config["working_dir"] = self.model_config["working_dir"] + sep
                     # End if
 
-                    print "Working Directory set to: " + str(self.model_config["working_dir"])
+                    print("Working Directory set to: " + str(self.model_config["working_dir"]))
 
                     # Change to defined working directory
                     os.chdir(self.model_config["working_dir"])
@@ -79,14 +79,14 @@ class ConfigLoader(object):
 
             # Hide exception msg if this has resorted to default behaviour
             if config_file == here:
-                print e
+                print(e)
             # End if
 
         # End try
 
         if 'relative_paths' in self.model_config:
             # Build paths
-            for name, path in self.model_config['relative_paths'].iteritems():
+            for name, path in self.model_config['relative_paths'].items():
 
                 self.model_config[name] = self.model_config["working_dir"] + path
 
@@ -109,13 +109,12 @@ class ConfigLoader(object):
                               If not given (i.e. set to None), uses the logged in username.
                               (Default value = None)
         """
-
         if user_env_name is None:
             user_env_name = subprocess.check_output("whoami").strip()
         # End if
 
         try:
-            self.model_config[project_name]["environment"][user_env_name]
+            self.model_config[project_name]["environment"][str(user_env_name)]
         except KeyError:
             warnings.warn('No environment set for current user {}, using defaults'.format(user_env_name))
             user_env_name = 'default'
@@ -124,11 +123,11 @@ class ConfigLoader(object):
         self.settings = self.model_config[project_name]["environment"][user_env_name]
         self.model_config = self.model_config[project_name]["environment"][user_env_name]
 
-        for v, var in self.settings.iteritems():
+        for v, var in self.settings.items():
             setattr(self, v, var)
         # End for
 
-        proj_folder = self.settings.get("project_folder", "")
+        proj_folder = self.get_setting(["project_folder"])
 
         if len(proj_folder) > 0:
             os.chdir(proj_folder)
@@ -150,6 +149,10 @@ class ConfigLoader(object):
         for p in params:
             temp = temp.get(p, {})
         # End for
+
+        if hasattr(temp, 'encode') or isinstance(temp, str):
+            temp = temp.encode('utf-8', 'ignore')
+
         return temp
     # End get_setting()
 

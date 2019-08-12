@@ -1,4 +1,8 @@
-import cPickle as pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
 import warnings
 
 from HydroModelBuilder.GWModelBuilder import GWModelBuilder
@@ -57,7 +61,7 @@ class GWModelManager(object):
 
     @property
     def name(self):
-        return self.GW_build.keys()[0]
+        return list(self.GW_build.keys())[0]
     # End name()
 
     # Save and load utility using pickle
@@ -80,8 +84,13 @@ class GWModelManager(object):
         :param filename: str, name of file to load object from.
         """
         if filename.endswith('pkl'):
-            with open(filename, 'rb') as f:
-                return pickle.load(f)
+            try:
+                with open(filename, 'rb') as f:
+                    return pickle.load(f)
+            except (TypeError, UnicodeDecodeError):
+                print(filename)
+                with open(filename, 'rb') as f:
+                    return pickle.load(f, encoding='bytes')
         else:
             raise TypeError('File type not recognised as "pkl"')
         # End if
@@ -157,15 +166,15 @@ class GWModelManager(object):
         # End if
 
         # Check parameter passed against existing parameters in the model
-        original_param_names = self.GW_build[model_name].parameters.param.keys()
+        original_param_names = list(self.GW_build[model_name].parameters.param.keys())
         differences = list(set(original_param_names) - set(params_new.keys()))
         if len(differences) > 0:
-            print 'The following parameters were not matched: ', differences
+            print('The following parameters were not matched: ', differences)
         # End if
 
         for key in params_new:
             if key not in original_param_names:
-                print('Parameter name passed not matched, hence not assigned: ', key)
+                print(('Parameter name passed not matched, hence not assigned: ', key))
             elif key in original_param_names:
                 self.GW_build[model_name].parameters.param[key] = params_new[key]
             # End if
@@ -187,7 +196,7 @@ class GWModelManager(object):
         params = self.GW_build[model_name].parameters.param
         obs = self.GW_build[model_name].observations.obs
         obs_grp = self.GW_build[model_name].observations.obs_group
-        print "Model for PEST: ", self.GW_build[model_name]
+        print("Model for PEST: ", self.GW_build[model_name])
         self.PEST = PESTInterface(name=name, directory=directory, csv_copy=csv_copy,
                                   excel_copy=excel_copy, params=params, obs=obs, obs_grp=obs_grp, models_ID=models_ID)
     # End setupPEST()

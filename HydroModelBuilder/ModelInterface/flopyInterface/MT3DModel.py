@@ -92,7 +92,7 @@ class MT3DModel(object):
             bc_array = bc_boundary['bc_array']
 
             if (bc_type == 'river') or (bc_type == 'channel'):
-                time_key = bc_array.keys()[0]
+                time_key = list(bc_array.keys())[0]
                 river[0] += bc_array[time_key]
             # End if
 

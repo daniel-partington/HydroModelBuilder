@@ -46,7 +46,7 @@ class Radon_EC_simple(object):
         EC_simul = [EC_temp]
 
         # Calculate simulated Radon and EC for the
-        for i in xrange(len(self.dx) - 1):
+        for i in range(len(self.dx) - 1):
             # Steady state stream flow calculation ... check against modelled
             # as this won't consider rate of change in storage
             Flow_temp += self.GW_inflow[i] - self.Evap_Rate[i] - \

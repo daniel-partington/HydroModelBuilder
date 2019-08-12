@@ -8,7 +8,7 @@ import flopy.utils.binaryfile as bf
 import numpy as np
 import pandas as pd
 
-import viz.MT3D_PP_viz as pp_viz  # Visualization extension methods
+from .viz import MT3D_PP_viz as pp_viz  # Visualization extension methods
 from types import MethodType
 
 
@@ -102,7 +102,7 @@ class MT3DPostProcess(object):
             y = self.mf_model.model_data.observations.obs_group[
                 obs_set]['locations']['Northing'].loc[observation]
             if np.isnan(sim):
-                print(sim, obs, zone)
+                print((sim, obs, zone))
                 continue
             self.obs_sim_zone += [[obs, sim, zone, x, y]]
         # End for
@@ -135,7 +135,7 @@ class MT3DPostProcess(object):
         obs_group = self.mf_model.model_data.observations.obs_group
 
         # Write observation to file
-        for obs_set in model_data.observations.obs_group.keys():
+        for obs_set in list(model_data.observations.obs_group.keys()):
             obs_type = obs_group[obs_set]['obs_type']
             # Import the required model outputs for processing
             if obs_type not in ['concentration', 'EC', 'Radon']:

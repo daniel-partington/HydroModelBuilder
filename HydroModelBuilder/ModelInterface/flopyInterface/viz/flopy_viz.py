@@ -89,12 +89,12 @@ def plotRiverFromRiverSegData(self, ax, names=None, **kwargs):
 
     river_mapping = self.model_data.river_mapping
     if names is not None:
-        keys = [i for i in names if i in river_mapping.keys()]
-        not_a_key = [j for j in names if j not in river_mapping.keys()]
+        keys = [i for i in names if i in list(river_mapping.keys())]
+        not_a_key = [j for j in names if j not in list(river_mapping.keys())]
         if len(not_a_key) == 0:
-            print("Bad names passed that are not in dict: {}".format(not_a_key))
+            print(("Bad names passed that are not in dict: {}".format(not_a_key)))
     else:
-        keys = river_mapping.keys()
+        keys = list(river_mapping.keys())
     # End if
 
     for key in keys:
@@ -368,11 +368,11 @@ def compareAllObs2(self):
     sfr_df = None
     stream_options = ['stage', 'depth', 'discharge']
     # Write observation to file
-    for obs_set in self.model_data.observations.obs_group.keys():
+    for obs_set in list(self.model_data.observations.obs_group.keys()):
         if self.model_data.observations.obs_group[obs_set]['real'] == False:
             continue
         # end if
-        print("Processing {}".format(obs_set))
+        print(("Processing {}".format(obs_set)))
 
         obs_sim_zone_all = []
 
@@ -466,7 +466,7 @@ def plot_bc(self, modelmap, name):  # , **kwargs):
     try:
         modelmap.plot_bc(name)  # , **kwargs)
     except:
-        print("Could not find '{}' package in model".format(name))
+        print(("Could not find '{}' package in model".format(name)))
 
 
 def plot_bcs(self, modelmap, bcs):  # , **kwargs):

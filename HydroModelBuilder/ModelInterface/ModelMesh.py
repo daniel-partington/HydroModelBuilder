@@ -63,8 +63,8 @@ class MeshGenerator(object):
         self.model_mesh3D_centroids = (X, Y, self.model_mesh3D[0])
         self.centroid2mesh3Dindex = {}
         if self.mesh_type == 'structured' and array_ordering.array_order == 'UL_RowColumn':
-            for lay, row, col in [(l, r, c) for l in xrange(lays - 1)
-                                  for r in xrange(rows) for c in xrange(cols)]:
+            for lay, row, col in [(l, r, c) for l in range(lays - 1)
+                                  for r in range(rows) for c in range(cols)]:
                 self.centroid2mesh3Dindex[(
                     x[col],
                     y[row],
@@ -107,7 +107,7 @@ class MeshGenerator(object):
         self.centroid2mesh2Dindex = {}
         self.mesh2centroid2Dindex = {}
         if self.mesh_type == 'structured' and array_ordering.array_order == 'UL_RowColumn':
-            for row, col in [(r, c) for r in xrange(rows) for c in xrange(cols)]:
+            for row, col in [(r, c) for r in range(rows) for c in range(cols)]:
                 self.centroid2mesh2Dindex[(x[col], y[row])] = [row, col]
                 self.mesh2centroid2Dindex[(row, col)] = [x[col], y[row]]
             # End for
@@ -133,7 +133,7 @@ class MeshGenerator(object):
         mesh_pth = p_j(out_data_folder_grid, 'model_mesh.npy')
         zone_pth = p_j(out_data_folder_grid, 'zone_matrix.npy')
         if os.path.isfile(mesh_pth) & os.path.isfile(zone_pth) & ~force:
-            print 'Using previously generated mesh'
+            print('Using previously generated mesh')
             self.model_mesh3D = self.ModelInterface.load_array(mesh_pth), self.ModelInterface.load_array(zone_pth)
         else:
             self.model_mesh3D = self.GISInterface.build_3D_mesh_from_rasters(
@@ -168,13 +168,13 @@ class MeshGenerator(object):
             :param L:
             """
 
-            return max(groupby(sorted(L)), key=lambda(x, v): (len(list(v)), -L.index(x)))[0]
+            return max(groupby(sorted(L)), key=lambda x_v: (len(list(x_v[1])), -L.index(x_v[0])))[0]
         # End most_common_oneliner()
 
         # Clean up idle cells:
         (lay, row, col) = mesh3D_1.shape
-        for p, k, j, i in [(p_i, k_i, j_i, i_i) for p_i in xrange(passes)
-                           for k_i in xrange(lay) for j_i in xrange(row) for i_i in xrange(col)]:
+        for p, k, j, i in [(p_i, k_i, j_i, i_i) for p_i in range(passes)
+                           for k_i in range(lay) for j_i in range(row) for i_i in range(col)]:
             cell_zone = mesh3D_1[k][j][i]
             if cell_zone == -1:
                 continue
@@ -280,7 +280,7 @@ class MeshGenerator(object):
                   cell center to the given point
         """
         centroid2mesh3Dindex = self.centroid2mesh3Dindex
-        model_mesh_points = np.array(centroid2mesh3Dindex.keys())
+        model_mesh_points = np.array(list(centroid2mesh3Dindex.keys()))
 
         if type(points) == list:
             points = np.array(points)
@@ -315,7 +315,7 @@ class MeshGenerator(object):
         if method == 'nearest':
             for key in observations.obs_group:
                 if verbose:
-                    print('Mapping obs: {}'.format(key))
+                    print(('Mapping obs: {}'.format(key)))
                 if observations.obs_group[key]['domain'] == 'porous':
                     if type(observations.obs_group[key]['locations']) == pd.core.frame.DataFrame:
                         points = [list(x) for x in observations.obs_group[
@@ -331,7 +331,7 @@ class MeshGenerator(object):
 
                     # Check that 'mapped_observations' are in active cells and if not then set
                     # the observation to inactive
-                    for obs_loc in observations.obs_group[key]['mapped_observations'].keys():
+                    for obs_loc in list(observations.obs_group[key]['mapped_observations'].keys()):
                         [k, j, i] = observations.obs_group[key]['mapped_observations'][obs_loc]
                         if self.model_mesh3D[1][k][j][i] in ignore:
                             observations.obs_group[key]['time_series'].loc[
@@ -354,7 +354,7 @@ class MeshGenerator(object):
 
                         # Check that 'mapped_observations' are in active cells and if not then set
                         # the observation to inactive
-                        for obs_loc in observations.obs_group[key]['mapped_observations'].keys():
+                        for obs_loc in list(observations.obs_group[key]['mapped_observations'].keys()):
                             [j, i] = observations.obs_group[key]['mapped_observations'][obs_loc]
                             if self.model_mesh3D[1][0][j][i] in ignore:
                                 observations.obs_group[key]['time_series'] \

@@ -37,9 +37,9 @@ def gdal_error_handler(err_class, err_num, err_msg):
     }
     err_msg = err_msg.replace('\n', ' ')
     err_class = errtype.get(err_class, 'None')
-    print 'Error Number: %s' % (err_num)
-    print 'Error Type: %s' % (err_class)
-    print 'Error Message: %s' % (err_msg)
+    print('Error Number: %s' % (err_num))
+    print('Error Type: %s' % (err_class))
+    print('Error Message: %s' % (err_msg))
 
 
 def coordinate_transform(pointX, pointY, coordTransform):
@@ -149,14 +149,14 @@ def reproject_raster(ds,  # raster dataset
         driver = gdal.GetDriverByName(raster_driver)
         metadata = driver.GetMetadata()
         # Create a copy of the transformed raster for external use
-        if metadata.has_key(gdal.DCAP_CREATECOPY) and metadata[gdal.DCAP_CREATECOPY] == 'YES':
+        if gdal.DCAP_CREATECOPY in metadata and metadata[gdal.DCAP_CREATECOPY] == 'YES':
             if os.path.exists(copy_dest):
                 # driver.DeleteDataSource(copy_dest)
                 os.remove(copy_dest)
             driver.CreateCopy(copy_dest, dest, 0)  # , [ 'TILED=YES', 'COMPRESS=PACKBITS' ] )
             #dst_ds = None
         else:
-            print 'Driver %s does not support CreateCopy() method.' % raster_driver
+            print('Driver %s does not support CreateCopy() method.' % raster_driver)
 
     return dest
 
@@ -179,7 +179,7 @@ def ogr2ogr(src_datasource_name, dst_datasource_name, layer_name_list=[], **kwar
         os.remove(dst_datasource_name)
 
     extras = []
-    for key in kwargs.keys():
+    for key in list(kwargs.keys()):
         extras.append('-' + key)
         if isinstance(kwargs[key], (list, tuple)):
             for v in kwargs[key]:
@@ -263,7 +263,7 @@ if __name__ == "__main__":
     # r"C:\Workspace\part0075\MDB modelling\Campaspe_model\GIS\GIS_preprocessed\Surface_Water\Streams\Campaspe_Riv.shp", 0)
     poly_obj = ds.GetLayer()
     if poly_obj == None:
-        print 'Could not open '
+        print('Could not open ')
 
     srs = poly_obj.GetSpatialRef()
     # print srs.ExportToWkt()

@@ -1,1 +1,1 @@
-from Config.ConfigLoader import *
+from .Config.ConfigLoader import *

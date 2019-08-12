@@ -6,13 +6,13 @@ import pandas as pd
 from more_itertools import unique_everseen
 from scipy import spatial
 
-from ModelInterface.ModelInterface import ModelInterface
-from ModelInterface.ModelMesh import MeshGenerator
-from ModelProperties import (ArrayOrdering, ModelBoundaries, ModelBuilderType,
+from .ModelInterface.ModelInterface import ModelInterface
+from .ModelInterface.ModelMesh import MeshGenerator
+from .ModelProperties import (ArrayOrdering, ModelBoundaries, ModelBuilderType,
                              ModelInitialConditions, ModelObservations,
                              ModelParameters, ModelProperties, ModelTime)
-from Utilities import interpolation
-from Utilities.PilotPoints import pilotpoints
+from .Utilities import interpolation
+from .Utilities.PilotPoints import pilotpoints
 
 
 class GWModelBuilder(object):
@@ -158,13 +158,13 @@ class GWModelBuilder(object):
         # End if
 
         # Set all other kwargs as class attributes
-        for key, value in kwargs.items():
+        for key, value in list(kwargs.items()):
             setattr(self, key, value)
         # End For
 
         # Set all key word arguments as attributes
         if self.GISInterface is not None:
-            for key, value in self.__dict__.items():
+            for key, value in list(self.__dict__.items()):
                 if type(value) is not object:
                     setattr(self.GISInterface, key, value)
                 # End if
@@ -345,7 +345,7 @@ class GWModelBuilder(object):
     def updateGISinterface(self):
         """TODO: Docs"""
 
-        for key, value in self.__dict__.items():
+        for key, value in list(self.__dict__.items()):
             if type(value) is not object:
                 setattr(self.GISInterface, key, value)
             # End if
@@ -673,7 +673,7 @@ class GWModelBuilder(object):
         :param dist:
         """
         dist_total = 0
-        for index in xrange(len(points)):
+        for index in range(len(points)):
             if index == 0:
                 pass
             else:
@@ -699,7 +699,7 @@ class GWModelBuilder(object):
         point_merge = self._points_merge(points_dict)
         if verbose:
             print("Find closest model mesh cell for line points")
-        closest = self.do_kdtree(np.array(self.centroid2mesh2Dindex.keys()), point_merge)
+        closest = self.do_kdtree(np.array(list(self.centroid2mesh2Dindex.keys())), point_merge)
         point2mesh_map, point2mesh_map2 = self._points2mesh_map(point_merge, closest)
         amalg_riv_points, amalg_riv_points_collection = self._amalgamate_points(point2mesh_map2, point_merge)
         # Do test and report any cell jumps more than 1 up, down, left, right
@@ -712,7 +712,7 @@ class GWModelBuilder(object):
         if verbose:
             print("Get length of reaches")
         lengths = []
-        for i in xrange(len(amalg_riv_points_collection)):
+        for i in range(len(amalg_riv_points_collection)):
             if i == 0:
                 lengths += [self._points_dist_collection(amalg_riv_points_collection[i], dist)]
                 continue
@@ -740,7 +740,7 @@ class GWModelBuilder(object):
                                                                                      srm['pixel_y'],
                                                                                      srm['uly']))
 
-            surf_raster_points = np.array(surf_centroids.keys())
+            surf_raster_points = np.array(list(surf_centroids.keys()))
             if verbose:
                 print("Using kd_tree to find surface raster cells closest to river points")
             closest_srp = self.do_kdtree(surf_raster_points, point_merge)
@@ -843,7 +843,7 @@ class GWModelBuilder(object):
         river_seg.loc[:, 'i'] = [x[1] for x in amalg_riv_points_naive_layer]
         river_seg.loc[:, 'j'] = [x[2] for x in amalg_riv_points_naive_layer]
         river_seg.loc[:, 'amalg_riv_points_collection'] = [amalg_riv_points_collection[x]
-                                                           for x in xrange(len(amalg_riv_points_collection.keys()))]
+                                                           for x in range(len(list(amalg_riv_points_collection.keys())))]
 
         self.river_mapping[name] = river_seg
 
@@ -866,14 +866,14 @@ class GWModelBuilder(object):
         river_points = []
         amalg_riv_points = self.river_mapping[name]['amalg_riv_points_collection'].tolist()
         riv_len = self.river_mapping[name].shape[0]
-        for i in xrange(riv_len):
+        for i in range(riv_len):
             river_points += amalg_riv_points[i]
         # End for
         closest = self.do_kdtree(np.array(river_points), np.array(points))
 
         river_seg_close = []
         for index in closest:
-            for i in xrange(riv_len):
+            for i in range(riv_len):
                 if river_points[index] in amalg_riv_points[i]:
                     river_seg_close += [i + 1]  # Note that seg is 1-based indexing so we add 1 here
                     continue
@@ -920,7 +920,7 @@ class GWModelBuilder(object):
             print("Case 6")
 
         if verbose:
-            print("Case 7: {} {} {}".format(us, active, ds))
+            print(("Case 7: {} {} {}".format(us, active, ds)))
         return us - adjust
     # End _adjust_elevations()
 
@@ -935,19 +935,19 @@ class GWModelBuilder(object):
         :returns: tuple, (dict) centroid2mesh, (dict) mesh2centroid
         """
         xmin, xmax, ymin, ymax = bounds
-        print bounds, x_pixel, y_pixel
+        print(bounds, x_pixel, y_pixel)
         cols = int((xmax - xmin) / x_pixel)
         rows = int((ymax - ymin) / y_pixel)
         x = np.linspace(xmin + x_pixel / 2.0, xmax - x_pixel / 2.0, cols)
         y = np.linspace(ymax - y_pixel / 2.0, ymin + y_pixel / 2.0, rows)
 
         centroid2mesh2Dindex = {}
-        for row in xrange(rows):
-            for col in xrange(cols):
+        for row in range(rows):
+            for col in range(cols):
                 centroid2mesh2Dindex[(x[col], y[row])] = [row, col]
             # End for
         # End for
-        print "finished centroid_building"
+        print("finished centroid_building")
         return centroid2mesh2Dindex
     # End _create_centroids()
 
@@ -996,12 +996,12 @@ class GWModelBuilder(object):
         :param cell_list: list, of cells to order
         """
         cl = cell_list
-        for index in xrange(len(cell_list)):
+        for index in range(len(cell_list)):
             if index == 0:
                 pass
             else:
                 if np.sqrt((cl[index][0] - cl[index - 1][0]) ** 2 + (cl[index][1] - cl[index - 1][1]) ** 2) > 1:
-                    print("Warning, cell jump from {} to {}".format(cl[index - 1], cl[index]))
+                    print(("Warning, cell jump from {} to {}".format(cl[index - 1], cl[index])))
                 # End if
             # End if
         # End for
@@ -1045,7 +1045,7 @@ class GWModelBuilder(object):
         """
         points_array = np.array(points)
         centroids = self.centroid2mesh2Dindex
-        model_mesh_points = np.array(centroids.keys())
+        model_mesh_points = np.array(list(centroids.keys()))
 
         point2mesh_map = {}
         for index, point in enumerate(points_array):
@@ -1081,7 +1081,7 @@ class GWModelBuilder(object):
         """
         # TO CHECK
         point_merge = points_dict[0][0:-1]
-        points_after_first = points_dict.keys()[1:]
+        points_after_first = list(points_dict.keys())[1:]
         for _ in points_after_first:
             for key in points_after_first:
                 if points_dict[key][-1]['start'] == point_merge[-1]:
@@ -1115,7 +1115,7 @@ class GWModelBuilder(object):
         """
         poly_name, polyline_obj = self._get_poly_name_and_obj(polyline_obj)
         if os.path.exists(os.path.join(self.out_data_folder_grid, poly_name + '_mapped.pkl')):
-            print "Using previously mapped polyline to grid object"
+            print("Using previously mapped polyline to grid object")
             self.polyline_mapped[poly_name] = self.ModelInterface.load_obj(os.path.join(self.out_data_folder_grid,
                                                                                         poly_name + '_mapped.pkl'))
         else:
@@ -1145,7 +1145,7 @@ class GWModelBuilder(object):
 
         poly_name, polygon_obj = self._get_poly_name_and_obj(polygon_obj)
         if os.path.exists(os.path.join(self.out_data_folder_grid, poly_name + '_mapped.pkl')):
-            print "Using previously mapped polygons to grid object"
+            print("Using previously mapped polygons to grid object")
             self.polygons_mapped[poly_name] = self.ModelInterface.load_obj(os.path.join(self.out_data_folder_grid,
                                                                                         poly_name + '_mapped.pkl'))
         else:
@@ -1184,7 +1184,7 @@ class GWModelBuilder(object):
 
         point_name, points_obj = self._get_poly_name_and_obj(points_obj)
         if os.path.exists(os.path.join(self.out_data_folder_grid, point_name + '_mapped.pkl')):
-            print "Using previously mapped points to grid object"
+            print("Using previously mapped points to grid object")
             self.points_mapped[point_name] = self.ModelInterface.load_obj(os.path.join(self.out_data_folder_grid,
                                                                                        point_name + '_mapped.pkl'))
         else:
@@ -1238,7 +1238,7 @@ class GWModelBuilder(object):
                   cell center to the given point
         """
 
-        model_mesh_points = np.array(self.centroid2mesh2Dindex.keys())
+        model_mesh_points = np.array(list(self.centroid2mesh2Dindex.keys()))
         if type(points) == list:
             points = np.array(points)
         # End if
@@ -1458,15 +1458,15 @@ class GWModelBuilder(object):
                     updated[param_name] = True
                 else:
                     if verbose:
-                        print 'Parameter not defined in model: ', param_name
+                        print('Parameter not defined in model: ', param_name)
 
         if verbose:
             were_updated = [key for key in updated if updated[key] == True]
             if len(were_updated) > 0:
-                print 'Parameters updated for : ', were_updated
+                print('Parameters updated for : ', were_updated)
             not_updated = [key for key in updated if updated[key] == False]
             if len(not_updated) > 0:
-                print 'Parameters unchanged for : ', not_updated
+                print('Parameters unchanged for : ', not_updated)
     # End updateModelParameters()
 
     def generate_update_report(self):
@@ -1581,7 +1581,7 @@ class GWModelBuilder(object):
         mesh = self.model_mesh3D[0]
 
         array2Vtk.build_vtk_from_array(grid_info, np.fliplr(mesh), ["z_elev"],
-                                       [np.fliplr(mesh)], val_dict.keys(),
+                                       [np.fliplr(mesh)], list(val_dict.keys()),
                                        [np.fliplr(val_dict[key]) for key in val_dict],
                                        out_path, vtk_out)
     # End mesh3D_dict_to_vtk()

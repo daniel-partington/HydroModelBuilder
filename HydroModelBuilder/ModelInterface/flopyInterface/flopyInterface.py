@@ -10,11 +10,11 @@ import numpy as np
 import pandas as pd
 from flopy.utils.sfroutputfile import SfrFile
 
-import viz.flopy_viz as fviz  # Visualization extension methods
+from .viz import flopy_viz as fviz  # Visualization extension methods
 # allow import from this module to maintain backwards compatibility
-from MT3DModel import MT3DModel
-from MT3DPostProcess import MT3DPostProcess
-from Radon_EC_simple import Radon_EC_simple
+from .MT3DModel import MT3DModel
+from .MT3DPostProcess import MT3DPostProcess
+from .Radon_EC_simple import Radon_EC_simple
 from types import MethodType
 
 if sys.version_info[0] < 3:
@@ -31,8 +31,8 @@ def get_previous_conditions(data_path):
         data_path = data_path+'.hds'
 
     headobj = bf.HeadFile(data_path)
-    times = headobj.get_times()
-    head = headobj.get_data(totim=times[-1])
+
+    head = headobj.get_data(totim=headobj.times[-1])
     headobj.close()
     return head
 # End get_previous_conditions()
@@ -62,6 +62,11 @@ class ModflowModel(object):
 
         self.executable = r".\MODFLOW-NWT_64.exe"
 
+        self.reset(**kwargs)
+
+    # End __init__()
+
+    def reset(self, **kwargs):
         self.nlay = self.model_data.model_mesh3D[0].shape[0] - 1
         self.nrow = self.model_data.model_mesh3D[0].shape[1]
         self.ncol = self.model_data.model_mesh3D[0].shape[2]
@@ -100,7 +105,7 @@ class ModflowModel(object):
         self.ss = self.model_data.properties.properties['SS']
 
         # Set all other kwargs as class attributes
-        for key, value in kwargs.items():
+        for key, value in list(kwargs.items()):
             setattr(self, key, value)
         # End For
 
@@ -109,8 +114,7 @@ class ModflowModel(object):
         for method_name, func in viz_methods:
             setattr(self, method_name, MethodType(func, self))
         # End for
-
-    # End __init__()
+    # End reset()
 
     @property
     def headobj(self):
@@ -166,9 +170,11 @@ class ModflowModel(object):
                                             perlen=self.perlen,
                                             nstp=self.nstp,
                                             steady=self.steady)
+
         if self.verbose and self.check:
             self.dis.check()
         # End if
+        
     # End createDiscretisation()
 
     def setupBASPackage(self, nlay, nrow, ncol):
@@ -221,7 +227,8 @@ class ModflowModel(object):
         .. [Flopy MF PCG] MODFLOW River package
            (https://modflowpy.github.io/flopydoc/mfpcg.html)
         """
-        self.pcg = flopy.modflow.ModflowPcg(self.mf)  # if using mf 2005
+        if not hasattr(self, 'pcg'):
+            self.pcg = flopy.modflow.ModflowPcg(self.mf)  # if using mf 2005
     # End setupPCGpachage()
 
     def setupUPWpackage(self):
@@ -232,16 +239,22 @@ class ModflowModel(object):
            (https://modflowpy.github.io/flopydoc/mfupw.html)
         """
         # Add UPW package to the MODFLOW model to represent aquifers
-        self.upw = flopy.modflow.ModflowUpw(self.mf,
-                                            hk=self.hk,
-                                            # layvka=self.vka_ani_flag
-                                            vka=self.vka,
-                                            sy=self.sy,
-                                            ss=self.ss,
-                                            hdry=-999.9,
-                                            laywet=0,
-                                            laytyp=1,
-                                            ipakcb=53)
+        if not hasattr(self, 'upw'):
+            self.upw = flopy.modflow.ModflowUpw(self.mf,
+                                                hk=self.hk,
+                                                # layvka=self.vka_ani_flag
+                                                vka=self.vka,
+                                                sy=self.sy,
+                                                ss=self.ss,
+                                                hdry=-999.9,
+                                                laywet=0,
+                                                laytyp=1,
+                                                ipakcb=53)
+        else:
+            self.upw.hk.__value = self.vka
+            self.upw.vka.__value = self.vka
+            self.upw.sy.__value = self.sy
+            self.upw.ss.__value = self.ss
 
     # End setupUPWpackage()
 
@@ -290,7 +303,7 @@ class ModflowModel(object):
             transroute = True
         nstrm = reach_data.shape[0]
         nss = segment_data[0].shape[0]
-        dataset_5 = {key: [nss, 0, 0] for key in segment_data.keys()}
+        dataset_5 = {key: [nss, 0, 0] for key in list(segment_data.keys())}
         if self.verbose:
             print('SFR: Assuming units of model are m^3/d, change "const" if this is not true')
         # End if
@@ -519,6 +532,7 @@ class ModflowModel(object):
         :param verbose: bool, print out verbose messages (Default value = True)
         :param check: bool, check MODFLOW output for errors/convergence (Default value = False)
         """
+        
         self.mf = flopy.modflow.Modflow(self.name, exe_name=self.executable,
                                         model_ws=self.data_folder, version='mfnwt')
 
@@ -588,8 +602,9 @@ class ModflowModel(object):
 
         :returns: bool, successful run with convergence.
         """
-        success, buff = self.mf.run_model(silent=silent)
-        return self.checkConvergence(fail=not success)
+        success, _ = self.mf.run_model(silent=silent)
+
+        return success # self.checkConvergence(fail=not success)
     # End runMODFLOW()
 
     def checkConvergence(self, path=None, name=None, fail=False):
@@ -610,29 +625,29 @@ class ModflowModel(object):
         with open(os.path.join(path, '{}.list'.format(name)), 'r') as f:
             list_file = f.read()
 
-        # TODO consolidate these file writing processes, see `Utilities.text_writer`
-        for converge_fail in converge_fail_options:
-            if converge_fail in list_file:
-                print("*** Convergence failure ***")
-                now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
-                with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as f:
-                    f.write("Model did not converge, @ %s" %
-                            datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-                    f.write("Error: \n {}".format(converge_fail))
-                raise RuntimeError("MODFLOW failed to converge")
-                return False
-            # End if
+            # TODO consolidate these file writing processes, see `Utilities.text_writer`
+            for converge_fail in converge_fail_options:
+                if converge_fail in list_file:
+                    print("*** Convergence failure ***")
+                    now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
+                    with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as f:
+                        f.write("Model did not converge, @ %s" %
+                                datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                        f.write("Error: \n {}".format(converge_fail))
+                    raise RuntimeError("MODFLOW failed to converge")
+                    return False
+                # End if
 
-            if fail:
-                print("*** Model run failure ***")
-                now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
-                with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as f:
-                    f.write("Model did not run, @ %s" %
-                            datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
-                    f.write("Error: \n {}".format('MODFLOW did not terminate normally'))
-                return False
-            # End if
-        # End for
+                if fail:
+                    print("*** Model run failure ***")
+                    now = datetime.datetime.now().strftime("%I%M%p%B%d%Y")
+                    with open(os.path.join(self.data_folder, "converge_fail_%s.txt" % now), 'w') as f:
+                        f.write("Model did not run, @ %s" %
+                                datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y"))
+                        f.write("Error: \n {}".format('MODFLOW did not terminate normally'))
+                    return False
+                # End if
+            # End for
 
         return True
     # End checkConvergence()
@@ -697,9 +712,7 @@ class ModflowModel(object):
         if not headobj:
             headobj = self.headobj
 
-        times = headobj.get_times()
-
-        return headobj.get_data(totim=times[-1])
+        return headobj.get_data()  # totim=headobj.times[-1]
     # End get_heads()
 
     def get_final_heads(self, filename):
@@ -754,7 +767,7 @@ class ModflowModel(object):
         # End if
 
         if self.model_data.boundaries.bc[name]['bc_type'] == 'river':
-            time_key = self.model_data.boundaries.bc[name]['bc_array'].keys()[0]
+            time_key = list(self.model_data.boundaries.bc[name]['bc_array'].keys())[0]
             river = self.model_data.boundaries.bc[name]['bc_array'][time_key]
         else:
             print('Not a river boundary')
@@ -975,7 +988,7 @@ class ModflowModel(object):
                 print("Unknown observation type!")
             # End if
         # End for
-    # End writeObservations()
+    # End write_observations()
 
     def writeObservations(self):
         """Deprecated method.
@@ -1181,9 +1194,10 @@ class ModflowModel(object):
         :param name:  (Default value = None)
         """
         warnings.warn("""Use of method that will be removed in the future.
-                      Use `import_heads()` or `import_heads_from_file()`""", FutureWarning)
+                      Use `headobj` property or `import_heads_from_file()`""", FutureWarning)
         if not path:
-            warnings.warn("Deprecated method called. Use `import_heads()` instead", DeprecationWarning)
+            warnings.warn(
+                "Deprecated method called. Use `headobj` property instead", DeprecationWarning)
             return self.headobj
         else:
             warnings.warn("Deprecated method called. Use `import_heads_from_file()` instead", DeprecationWarning)
@@ -1212,11 +1226,11 @@ class ModflowModel(object):
         """
         if path:
             sfrout = SfrFile(os.path.join(path, name + ext))
-            self.sfr_df = sfrout.get_dataframe()
         else:
             sfrout = SfrFile(os.path.join(self.data_folder, self.name + ext))
-            self.sfr_df = sfrout.get_dataframe()
         # End if
+
+        self.sfr_df = sfrout.get_dataframe()
 
         return self.sfr_df
     # End import_sfr_out()
@@ -1228,8 +1242,7 @@ class ModflowModel(object):
         """
         warnings.warn("Deprecated method - get associated data from self.cbbobj property instead")
         return self.cbbobj
-    # End import_heads()
-
+    # End import_cbb()
 
     def importCbb(self):
         """Deprecated method."""

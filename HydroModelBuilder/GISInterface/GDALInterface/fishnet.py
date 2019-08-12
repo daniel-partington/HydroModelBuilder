@@ -124,7 +124,7 @@ def create_fishnet(structured_mesh, spatialRef, copy_dest=None):
 
 if __name__ == "__main__":
     # Main to allow standalone testing of this module
-    from GDALInterface import StructuredMesh
+    from .GDALInterface import StructuredMesh
     from osgeo import osr
 
     copy_dest = r"C:\Workspace\part0075\MDB modelling\Campaspe_data\SW\Farm\\"
@@ -132,7 +132,7 @@ if __name__ == "__main__":
     Proj_CS = osr.SpatialReference()
     Proj_CS.ImportFromEPSG(28355)  # This is just an example coordinate system
 
-    print Proj_CS.ExportToWkt()
+    print(Proj_CS.ExportToWkt())
 
 
     structured_mesh = StructuredMesh(xmin='223167.454274',

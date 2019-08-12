@@ -18,9 +18,9 @@ def shp2grid(shp_to_map, poly_mesh, shp_type=None, feature_id=None, data_folder=
         os.chdir(data_folder)
 
     if shp_type in ['poly', 'points']:
-        print 'Processing shapefile with ', shp_type
+        print('Processing shapefile with ', shp_type)
     else:
-        print 'Shape type not recognised: ', shp_type
+        print('Shape type not recognised: ', shp_type)
         return
     # end if
 
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     #ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\testbox\input_data\Waterways\Campaspe_Riv.shp", 0)
     poly_obj = ds.GetLayer()
     if poly_obj == None:
-        print 'Could not open '
+        print('Could not open ')
     srs = poly_obj.GetSpatialRef()
 
     # Open the mesh object
@@ -179,7 +179,7 @@ if __name__ == "__main__":
     ds = driver.Open(r"C:\Workspace\part0075\MDB modelling\Campaspe_data\SW\Farm\test_model_new.shp", 0)
     poly_obj = ds.GetLayer()
     if poly_obj == None:
-        print 'Could not open '
+        print('Could not open ')
     srs = poly_obj.GetSpatialRef()
 
     # Open the mesh object
@@ -193,7 +193,7 @@ if __name__ == "__main__":
     # for item in mapped_list:
     #    print item
 
-    print(end1 - start1, end2 - start2)
+    print((end1 - start1, end2 - start2))
 
     ds = None
     ds2 = None

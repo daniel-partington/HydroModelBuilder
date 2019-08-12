@@ -17,10 +17,10 @@ def PESTutil_run(name):
     """
 
     try:
-        print("Running {}:\n".format(name))
+        print(("Running {}:\n".format(name)))
         subprocess.check_output([name, '<', name + '.in'], shell=True)
     except subprocess.CalledProcessError as e:
-        print("stdout output on error:\n" + e.output)
+        print(("stdout output on error:\n" + e.output))
 
 
 '''

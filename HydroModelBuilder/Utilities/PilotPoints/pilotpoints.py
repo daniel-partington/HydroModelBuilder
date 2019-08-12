@@ -194,7 +194,7 @@ class PilotPoints(object):
                 points_dict.pop(zone)
                 points_zone_dict.pop(zone)
                 points_val_dict.pop(zone)
-                print("WARNING! No points were determined for zone: {}, removing".format(zone))
+                print(("WARNING! No points were determined for zone: {}, removing".format(zone)))
             else:
                 zone_active += [zone]
 
@@ -275,7 +275,7 @@ class PilotPoints(object):
         :param zone_array:
         :param zone_fname:  (Default value = 'zone.inf')
         """
-        layer = zone_array.keys()[0]
+        layer = list(zone_array.keys())[0]
         row, col = zone_array[layer].shape[0], zone_array[layer].shape[1]
         zone_array = zone_array[int(zone_fname[4])]
         zone_array = zone_array.astype(int)
@@ -533,7 +533,7 @@ class PilotPoints(object):
         """
         val_array = np.zeros_like(zone_array)
         #zones = [x + 1 for x in range(len(np.unique(zone_array)) - 1)]
-        zones = self.points_dict.keys()         
+        zones = list(self.points_dict.keys())         
         for index, zone in enumerate(zones):
             fname = os.path.join(self.output_directory, 'values{}.ref'.format(zone))
             with open(fname, 'r') as f:
@@ -563,7 +563,7 @@ class PilotPoints(object):
         elif data_format == 'binary':
             np.save(filename, self.val_array)
         else:
-            print 'Data format not recognised, use "binary" or "ascii"'
+            print('Data format not recognised, use "binary" or "ascii"')
         # end if
 
     def setup_pilot_points_by_zones(self, mesh_array, zones, search_radius,
@@ -580,7 +580,7 @@ class PilotPoints(object):
         :param prefixes:  (Default value = None)
         """
         if type(zones) == int:
-            zones = range(zones)
+            zones = list(range(zones))
         # end if
         
         for index, zone in enumerate(zones):
@@ -588,7 +588,7 @@ class PilotPoints(object):
                 prefix = prefixes[index]
             else:
                 prefix = None
-            print prefix
+            # print prefix
             self.write_pilot_points_file(self.points_dict[zone],
                                          self.points_zone_dict[zone],
                                          self.points_val_dict[zone],
@@ -634,7 +634,7 @@ class PilotPoints(object):
         :param zones: int of number of zones or list of zone ids
         """
         if type(zones) == int:
-            zones = range(zones)
+            zones = list(range(zones))
         # end if
 
         for zone in zones:
@@ -657,7 +657,7 @@ class PilotPoints(object):
         """
         
         if type(zones) == int:
-            zones = range(1, zones+1)
+            zones = list(range(1, zones+1))
         # end if
         
         for zone in zones:

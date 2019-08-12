@@ -134,12 +134,12 @@ class ModelBoundaries(object):
     def generate_update_report(self):
         """TODO: Docs"""
 
-        print("The following bc's were updated: \n {}".format(
-            [key for key in self.bc.keys()
-             if self.bc[key]['updated'] == True]))
-        print("\nThe following bc's were NOT updated: \n {}\n".format(
-            [key for key in self.bc.keys()
-             if self.bc[key]['updated'] == False]))
+        print(("The following bc's were updated: \n {}".format(
+            [key for key in list(self.bc.keys())
+             if self.bc[key]['updated'] == True])))
+        print(("\nThe following bc's were NOT updated: \n {}\n".format(
+            [key for key in list(self.bc.keys())
+             if self.bc[key]['updated'] == False])))
 
 # End ModelBoundaries()
 
@@ -187,12 +187,12 @@ class ModelProperties(object):
     def generate_update_report(self):
         """TODO: Docs"""
 
-        print("The following properties were updated: \n {}".format(
-            [key for key in self.properties.keys()
-             if self.prop_types_updated[key] == True]))
-        print("\nThe following properties were NOT updated: \n {}\n".format(
-            [key for key in self.properties.keys()
-             if self.prop_types_updated[key] == False]))
+        print(("The following properties were updated: \n {}".format(
+            [key for key in list(self.properties.keys())
+             if self.prop_types_updated[key] == True])))
+        print(("\nThe following properties were NOT updated: \n {}\n".format(
+            [key for key in list(self.properties.keys())
+             if self.prop_types_updated[key] == False])))
 
 # End ModelProperties()
 
@@ -215,7 +215,7 @@ class ModelParameters(object):
 
         if len(name) > 12:
             print('Warning: PEST has a max char length of parameter names of 12')
-            print('         Parameter {0} has length {1}'.format(name, len(name)))
+            print(('         Parameter {0} has length {1}'.format(name, len(name))))
         # end if
         self.param[name] = {}
         self.param[name]['PARVAL1'] = value
@@ -264,12 +264,12 @@ class ModelParameters(object):
 
         if len(name) > 9:
             print('Warning: PEST has a max char length of parameter names of 12')
-            print('         Parameter {0} has length {1}'.format(name, len(name)))
+            print(('         Parameter {0} has length {1}'.format(name, len(name))))
             print('         Automatic appending of name with number may cause')
             print('         longer than 12 char length par names')
         # End if
 
-        for i in xrange(num_parameters):
+        for i in range(num_parameters):
             name_i = name + str(i)
             self.param[name_i] = {}
             # Test if value is passed as single value or list ... would be nice to accept np arrays here later
@@ -368,7 +368,7 @@ class ModelObservations(object):
     def collate_observations(self):
         """TODO: Docs"""
 
-        for name in self.obs_group.keys():
+        for name in list(self.obs_group.keys()):
             ts = self.obs_group[name]['time_series']
             ts.loc[:, 'obs_map'] = 'null'
             for ob in ts.iterrows():
@@ -385,7 +385,7 @@ class ModelObservations(object):
         """TODO: Docs"""
 
         obs_nodes = []
-        for ob in self.observations.obs.keys():
+        for ob in list(self.observations.obs.keys()):
             obs_nodes += self.observations.obs[ob]
         # End for
     # End check_obs()
@@ -424,8 +424,8 @@ class ModelFeature(object):
         if feature_type in feature_types:
             self.feature_type = feature_type
         else:
-            print 'Feature type ', feature_type, ' not recognised'
-            print 'Please use one of: ', feature_types
+            print('Feature type ', feature_type, ' not recognised')
+            print('Please use one of: ', feature_types)
         self.feature_name = feature_name
         self.static = static
     # End __init__()
@@ -465,7 +465,7 @@ class ModelBuilderType(object):
             assert mesh_type in self.mesh_types, "'Mesh types must be of type: {}".format(
                 self.mesh_types)
             assert data_format in self.data_formats, "Data format must be of type: {}".format(
-                self.data_formats.keys())
+                list(self.data_formats.keys()))
         except AssertionError as e:
             import traceback
             import sys

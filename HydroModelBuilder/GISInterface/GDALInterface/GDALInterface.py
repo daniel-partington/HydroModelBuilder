@@ -8,16 +8,16 @@ import numpy as np
 from osgeo import gdal, gdalconst, ogr, osr
 
 # Import spatial processing functions that use GDAL
-import basement
-import create_buffer
-import fishnet
-import map2grid
-import map_raster2mesh
-import point_values_from_raster
-import polygon2points
-import polygon2raster
-import raster2polygon
-import reproject
+from . import basement
+from . import create_buffer
+from . import fishnet
+from . import map2grid
+from . import map_raster2mesh
+from . import point_values_from_raster
+from . import polygon2points
+from . import polygon2raster
+from . import raster2polygon
+from . import reproject
 # Import the GIS interface
 from HydroModelBuilder.GISInterface.GISInterface import GISInterface
 
@@ -69,7 +69,7 @@ class GDALInterface(GISInterface):
         new_file = base_name + "_model.shp"
 
         if os.path.isfile(new_file):
-            print 'Using previously generated file: ' + new_file
+            print('Using previously generated file: ' + new_file)
             driver = ogr.Open(new_file).GetDriver()
             ds = driver.Open(new_file, 0)
             self._test_osgeo_load(ds, new_file)
@@ -85,7 +85,7 @@ class GDALInterface(GISInterface):
             try:
                 driver = ogr.Open(fname).GetDriver()
             except AttributeError as e:
-                print("Failed loading {}".format(fname))
+                print(("Failed loading {}".format(fname)))
                 raise AttributeError(e)
             # End try
 
@@ -100,7 +100,7 @@ class GDALInterface(GISInterface):
             if self.projected_coordinate_system is None:
                 self.projected_coordinate_system = srs
             elif self.projected_coordinate_system == srs:
-                print 'No transform required ... continuing'
+                print('No transform required ... continuing')
             else:
                 reproject.reproject_layer(ds,
                                           src_cs=srs,
@@ -145,7 +145,7 @@ class GDALInterface(GISInterface):
         shp_name = os.path.splitext(os.path.basename(shapefile_name))[0]
         new_file = os.path.join(shapefile_path, shp_name + "_buffer_" + str(buffer_dist) + ".shp")
         if os.path.isfile(new_file):
-            print 'Using previously generated file: ' + new_file
+            print('Using previously generated file: ' + new_file)
             self.data_boundary = ogr.Open(new_file, 1)
             self._test_osgeo_load(self.data_boundary, new_file)
         else:
@@ -193,7 +193,7 @@ class GDALInterface(GISInterface):
                                 'structured_model_grid_{}m.shp'.format(int(gridHeight)))
 
         if os.path.isfile(new_file):
-            print 'Using previously generated file: ' + new_file
+            print('Using previously generated file: ' + new_file)
             self.model_mesh = ogr.Open(new_file, 1)
             self._test_osgeo_load(self.model_mesh, new_file)
         else:
@@ -238,9 +238,9 @@ class GDALInterface(GISInterface):
                 prj = ds.GetProjection()
                 srs = osr.SpatialReference(wkt=prj)
                 if self.projected_coordinate_system == srs:
-                    print 'No transform required ... continuing'
+                    print('No transform required ... continuing')
                 else:
-                    print 'Reprojecting raster'
+                    print('Reprojecting raster')
                     ds = None
 
                     target_srs = self.pcs_EPSG  # projected_coordinate_system.ExportToWkt()
@@ -248,17 +248,17 @@ class GDALInterface(GISInterface):
                     command = 'gdalwarp -q -t_srs ' + target_srs + ' -r bilinear "' + \
                         os.path.join(path, raster) + '" "' + rst + '"'
 
-                    print command
+                    print(command)
 
                     try:
                         subprocess.check_output(command, shell=True)
                     except subprocess.CalledProcessError as e:
-                        print e
+                        print(e)
 
                     ds = gdal.Open(rst, gdalconst.GA_ReadOnly)
                     self._test_osgeo_load(ds, rst)
 
-            print 'Processing: ', raster
+            print('Processing: ', raster)
             rasters[raster] = [ds.ReadAsArray(), os.path.join(path, raster)]
 
             ds = None  # close raster file
@@ -312,7 +312,7 @@ class GDALInterface(GISInterface):
                   '" -r {}'.format(resample_method)
 
         try:
-            print(subprocess.check_output(command, shell=True))
+            print((subprocess.check_output(command, shell=True)))
         except subprocess.CalledProcessError as e:
             print(e)
         # End try
@@ -381,7 +381,7 @@ class GDALInterface(GISInterface):
                     command = "gdalwarp -overwrite -r bilinear -t_srs " + target_srs + ' -cutline "' + \
                               self.boundary_poly_file + '" -crop_to_cutline "' + \
                               os.path.join(raster_path, raster) + '" "' + clp_file + '"'
-                    print command  # -dstalpha
+                    print(command)  # -dstalpha
 
                     try:
                         subprocess.check_output(command, shell=True)
@@ -415,7 +415,7 @@ class GDALInterface(GISInterface):
             pass
 
         else:
-            print('Something went wrong ... mesh type is not recognised: {}'.foramt(self._mesh_type))
+            print(('Something went wrong ... mesh type is not recognised: {}'.foramt(self._mesh_type)))
         # End if
 
     # End map_rasters_to_grid
@@ -457,7 +457,7 @@ class GDALInterface(GISInterface):
 
         new_raster_fname = os.path.join(self.out_data_folder_grid, fname[:-4] + '_model.tif')
         if os.path.exists(new_raster_fname):
-            print("Found previously generated file: {}".format(new_raster_fname))
+            print(("Found previously generated file: {}".format(new_raster_fname)))
         else:
             command = "gdalwarp -overwrite -t_srs {} ".format(epsg_to) + \
                       " -tr {} {} ".format(str(pixel_spacing), str(pixel_spacing)) + \
@@ -466,7 +466,7 @@ class GDALInterface(GISInterface):
                 '" -r {}'.format(resample_method)
 
             try:
-                print(subprocess.check_output(command, shell=True))
+                print((subprocess.check_output(command, shell=True)))
             except subprocess.CalledProcessError as e:
                 sys.exit(e)
             # End try
@@ -679,7 +679,7 @@ class GDALInterface(GISInterface):
         driver = ogr.GetDriverByName("ESRI Shapefile")
 
         if os.path.isfile(new_file):
-            print 'Using previously generated file: ' + new_file
+            print('Using previously generated file: ' + new_file)
         else:
             # Clip first using boundary polygon
             target_srs = self.pcs_EPSG
@@ -689,15 +689,15 @@ class GDALInterface(GISInterface):
             fn = os.path.join(self.out_data_folder, base + '_reproj.shp')
             command = 'ogr2ogr -t_srs "' + target_srs + '" "' + fn + '" "' + filename + '"'
             try:
-                print(subprocess.check_output(command, shell=True))
+                print((subprocess.check_output(command, shell=True)))
             except subprocess.CalledProcessError as e:
-                print("stdout output on error:\n" + e.output)
+                print(("stdout output on error:\n" + e.output))
 
             command = 'ogr2ogr -clipsrc "' + clipping_poly + '" "' + new_file + '" "' + fn + '" -f "ESRI Shapefile"'
             try:
-                print(subprocess.check_output(command, shell=True))
+                print((subprocess.check_output(command, shell=True)))
             except subprocess.CalledProcessError as e:
-                print("stdout output on error:\n" + e.output)
+                print(("stdout output on error:\n" + e.output))
 
         # End if
 

@@ -204,10 +204,10 @@ class PESTInterface(object):
         header = ['PARNAME', 'PARTRANS', 'PARCHGLIM', 'PARVAL1', 'PARLBND', 'PARUBND',
                   'PARGP', 'SCALE', 'OFFSET', 'PARTIED', 'models', 'unit', 'comment']
 
-        param_vals = params.values()
-        num_param = len(params.keys())
-        PESTpar = pd.DataFrame(columns=header, index=params.keys())
-        PESTpar['PARNAME'] = params.keys()
+        param_vals = list(params.values())
+        num_param = len(list(params.keys()))
+        PESTpar = pd.DataFrame(columns=header, index=list(params.keys()))
+        PESTpar['PARNAME'] = list(params.keys())
         PESTpar['PARTRANS'] = [x.get('PARTRANS', 'log') for x in param_vals]
         PESTpar['PARCHGLIM'] = [x.get('PARCHGLIM', 'factor') for x in param_vals]
         PESTpar['PARVAL1'] = [x['PARVAL1'] for x in param_vals]
@@ -304,7 +304,7 @@ class PESTInterface(object):
 
         fname = os.path.join(self.directory, name + '.csv')
         if os.path.exists(fname):
-            print(fname + ' file exists already')
+            print((fname + ' file exists already'))
         else:
             df.to_csv(fname, index=False)
         # end if
@@ -314,7 +314,7 @@ class PESTInterface(object):
         """TODO: Docs"""
 
         with open(os.path.join(self.directory, self.name + '.csv'), 'w') as f:
-            w = csv.DictWriter(f, self.PEST_data.keys())
+            w = csv.DictWriter(f, list(self.PEST_data.keys()))
             w.writeheader()
             w.writerow(self.PEST_data)
         # End with
@@ -333,7 +333,7 @@ class PESTInterface(object):
         # Ensure valid method argument is used
         assert method.lower() in ['csv', 'excel', 'dataframe'], "Method '{}' not recognized".format(method)
 
-        print('Generating {}_parameters.txt using {}'.format(self.name, method))
+        print(('Generating {}_parameters.txt using {}'.format(self.name, method)))
         if (method == 'csv'):
             self.PEST_data['PESTpar'] = pd.read_csv(os.path.join(self.directory, 'PESTpar.csv'))
             self.PEST_data['PESTobs'] = pd.read_csv(os.path.join(self.directory, 'PESTobs.csv'))
@@ -356,7 +356,7 @@ class PESTInterface(object):
         :param models_ID: list, of model IDs. Defaults to ['default']. (Default value = None)
         """
 
-        print('# Generating PEST files, %s #\n' % (datetime.datetime.now()))
+        print(('# Generating PEST files, %s #\n' % (datetime.datetime.now())))
         models_ID = ['default'] if not models_ID else models_ID
         PEST_name = 'pest'
         PEST_folder_name = '_'.join(['PEST'] + models_ID)
@@ -392,9 +392,9 @@ class PESTInterface(object):
                 prediction_obs_row['model'] = 'any'
                 # Add observation to
                 self.PEST_data['PESTobs'].append(prediction_obs_row)
-                print('  ** prediction mode was detected\n' +
+                print(('  ** prediction mode was detected\n' +
                       '  --> an observation ''prediction'' was automatically added that belongs to a group called ''predict'', conformally with what PEST requires\n' +
-                      '  --> make sure to write the computed prediction at the last line of the observation file which must be writen after your model run\n')
+                      '  --> make sure to write the computed prediction at the last line of the observation file which must be writen after your model run\n'))
             # end if
         # end if
 
@@ -629,7 +629,7 @@ class PESTInterface(object):
         # end with
 
         print('\nPEST files generated\n')
-        print(' %s\n' % PESTFILE)
+        print((' %s\n' % PESTFILE))
         print('\nPEST files generation completed!\n')
 
     def updateparameterswithpestbestpar(self, pestparfile):
