@@ -166,7 +166,7 @@ def plot_ts_obs_vs_sim(self, obs_name, obs_grp_name, obs_type):
 
 def compareAllObs_metrics(self, to_file=False, head_name='head'):
 
-    headobj = self.import_heads()
+    headobj = self.headobj
     times = headobj.get_times()
 
     scatterx = []
@@ -178,7 +178,7 @@ def compareAllObs_metrics(self, to_file=False, head_name='head'):
 
     for i in range(self.model_data.model_time.t['steps']):
         head = headobj.get_data(totim=times[i])
-        self.CompareObserved(head_name, head, nper=i)
+        self.compare_observed(head_name, head, nper=i)
         obs_sim_zone_all += self.obs_sim_zone
 
     scatterx = np.array([h[0] for h in obs_sim_zone_all])
@@ -204,7 +204,7 @@ def compareAllObs_metrics(self, to_file=False, head_name='head'):
 def compareAllObs(self, head_name):
     """TODO: Docs"""
 
-    headobj = self.import_heads()
+    headobj = self.headobj
     times = headobj.get_times()
 
     obs_sim_zone_all = []
@@ -381,13 +381,13 @@ def compareAllObs2(self):
         if obs_type == 'head':
             # Check if model outputs have already been imported and if not import
             if not head:
-                headobj = self.import_heads()
+                headobj = self.headobj
                 head = headobj.get_alldata()
         elif obs_type in stream_options:
             try:
                 sfr_df = self.sfr_df
             except:
-                sfr_df = self.importSfrOut()
+                sfr_df = self.import_sfr_out()
             # End except
         else:
             continue
@@ -493,18 +493,18 @@ def viewHeadsByZone(self, nper='all', head_name='head'):
     """
 
     # Create the headfile object
-    headobj = self.import_heads()
+    headobj = self.headobj
     times = headobj.get_times()
     if nper == 'all':
         head = headobj.get_alldata()
         head = np.mean(head, axis=0)
         head_orig = head
-        zoned = self.HeadsByZone(head)
+        zoned = self.output_var_by_zone(head)
         head = zoned
     else:
         head = headobj.get_data(totim=times[nper])
         head_orig = head
-        zoned = self.HeadsByZone(head)
+        zoned = self.output_var_by_zone(head)
         head = zoned
         self.compare_observed(head_name, head_orig, nper=nper)
     # End if
@@ -606,18 +606,18 @@ def viewHeadsByZone2(self, iter_num, nper='all', head_name='head'):
     """
 
     # Create the headfile object
-    headobj = self.import_heads()
+    headobj = self.headobj
     times = headobj.get_times()
     if nper == 'all':
         head = headobj.get_alldata()
         head = np.mean(head, axis=0)
         head_orig = head
-        zoned = self.HeadsByZone(head)
+        zoned = self.output_var_by_zone(head)
         head = zoned
     else:
         head = headobj.get_data(totim=times[nper])
         head_orig = head
-        zoned = self.HeadsByZone(head)
+        zoned = self.output_var_by_zone(head)
         head = zoned
     # End if
 
@@ -801,18 +801,18 @@ def viewHeadsByZone3(self, iter_num, nper='all', head_name='head'):
     """
 
     # Create the headfile object
-    headobj = self.import_heads()
+    headobj = self.headobj
     times = headobj.get_times()
     if nper == 'all':
         head = headobj.get_alldata()
         head = np.mean(head, axis=0)
         head_orig = head
-        zoned = self.HeadsByZone(head)
+        zoned = self.output_var_by_zone(head)
         head = zoned
     else:
         head = headobj.get_data(totim=times[nper])
         head_orig = head
-        zoned = self.HeadsByZone(head)
+        zoned = self.output_var_by_zone(head)
         head = zoned
     # End if
 
@@ -991,7 +991,7 @@ def viewHeads(self):
     """TODO: Docs"""
 
     # Create the headfile object
-    headobj = self.import_heads()
+    headobj = self.headobj
     times = headobj.get_times()
     head = headobj.get_data(totim=times[-1])
 
@@ -1107,7 +1107,7 @@ def viewHeadLayer(self, layer=0, figsize=(20, 10)):
     :param figsize: (Default value = (20, 10))
     """
     # Create the headfile object
-    headobj = self.import_heads()
+    headobj = self.headobj
     times = headobj.get_times()
     head = headobj.get_data(totim=times[-1])
 

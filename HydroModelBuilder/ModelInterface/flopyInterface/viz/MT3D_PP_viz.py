@@ -115,7 +115,7 @@ def compareAllObs(self):
 # End compareAllObs()
 
 
-def viewConcsByZone(self, nper='all', specimen=None):
+def view_concs_by_zone(self, nper='all', specimen=None):
     """
     :param nper: (Default value = 'all')
 
@@ -235,7 +235,7 @@ def viewConcsByZone(self, nper='all', specimen=None):
     fig.subplots_adjust(left=0.01, right=0.95, bottom=0.05, top=0.95, wspace=0.1, hspace=0.12)
 
     plt.show()
-# End viewConcsByZone()
+# End view_concs_by_zone()
 
 def compareAllObs2(self, specimen):
 

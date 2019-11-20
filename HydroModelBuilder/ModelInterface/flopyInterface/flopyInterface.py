@@ -145,7 +145,7 @@ class ModflowModel(object):
         self._cbbobj = cbbobj
 
         return cbbobj
-    # End import_cbb()
+    # End cbbobj()
 
     def createDiscretisation(self):
         """Create and setup MODFLOW DIS package.
@@ -473,13 +473,6 @@ class ModflowModel(object):
                                             package_flows=['sfr'])
     # End createLMTpackage()
 
-    def finaliseModel(self):
-        """Deprecated method"""
-        # Write the MODFLOW model input files
-        warnings.warn("Deprecated method called. Use `finalize_model()` instead", DeprecationWarning)
-        self.finalize_model()
-    # end finaliseModel
-
     def finalize_model(self):
         """Write out inputs used."""
         self.mf.write_input()
@@ -728,27 +721,6 @@ class ModflowModel(object):
         return heads
     # End get_final_heads()
 
-    def getHeads(self, headobj=None):
-        """Deprecated method.
-
-        :param headobj: Default value = None)
-
-        :returns: ndarray, head level
-        """
-        warnings.warn("Use of deprecated method `getHeads`, use `get_heads` instead",
-                      DeprecationWarning)
-        return self.get_heads(headobj)
-    # End getHeads()
-
-    def getFinalHeads(self, filename):
-        """Deprecated method.
-        :param filename: returns: ndarray, head level
-        """
-        warnings.warn("Use of deprecated method `getFinalHeads`, use `get_final_heads` instead",
-                      DeprecationWarning)
-        return self.get_final_heads(filename)
-    # End getFinalHeads()
-
     def getRivFlux(self, name):
         """Get river flux data.
 
@@ -840,16 +812,6 @@ class ModflowModel(object):
         return np.mean(self.top[mask] - head[0][mask])
     # End get_average_depth_to_GW()
 
-    def getAverageDepthToGW(self, mask=None):
-        """Deprecated method.
-
-        :param mask: (Default value = None)
-        """
-        warnings.warn("Use of deprecated method `getAverageDepthToGW`, use `get_average_depth_to_GW` instead",
-                      DeprecationWarning)
-        return self.get_average_depth_to_GW(mask)
-    # End getAverageDepthToGW()
-
     def loop_over_zone(self, array):
         """Generate a masked array and retrieve average values.
 
@@ -885,17 +847,6 @@ class ModflowModel(object):
         return self.loop_over_zone(concs)
     # End concs_by_zone()
 
-    def ConcsByZone(self, concs):
-        """Deprecated method.
-        :param concs:
-
-        :returns: ndarray
-        """
-        warnings.warn("Use of deprecated method `ConcsByZone`, use `concs_by_zone` instead",
-                      DeprecationWarning)
-        return self.concs_by_zone(concs)
-    # End ConcsByZone()
-
     def output_var_by_zone(self, output_var_array):
         """Retrieve average head values for each zone.
 
@@ -904,16 +855,7 @@ class ModflowModel(object):
         :returns: ndarray
         """
         return self.loop_over_zone(output_var_array)
-    # End heads_by_zone()
-
-    def HeadsByZone(self, heads):
-        """Deprecated method.
-        :param heads:
-        """
-        warnings.warn("Use of deprecated method `HeadsByZone`, use `heads_by_zone` instead",
-                      DeprecationWarning)
-        return self.output_var_by_zone(heads)
-    # End HeadsByZone()
+    # End output_var_by_zone()
 
     def write_observations(self):
         """Write out observation data."""
@@ -934,7 +876,7 @@ class ModflowModel(object):
                 try:
                     self.sfr_df
                 except Exception:
-                    sfr_df = self.importSfrOut()
+                    sfr_df = self.import_sfr_out()
                 # End except
             else:
                 continue
@@ -989,15 +931,6 @@ class ModflowModel(object):
             # End if
         # End for
     # End write_observations()
-
-    def writeObservations(self):
-        """Deprecated method.
-                """
-        warnings.warn("Use of deprecated method `writeObservations`, use `write_observations` instead",
-                      DeprecationWarning)
-        self.write_observations()
-    # End writeObservations()
-    
     
     def get_observation(self, obs, interval, obs_set):
         """Get observation data.
@@ -1030,18 +963,6 @@ class ModflowModel(object):
         dtw = self.model_data.model_mesh3D[0][0][sim_obs[1]][sim_obs[2]] - sim_head
         return sim_head, dtw
     # End get_observation()
-
-    def getObservation(self, obs, interval, obs_set):
-        """Deprecated method.
-
-        :param obs:
-        :param interval:
-        :param obs_set:
-        """
-        warnings.warn("Use of deprecated method `getObservation`, use `get_observation` instead",
-                      DeprecationWarning)
-        return self.get_observation(obs, interval, obs_set)
-    # End getObservation()
 
     def get_active_obs_group(self, obs_group, nper=None):
         """Get active observations within a group.
@@ -1103,18 +1024,6 @@ class ModflowModel(object):
         return self.obs_loc_val_zone
     # End compare_observed_head()
 
-    def CompareObservedHead(self, obs_set, simulated, nper=0):
-        """ Deprecated method.
-
-        :param obs_set:
-        :param simulated:
-        :param nper:  (Default value = 0)
-        """
-        warnings.warn("Use of deprecated method `CompareObservedHead`, use `compare_observed_head` instead",
-                      DeprecationWarning)
-        return self.compare_observed_head(obs_set, simulated, nper)
-    # End CompareObservedHead()
-
     def compare_observed(self, obs_set, simulated, nper=0):
         """Create a combined observed and simulated dataset and assigns to the `obs_sim_zone` attribute.
 
@@ -1149,18 +1058,6 @@ class ModflowModel(object):
         return self.obs_sim_zone
     # End compare_observed()
 
-    def CompareObserved(self, obs_set, simulated, nper=0):
-        """ Deprecated method.
-
-        :param obs_set:
-        :param simulated:
-        :param nper:  (Default value = 0)
-        """
-        warnings.warn("Use of deprecated method `CompareObserved`, use `compare_observed` instead",
-                      DeprecationWarning)
-        return self.compare_observed(obs_set, simulated, nper)
-    # End ComparedObserved()
-
     def import_heads_from_file(self, path=None, name=None):
         """Import head data from specified file.
 
@@ -1177,43 +1074,6 @@ class ModflowModel(object):
 
         return headobj
     # End import_heads_from_file()
-
-    def import_heads(self):
-        """Import head data associated with this model.
-
-        :returns: flopy headobj data
-        """
-        warnings.warn("Deprecated method - get associated data from self.headobj property instead")
-        return self.headobj
-    # End import_heads()
-
-    def importHeads(self, path=None, name=None):
-        """ Deprecated method.
-        :param path: Default value = None)
-        :param name:  (Default value = None)
-        :param name:  (Default value = None)
-        """
-        warnings.warn("""Use of method that will be removed in the future.
-                      Use `headobj` property or `import_heads_from_file()`""", FutureWarning)
-        if not path:
-            warnings.warn(
-                "Deprecated method called. Use `headobj` property instead", DeprecationWarning)
-            return self.headobj
-        else:
-            warnings.warn("Deprecated method called. Use `import_heads_from_file()` instead", DeprecationWarning)
-            return self.import_heads_from_file(path, name)
-    # End importHeads()
-
-    def importSfrOut(self, path=None, name=None, ext='.sfr.out'):
-        """Deprecated method.
-
-        :param path:  (Default value = None)
-        :param name:  (Default value = None)
-        :param ext:  (Default value = '.sfr.out')
-        """
-        warnings.warn("Deprecated method called. Use `import_sfr_out()` instead", DeprecationWarning)
-        return self.import_sfr_out(path, name, ext)
-    # End importSfrOut()
 
     def import_sfr_out(self, path=None, name=None, ext='.sfr.out'):
         """TODO: Docs
@@ -1234,22 +1094,6 @@ class ModflowModel(object):
 
         return self.sfr_df
     # End import_sfr_out()
-
-    def import_cbb(self):
-        """Retrieve data in cell-by-cell budget file
-
-        :returns: flopy cbc budget file
-        """
-        warnings.warn("Deprecated method - get associated data from self.cbbobj property instead")
-        return self.cbbobj
-    # End import_cbb()
-
-    def importCbb(self):
-        """Deprecated method."""
-        warnings.warn("Use of deprecated method `importCbb`, get associated data from self.cbbobj property instead",
-                      DeprecationWarning)
-        return self.cbbobj
-    # End importCbb()
 
     def waterBalance(self, iter_num, plot=True, save=False, nper=0):
         """TODO: Docs

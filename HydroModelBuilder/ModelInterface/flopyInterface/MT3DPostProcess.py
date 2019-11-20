@@ -54,12 +54,6 @@ class MT3DPostProcess(object):
         return self.mf_model.concs_by_zone(concs)
     # End concs_by_zone()
 
-    def ConcsByZone(self, concs):
-        warnings.warn("Use of deprecated method `ConcsByZone`, use `concs_by_zone` instead",
-                      DeprecationWarning)
-        return self.mf_model.concs_by_zone(concs)
-    # End ConcsByZone()
-
     def compare_observed(self, obs_set, simulated, nper=0):
         """
         :param obs_set:
@@ -108,21 +102,7 @@ class MT3DPostProcess(object):
         # End for
     # End compare_observed()
 
-    def CompareObserved(self, obs_set, simulated, nper=0):
-        """
-        :param obs_set: param simulated:
-
-        :param nper: Default value = 0)
-
-        :param simulated:
-        """
-
-        warnings.warn("Use of deprecated method `CompareObserved`, use `compare_observed` instead",
-                      DeprecationWarning)
-        return self.compare_observed(obs_set, simulated, nper)
-    # End CompareObserved()
-
-    def writeObservations(self, specimen):
+    def write_observations(self, specimen):
         """
         :param specimen:
         """
@@ -197,6 +177,6 @@ class MT3DPostProcess(object):
                 # End if
             # End with
         # End for
-    # End writeObservations()
+    # End write_observations()
 
 # End MT3DPostProcess()
