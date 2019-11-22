@@ -721,7 +721,7 @@ class ModflowModel(object):
         return heads
     # End get_final_heads()
 
-    def getRivFlux(self, name):
+    def get_riv_flux(self, name):
         """Get river flux data.
 
         :param name: str, name of river boundary
@@ -759,9 +759,9 @@ class ModflowModel(object):
         # End for
 
         return riv_exchange
-    # End getRivFlux()
+    # End get_riv_flux()
 
-    def getRivFluxNodes(self, nodes):
+    def get_riv_flux_nodes(self, nodes):
         """Get river flux nodes.
 
         :param nodes:
@@ -799,7 +799,7 @@ class ModflowModel(object):
         riv_exchange = np.array([x[0] for x in riv_exchange[0] if type(x[0]) == np.float32]).sum()
 
         return riv_exchange
-    # End getRivFluxNodes()
+    # End get_riv_flux_nodes()
 
     def get_average_depth_to_GW(self, mask=None):
         """Get average head values.
@@ -1095,7 +1095,7 @@ class ModflowModel(object):
         return self.sfr_df
     # End import_sfr_out()
 
-    def waterBalance(self, iter_num, plot=True, save=False, nper=0):
+    def water_balance(self, iter_num, plot=True, save=False, nper=0):
         """TODO: Docs
 
         :param iter_num:
@@ -1145,9 +1145,9 @@ class ModflowModel(object):
         else:
             return wat_bal_df
         # End if
-    # End waterBalance()
+    # End water_balance()
 
-    def waterBalanceTS(self, plot=True):
+    def water_balance_TS(self, plot=True):
         """TODO Docs
 
         :param plot:  (Default value = True)
@@ -1205,7 +1205,7 @@ class ModflowModel(object):
             return wat_bal_ts_df
         # End if
 
-    # End waterBalanceTS()
+    # End water_balance_TS()
 
     def cleanup(self):
         """Ensure file pointers are closed after model run.
